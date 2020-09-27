@@ -1,0 +1,2 @@
+
+from bw import BurrowsWheeler
