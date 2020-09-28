@@ -13,6 +13,16 @@ O="./output/data_small" \
     > ${O}/alignment.sam
 ```
 
+
+## Reference aligner
+
+To start developing and compare the quality metrics, 
+we used the [bwa tool](http://bio-bwa.sourceforge.net/) (v0.7.17-r1188) 
+on the given data with the default parameters. 
+The bash script to perform this alignment is in the folder `output_ref`.
+
+
+
 ## Team03 members
 
 TODO
