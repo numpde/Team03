@@ -2,12 +2,17 @@
 
 try:
     import pysam
+
+    Read = pysam.libcalignedsegment.AlignedSegment
 except:
     print("Need the package pysam")
     raise
 
+import numpy as np
+
 from pathlib import Path
 from typing import Iterable
+
 
 # On alignment quality
 
@@ -22,17 +27,52 @@ from typing import Iterable
 # https://learn.gencore.bio.nyu.edu/alignment/
 
 
-def read_sam(fd) -> Iterable[pysam.libcalignedsegment.AlignedSegment]:
+def read_sam(file) -> Iterable[Read]:
+    """
+    `file` can be file name or file descriptor
+    """
+
+    if (type(file) is str):
+        with open(file, mode='r') as file:
+            yield from read_sam(file)
+        return
+
     # https://pysam.readthedocs.io/en/latest/api.html
-    with pysam.AlignmentFile(fd) as af:
+    with pysam.AlignmentFile(file) as af:
         for read in af.fetch():
             yield read
 
 
-if (__name__ == '__main__'):
-    in_file = list((Path(__file__).parent.parent.parent.parent / "input/data_small/").glob("*.sam")).pop()
-    with open(in_file, mode='rb') as fd_sam:
+def coverage_pbp(file, reference_length=None):
+    """
+    Reads the SAM file and computes the per-based coverage
+    from the aligned blocks.
+    In particular: if a position in the reference is consistently
+    a 'delete' compared to the matched reads, it will be counted as zero.
+
+    The `reference_length` can be inferred from the mapped reads
+    but there can be an undetected residual at the 'right' end
+    if it is not specified.
+    """
+    zeros = (lambda n: np.zeros(n, dtype=int))
+    counts = zeros(reference_length or 0)
+    for read in read_sam(file):
+        for (a, b) in read.get_blocks():
+            # A block is a no-gap alignment
+            # Note: Blocks are 1- based
+            assert (a < b)
+            if (b > len(counts)):
+                counts = np.concatenate([counts, zeros(b - len(counts))])
+            counts[(a - 1):b] += 1
+
+    return counts
+
+
+def test_read_sam(file):
+    with open(file, mode='rb') as fd_sam:
         for read in read_sam(fd_sam):
+            read: Read
+
             # https://en.wikipedia.org/wiki/SAM_(file_format)
             # Col   Field	Type	Brief description
             #   1   QNAME	String  Query template NAME
@@ -60,4 +100,15 @@ if (__name__ == '__main__'):
             print("QUAL  ", read.query_qualities)
 
             # print(read.get_aligned_pairs())
-            # print(read.get_blocks())
+            print(read.get_blocks())
+
+
+def test_coverage_pbp(file):
+    counts = coverage_pbp(file)
+    print(*counts)
+
+
+if (__name__ == '__main__'):
+    in_file = list((Path(__file__).parent.parent.parent.parent / "input/data_small/").glob("*.sam")).pop()
+    # test_read_sam(in_file)
+    test_coverage_pbp(in_file)
