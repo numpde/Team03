@@ -50,7 +50,7 @@ class Smith_waterman_aligner(object):
         # make reference and query uppercase
         self.ref, self.query = self.ref.upper(), self.query.upper()
         H = self.create_scoring_matrix()
-        b_, pos = self.traceback(H, self.query)
+        b_, pos = self.traceback(H)
         return pos, pos + len(b_)
 
 
