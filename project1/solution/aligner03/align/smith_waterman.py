@@ -42,19 +42,20 @@ class Smith_waterman_aligner(object):
         i_, j_ = np.unravel_index(H_flip.argmax(), H_flip.shape)
         i, j = np.subtract(H.shape, (i_ + 1, j_ + 1))  # (i, j) are **last** indexes of H.max()
         if H[i, j] == 0:
+            self.query_ = query_
             return query_, i
         query_ = self.query[j - 1] + '-' + query_ if old_i - i > 1 else self.query[j - 1] + query_
         return self.traceback(H[0:i, 0:j], query_, i)
 
     def get_start_end(self):
         """
-        Get start and end index of query in reference. 0-based!
+        Get start and end index of query in reference. 1-based!
         """
         # make reference and query uppercase
         self.ref, self.query = self.ref.upper(), self.query.upper()
         H = self.create_scoring_matrix()
         query_, pos = self.traceback(H)
-        return pos, pos + len(query_)
+        return pos + 1, pos + 1 + len(query_)
 
     def get_matching_blocks(self):
         """

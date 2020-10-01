@@ -1,3 +1,1 @@
-
-from naive import NaiveAligner
-from smith_waterman import Smith_waterman_aligner
+from .smith_waterman import Smith_waterman_aligner
