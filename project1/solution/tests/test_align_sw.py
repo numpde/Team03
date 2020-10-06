@@ -1,7 +1,7 @@
 from aligner03.align import Smith_waterman_aligner
 
 
-def test_smith_waterman_aligner():
+def test_smith_waterman_aligner(verbose=0):
     """
     Test if sw_aligner finds the right scoring matrix and the right matching blocks
     """
@@ -18,7 +18,16 @@ def test_smith_waterman_aligner():
                            [0, 0, 0, 0, 0, 0, 2, 0],
                            [0, 0, 1, 0, 0, 1, 0, 3]]
     # true matching blocks calculated on paper
-    true_matching_blocks = [[1, 1], [3, 5]]
+    true_matching_blocks = [[3, 5]]
+
+    if verbose:
+        x, y, z = test_waterman.visualize(test_waterman.ref, test_waterman.query,
+                                          test_waterman.compress_cigar(test_waterman.cigar))
+        print(x)
+        print(y)
+        print(z)
+        print('matching blocks = ', matching_blocks)
+
     assert (test_waterman.scoring_matrix == true_scoring_matrix).all
     assert matching_blocks == true_matching_blocks
 
@@ -56,5 +65,5 @@ def test_sw_on_data():
 
 
 if __name__ == '__main__':
-    test_smith_waterman_aligner()
+    test_smith_waterman_aligner(1)
     test_sw_on_data()
