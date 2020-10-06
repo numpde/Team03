@@ -5,6 +5,4 @@ from unittest import TestCase
 
 class TestIndexBW(TestCase):
     def test_constructor(self):
-        from aligner.index import BurrowsWheeler
-        BurrowsWheeler()
         pass

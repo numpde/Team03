@@ -10,7 +10,7 @@
 # First column compressed to a dict of 6 entries
 
 
-from bw import Burrows_Wheeler
+from .bw import BurrowsWheeler
 from typing import List
 
 
@@ -28,7 +28,7 @@ class FM_Index(object):
             reference_genome = reference_genome + "$"
 
         # contains the Burrows Wheeler transformation of the reference genome and the offsets of the suffix array (so far uncompressed => both of size len(ref_genome)
-        self.bwt = Burrows_Wheeler(reference_genome)
+        self.bwt = BurrowsWheeler(reference_genome)
 
         # compressed first column of Burrows Wheeler matrix (e.g. cumulative frequencies of characters)
         self.F = self.shifts_F(reference_genome)
