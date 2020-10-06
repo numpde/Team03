@@ -134,9 +134,9 @@ class FM_Index(object):
      
 #searching for a match of the first k letters of the sample in the reference genome
 #sample should be string
-def query_index(sample, index):
+def query_index(sample, index,k = None):
    
-    return index.query(sample)
+    return index.query(sample,k)
 
 
 #searching for a perfect match of the sample in the reference genome
