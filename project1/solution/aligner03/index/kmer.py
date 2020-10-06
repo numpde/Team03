@@ -65,7 +65,7 @@ def perfect_match(sample, reference_genome, index):
 #searching for a match of the first k letters of the sample in the reference genome
 #sample should be string
 #reference_genome should be string
-def query_index(sample, reference_genome, index):
+def query_index(sample, index):
    
     return index.query(sample)
         
@@ -81,7 +81,7 @@ if __name__ == "__main__":
     index.print()
 
     print("kmer matches at ")
-    match = query_index(sample, ref_genome,index)
+    match = query_index(sample,index)
     print(match)
     
     print("exact matches at ")
