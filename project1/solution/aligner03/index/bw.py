@@ -1,6 +1,7 @@
 # Can be used to generated the Burrows Wheeler transformation (BWT) and the corresponding offsets in the suffix array (OSA). Upon creation of the object the BWT and OSA are created and stored (Both of size len(reference_genome) ). A method to decode a BWT is provided. Works with strings of any shape. The encoding can be done via suffix arrays (default) or via rotation of the string (specified at initialisation).
 
-class Burrows_Wheeler(object):
+# no _
+class BurrowsWheeler(object):
 
     def __init__(self, reference_genome, strategy='S'):
         # choose encoding strategy to build the Burrows-Wheeler Transform
@@ -88,7 +89,7 @@ class Burrows_Wheeler(object):
 if __name__ == "__main__":
     ref_genome = 'This is a test string to verify the correctness of the Burrows Wheeler transformation. This functionality is used for the 1. project of the course Computational Biomedicine at ETH Zurich.'
 
-    bwt = Burrows_Wheeler(ref_genome)
+    bwt = BurrowsWheeler(ref_genome)
 
     print("test: \n", ref_genome, "\n")
     print("encoded: \n", bwt.code, "\n")
