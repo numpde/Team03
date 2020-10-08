@@ -3,7 +3,7 @@ import numpy as np
 from typing import List, Tuple
 import re
 
-mutation_costs = {
+default_mutation_costs = {
     # Deletion
     'D': -2,
     # Insertion
@@ -41,13 +41,11 @@ class Aligner:
 
     def get_matching_blocks(self) -> List[Tuple]:
         cigar = self.cigar_string
-        idx = self.start_pos
+        idx = self.start_pos - 1
         matching_blocks = []
         for (n, a) in re.findall(r"([0-9]+)([XIDS=])", cigar):
             n = int(n)
-            if a == '=' and idx == self.start_pos:
-                matching_blocks.append((idx, idx + n))
-            elif a == '=':
+            if a == '=':
                 matching_blocks.append((idx + 1, idx + n))
             idx += n
 
@@ -85,24 +83,29 @@ class Aligner:
 
 
 class Smith_Waterman:
-    def __init__(self, mutation_costs=mutation_costs):
+    def __init__(self, mutation_costs=default_mutation_costs):
         self.match_score = mutation_costs['=']
         self.mismatch_cost = mutation_costs['X']
         self.gap_cost = mutation_costs['D']
         self.insertion_cost = mutation_costs['I']
 
-    def create_scoring_matrix(self, query, ref):
+    def create_scoring_matrix(self, query: str, ref: str):
         """
         Creates scoring matrix
         """
         H = np.zeros((len(ref) + 1, len(query) + 1), np.int)
-
+        traceback_matrix = np.zeros((len(ref) + 1, len(query) + 1), np.int)
         for i, j in itertools.product(range(1, H.shape[0]), range(1, H.shape[1])):
             match = H[i - 1, j - 1] + (
                 self.match_score if ref[i - 1] == query[j - 1] else + self.mismatch_cost)
             delete = H[i - 1, j] + self.gap_cost
             insert = H[i, j - 1] + self.insertion_cost
-            H[i, j] = max(match, delete, insert, 0)
+            scores = [match, delete, insert]
+            maximum = max(match, delete, insert, 0)
+            H[i, j] = maximum
+
+            traceback_matrix[i, j] = scores.index(maximum) + 1 if maximum in scores else 0
+        self.traceback_matrix = traceback_matrix
         return H
 
     def traceback(self, scoring_matrix, ref: str, query: str, max_pos: tuple):
@@ -111,43 +114,53 @@ class Smith_Waterman:
         aligner = Aligner()
         aligner.end_coord = (i, j)
         aligner.score = self.score
-        while end_condition == False:
-            diag_score = scoring_matrix[i - 1, j - 1]
-            left_score = scoring_matrix[i - 1, j]
-            upper_score = scoring_matrix[i, j - 1]
-            best_neighbouring_score = max(diag_score, left_score, upper_score)
-            if best_neighbouring_score == 0:
+        while not end_condition:
+            if scoring_matrix[i, j] == 0:
                 end_condition = True
-            if best_neighbouring_score == diag_score:
+            if self.traceback_matrix[i, j] == 1:
                 if ref[j - 1] == query[i - 1]:
                     aligner.insert_to_cigar_string('=')
                 else:
                     aligner.insert_to_cigar_string('X')
                 i -= 1
                 j -= 1
-            elif best_neighbouring_score == upper_score:
+            elif self.traceback_matrix[i, j] == 3:
                 j -= 1
                 aligner.insert_to_cigar_string('D')
-            elif best_neighbouring_score == left_score:
+            elif self.traceback_matrix[i, j] == 2:
                 i -= 1
                 aligner.insert_to_cigar_string('I')
-        aligner.start_pos = j
+        aligner.start_pos = j + 1
         aligner.start_coord = (i, j)
-        return aligner
+        yield aligner
 
     def __call__(self, ref, query):
+        """
+        Implements the Smith-Waterman alignment
+        with linear gap penalty (same scores for opening and extending a gap)
+        new score = max(
+            match bonus  + prev score (i-1, j-1)
+            substitution + prev score (i-1, j-1)
+            gap penalty  + prev score (i-1, j)
+            gap penalty  + prev score (i, j-1)
+            0
+        )
+
+        Yields one alignment with maximal score per traceback,
+        i.e. one for each last matching pair
+        (assuming negative scores for mutation/indel)
+        """
         scoring_matrix = self.create_scoring_matrix(ref, query)
         self.score = np.max(scoring_matrix)
         maxima = np.where(scoring_matrix == self.score)
-        i_maxima = maxima[0]
-        j_maxima = maxima[1]
-        for i, j in zip(i_maxima, j_maxima):
-            yield self.traceback(scoring_matrix, max_pos=(i, j), ref=ref, query=query)
+
+        for loc in zip(*maxima):
+            yield from self.traceback(scoring_matrix, max_pos=loc, ref=ref, query=query)
 
 
-if __name__ == 'main':
-    ref = 'SADWERWDFSDFS'
-    query = 'AASDAWERSD'
+if __name__ == '__main__':
+    ref = 'ATGGCCTC'
+    query = 'ACGGCTC'
     aligner = Smith_Waterman()
     for alignment in aligner(query=query, ref=ref):
         print(alignment.cigar_string)
@@ -156,3 +169,4 @@ if __name__ == 'main':
         print(y)
         print(z)
         print(alignment.get_matching_blocks())
+        print(alignment.start_pos)

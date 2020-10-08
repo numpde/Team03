@@ -1,69 +1,138 @@
-from aligner03.align import Smith_waterman_aligner
+from unittest import TestCase
+from aligner03.align import Smith_Waterman
+from typing import Iterable
+import pysam
+
+Read = pysam.libcalignedsegment.AlignedSegment
 
 
-def test_smith_waterman_aligner(verbose=0):
+def read_sam(file) -> Iterable[Read]:
     """
-    Test if sw_aligner finds the right scoring matrix and the right matching blocks
+    `file` can be file name or file descriptor
     """
-    test_waterman = Smith_waterman_aligner(ref='ATGGCCTC', query='ACGGCTC', gap_cost=4, match_score=1, mismatch_cost=3)
-    matching_blocks = test_waterman.get_matching_blocks()
-    # true values from http://rna.informatik.uni-freiburg.de/Teaching/index.jsp?toolName=Smith-Waterman#
-    true_scoring_matrix = [[0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 1, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 1, 0],
-                           [0, 0, 0, 1, 1, 0, 0, 0],
-                           [0, 0, 0, 1, 2, 0, 0, 0],
-                           [0, 0, 1, 0, 0, 3, 0, 1],
-                           [0, 0, 1, 0, 0, 1, 0, 1],
-                           [0, 0, 0, 0, 0, 0, 2, 0],
-                           [0, 0, 1, 0, 0, 1, 0, 3]]
-    # true matching blocks calculated on paper
-    true_matching_blocks = [[3, 5]]
 
-    if verbose:
-        x, y, z = test_waterman.visualize(test_waterman.ref, test_waterman.query,
-                                          test_waterman.compress_cigar(test_waterman.cigar))
-        print(x)
-        print(y)
-        print(z)
-        print('matching blocks = ', matching_blocks)
+    if (type(file) is str):
+        with open(file, mode='r') as file:
+            yield from read_sam(file)
+        return
 
-    assert (test_waterman.scoring_matrix == true_scoring_matrix).all
-    assert matching_blocks == true_matching_blocks
+    # https://pysam.readthedocs.io/en/latest/api.html
+    with pysam.AlignmentFile(file) as af:
+        for read in af.fetch():
+            yield read
 
-def test_sw_on_data():
-    """
-    Test if sw_aligner can find position of read in template reference genome
-    """
-    from pathlib import Path
-    from Bio import SeqIO
 
-    fa = Path(__file__).parent.parent.parent / "input/data_small/genome.chr22.5K.fa"
+def test_read_sam(file):
+    with open(file, mode='rb') as fd_sam:
+        for read in read_sam(fd_sam):
+            read: Read
 
-    template = str(SeqIO.read(fa, format='fasta').seq)
+            # https://en.wikipedia.org/wiki/SAM_(file_format)
+            # Col   Field	Type	Brief description
+            #   1   QNAME	String  Query template NAME
+            #   2   FLAG	Int	    bitwise FLAG
+            #   3   RNAME	String  References sequence NAME
+            #   4   POS     Int     1- based leftmost mapping POSition
+            #   5   MAPQ	Int     MAPping Quality
+            #   6   CIGAR	String	CIGAR String
+            #   7   RNEXT	String	Ref. name of the mate/next read
+            #   8   PNEXT	Int     Position of the mate/next read
+            #   9   TLEN	Int     observed Template LENgth
+            #  10	SEQ     String  segment SEQuence
+            #  11	QUAL	String  ASCII of Phred-scaled base QUALity+33
 
-    # This is from output_tiny_30xCov1.fq: 22_5K-1168/1
-    r1 = "TCTGGGCCTCCCAACCCTGAGTTTTTATAATAGGCCCCAGGCCAGGTGGTTAACAGAGGTCTGGGGCATTGCAGGGGGACAGAGGAGGACATATGTCCCTATTGGCCATTGTAGAGTCCCTTCCA"
+            print("QNAME ", read.query_name)
+            print("FLAG  ", read.flag)
+            print("RNAME ", read.reference_id)
+            print("POS   ", read.reference_start)
+            print("MAPQ  ", read.mapping_quality)
+            print("CIGAR ", read.cigartuples)
+            print("RNEXT ", read.next_reference_id)
+            print("PNEXT ", read.next_reference_start)
+            print("TLEN  ", read.template_length)
+            print("SEQ   ", read.query_sequence)
+            print("QUAL  ", read.query_qualities)
 
-    # String operators
-    reverse = (lambda s: ''.join({'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}[c] for c in s[-1::-1]))
+            # print(read.get_aligned_pairs())
+            print(read.get_blocks())
 
-    def find(pattern, template):
+
+class TestAlign(TestCase):
+    def test_smith_waterman_aligner(self, verbose=0):
         """
-        Find all occurrences of pattern string in template string.
-        Note: returns a list of starting positions with 1- based indexing.
+        Test if sw_aligner finds the right scoring matrix and the right matching blocks
         """
-        import re
-        return [(m.start() + 1) for m in re.finditer("(?=" + pattern + ")", template)]
+        mutation_costs = {
+            # Deletion
+            'D': -2,
+            # Insertion
+            'I': -2,
+            # Mutation
+            'X': -1,
+            # Match
+            '=': 3,
+        }
+        aligner = Smith_Waterman(mutation_costs=mutation_costs)
+        for alignment in aligner(ref='ATGGCCTC', query='ACGGCTC'):
+            matching_blocks = alignment.get_matching_blocks()
+            # print(matching_blocks)
+        # true values from http://rna.informatik.uni-freiburg.de/Teaching/index.jsp?toolName=Smith-Waterman#
+        true_scoring_matrix = [[0, 0, 0, 0, 0, 0, 0, 0],
+                               [0, 1, 0, 0, 0, 0, 0, 0],
+                               [0, 0, 0, 0, 0, 0, 1, 0],
+                               [0, 0, 0, 1, 1, 0, 0, 0],
+                               [0, 0, 0, 1, 2, 0, 0, 0],
+                               [0, 0, 1, 0, 0, 3, 0, 1],
+                               [0, 0, 1, 0, 0, 1, 0, 1],
+                               [0, 0, 0, 0, 0, 0, 2, 0],
+                               [0, 0, 1, 0, 0, 1, 0, 3]]
+        # true matching blocks calculated on paper
+        true_matching_blocks = [(1, 1), (3, 4), (6, 8)]
 
-    reversed = reverse(r1)
-    true_index = find(reversed, template)[0]
-    test_waterman_reversed = Smith_waterman_aligner(ref=template, query=reversed, gap_cost=1, match_score=3,
-                                                    mismatch_cost=3)
-    beg, end = test_waterman_reversed.get_start_end()
-    assert beg == true_index
+        if verbose:
+            x, y, z = alignment.visualize(ref='ATGGCCTC', query='ACGGCTC')
+            print(x)
+            print(y)
+            print(z)
+            print('matching blocks = ', matching_blocks)
+
+        assert (aligner.create_scoring_matrix(ref='ATGGCCTC', query='ACGGCTC') == true_scoring_matrix).all
+        assert matching_blocks == true_matching_blocks
+
+    def test_sw_on_data(self):
+        from pathlib import Path
+        from Bio import SeqIO
+
+        fa = Path(__file__).parent.parent.parent / "input/data_small/genome.chr22.5K.fa"
+
+        template = str(SeqIO.read(fa, format='fasta').seq)
+
+        in_file = list((Path(__file__).parent.parent.parent / "input/data_small/").glob("*.sam")).pop()
+        with open(in_file, mode='rb') as fd_sam:
+            for read in read_sam(fd_sam):
+                read: Read
+                ref = template
+                query = read.query_sequence
+                aligner = Smith_Waterman()
+                nbr_iterations = 1
+                # somehow breaks after one iteration
+                for i, alignment in enumerate(aligner(query=query, ref=ref)):
+                    if i < nbr_iterations:
+                        print(alignment.cigar_string, ' vs ', read.cigarstring)
+                        print(read.query_qualities, ' vs ', alignment.score)
+                        x, y, z = alignment.visualize(ref, query)
+                        print(x)
+                        print(y)
+                        print(z)
+                        print(alignment.get_matching_blocks(), ' vs ', read.cigar)
+                        for alignment in aligner(ref=template, query=reversed):
+                            self.assertEqual(alignment.cigar_string,
+                                             read.cigarstring), f'{alignment.cigar_string} is not equal to cigar from sam file {read.cigarstring}'
+                    else:
+                        break
 
 
 if __name__ == '__main__':
-    test_smith_waterman_aligner(1)
-    test_sw_on_data()
+    pass
+# test_smith_waterman_aligner(1)
+# test_sw_on_data()
