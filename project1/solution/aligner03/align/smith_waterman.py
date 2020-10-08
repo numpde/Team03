@@ -9,7 +9,7 @@ mutation_costs = {
     # Insertion
     'I': -2,
     # Mutation
-    'X': -3,
+    'X': -1,
     # Match
     '=': 3,
 }
@@ -26,19 +26,17 @@ class Aligner:
     def __repr__(self):
         return F"Aligns at {self.start_pos} with CIGAR = {self.cigar_string} and score = {self.score}"
 
-    def append_to_cigar_string(self, symbol: str):
-        if self.cigar_string and symbol == self.cigar_string[-2]:
-            self.cigar_string = self.cigar_string[:-1] + str(int(self.cigar_string[-1]) + 1)
+    def insert_to_cigar_string(self, symbol: str):
+        if self.cigar_string and symbol == re.findall(r"[XIDS=]", self.cigar_string)[0]:
+            current_count = re.findall(r"[0-9]+", self.cigar_string)[0]
+            self.cigar_string = str(int(current_count) + 1) + self.cigar_string[len(current_count):]
         else:
-            self.cigar_string += f'{symbol}1'
-
-    def invert_cigar(self):
-        self.cigar_string = self.cigar_string[::-1]
+            self.cigar_string = f'1{symbol}' + self.cigar_string
 
     def count_total(self) -> int:
         total = 0
-        for idx in range(0, len(self.cigar_string), 2):
-            total += int(self.cigar_string[idx])
+        for count in re.findall(r"[0-9]+", self.cigar_string):
+            total += int(count)
         return total
 
     def get_matching_blocks(self) -> List[Tuple]:
@@ -87,7 +85,7 @@ class Aligner:
 
 
 class Smith_Waterman:
-    def __init__(self):
+    def __init__(self, mutation_costs=mutation_costs):
         self.match_score = mutation_costs['=']
         self.mismatch_cost = mutation_costs['X']
         self.gap_cost = mutation_costs['D']
@@ -110,33 +108,32 @@ class Smith_Waterman:
     def traceback(self, scoring_matrix, ref: str, query: str, max_pos: tuple):
         i, j = max_pos
         end_condition = False  # end if encounter 0
-        cigar = Aligner()
-        cigar.end_coord = (i, j)
+        aligner = Aligner()
+        aligner.end_coord = (i, j)
+        aligner.score = self.score
         while end_condition == False:
             diag_score = scoring_matrix[i - 1, j - 1]
             left_score = scoring_matrix[i - 1, j]
             upper_score = scoring_matrix[i, j - 1]
-            # if 0 in neighbourhood, best neighbouring score is 0? ( if not (diag_score * left_score * upper_score) == 0 else 0)
             best_neighbouring_score = max(diag_score, left_score, upper_score)
             if best_neighbouring_score == 0:
                 end_condition = True
             if best_neighbouring_score == diag_score:
                 if ref[j - 1] == query[i - 1]:
-                    cigar.append_to_cigar_string('=')
+                    aligner.insert_to_cigar_string('=')
                 else:
-                    cigar.append_to_cigar_string('X')
+                    aligner.insert_to_cigar_string('X')
                 i -= 1
                 j -= 1
             elif best_neighbouring_score == upper_score:
                 j -= 1
-                cigar.append_to_cigar_string('D')
+                aligner.insert_to_cigar_string('D')
             elif best_neighbouring_score == left_score:
                 i -= 1
-                cigar.append_to_cigar_string('I')
-        cigar.start_pos = j
-        cigar.start_coord = (i, j)
-        cigar.invert_cigar()
-        return cigar
+                aligner.insert_to_cigar_string('I')
+        aligner.start_pos = j
+        aligner.start_coord = (i, j)
+        return aligner
 
     def __call__(self, ref, query):
         scoring_matrix = self.create_scoring_matrix(ref, query)
