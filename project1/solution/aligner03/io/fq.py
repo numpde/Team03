@@ -16,14 +16,20 @@ class Read:
     # Note: Ignore the "+" line
     phred: typing.List[int]
 
-    def __init__(self, name, desc, seq, phred):
+    def __init__(self, name, desc, seq, phred, is_forward=True):
         self.name = name
         self.desc = desc
         self.seq = seq
         self.phred = phred
+        self.is_forward = is_forward
 
     def __str__(self):
         return F"Name: {self.name} ({self.desc}): {self.seq} ({self.phred})"
+
+    @property
+    def reverse(self):
+        from aligner03.utils.strings import reverse as reverse_complement
+        return Read(self.name, self.desc, reverse_complement(self.seq), self.phred[-1::-1], not self.is_forward)
 
 
 def from_fastq(file) -> typing.Iterable[Read]:
