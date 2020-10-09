@@ -2,6 +2,9 @@
 
 import pysam
 import typing
+import pandas
+import collections
+
 
 def from_sam(file) -> typing.Iterable[pysam.AlignedSegment]:
     """
@@ -20,3 +23,33 @@ def from_sam(file) -> typing.Iterable[pysam.AlignedSegment]:
     with pysam.AlignmentFile(file) as af:
         for read in af.fetch():
             yield read
+
+
+class FlagFormat:
+    @staticmethod
+    def has(flag: int, component: int) -> bool:
+        return (flag & component) == component
+
+    @staticmethod
+    def isMinusStrand(flag):
+        return FlagFormat.has(flag, 16)
+
+
+# https://bioinformatics-core-shared-training.github.io/cruk-summer-school-2017/Day1/Session5-alignedReads.html
+pandas.Series(name="Flag", dtype=int, data=dict([
+    tuple(l.strip().split('\t')) for l in (
+        """
+        isPaired	1
+        isProperPair	2
+        isUnmappedQuery	4
+        hasUnmappedMate	8
+        isMinusStrand	16
+        isMateMinusStrand	32
+        isFirstMateRead	64
+        isSecondMateRead	128
+        isSecondaryAlignment	256
+        isNotPassingQualityControls	512
+        isDuplicate	1024
+        """
+    ).split('\n') if len(l.strip())
+]))
