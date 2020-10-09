@@ -72,17 +72,8 @@ class TestPipeline(TestCase):
 
         print(F"Loading {relpath(genome_file_fasta)}")
 
-        try:
-            from aligner03.io import Read
-            from aligner03.io import from_fasta
-        except:
-            warning("Using biopython for FASTA read.")
-            from Bio import SeqIO
-            from_fasta = (lambda f: SeqIO.read(f, format='fasta'))
-
-        genome = from_fasta(genome_file_fasta)
-        genome_seq = str(genome.seq)
-        del genome
+        from aligner03.io import from_fasta
+        genome_seq = unlist1(from_fasta(genome_file_fasta)).seq
 
         EXPECTED_LENGTH = 4980
         self.assertIsInstance(genome_seq, str)
@@ -139,21 +130,10 @@ class TestPipeline(TestCase):
         from aligner03.io import Read
         from_fastq: typing.Callable[[typing.AnyStr], typing.Iterable[Read]]
 
-        try:
-            from aligner03.io import from_fastq
-            for read in from_fastq(read_file_fastq_12[0]):
-                read.name
-                read.desc
-                read.seq
-                read.phred
-                self.assertEqual(len(read.seq), len(read.phred))
-        except:
-            raise
-            warning("Using biopython for FASTQ file")
-            from Bio import SeqIO
-            def from_fastq(file):
-                for read in SeqIO.parse(str(file), format='fastq'):
-                    yield Read(read.name, read.description, read.seq, read.letter_annotations['phred_quality'])
+        from aligner03.io import from_fastq
+        for read in from_fastq(read_file_fastq_12[0]):
+            # read.name, read.desc, read.seq, read.phred
+            self.assertEqual(len(read.seq), len(read.phred))
 
         reads_by_file = {
             file.name: list(from_fastq(file))
@@ -189,21 +169,9 @@ class TestPipeline(TestCase):
         # | 50                  | 1 in 100,000                       | 99.999%            |
         # | 60                  | 1 in 1,000,000                     | 99.9999%           |
 
-        def all_kmers(read: Read) -> typing.Dict[float, typing.List[tuple]]:
-            """
-            Get all kmers arranged by phred score.
-            """
-            by_score = defaultdict(list)
-            for i in range[0, len(read.seq) - k]:
-                ii = slice(i, i + k)
-                by_score[
-                    np.average(read.phred[ii])
-                ].append(
-                    (i, read.seq[ii])
-                )
-            return dict(by_score)
+        from aligner03.map import all_kmers_by_score
 
-        # print("These are all kmers from the read:", *sorted(all_kmers(example_read).items()), sep="\n > ")
+        # print("These are all kmers from the read:", *sorted(all_kmers_by_score(example_read).items()), sep="\n > ")
 
         def propose_mapping(kmers_by_phred: dict):
             for (phred, kmers) in sorted(kmers_by_phred.items(), reverse=True):
@@ -212,12 +180,12 @@ class TestPipeline(TestCase):
                         yield (phred, kmer, i, j)
 
         proposed_mappings = [
-            (read, list(propose_mapping(all_kmers(read))))
+            (read, list(propose_mapping(all_kmers_by_score(read, k))))
             for read in [example_read, example_read.reverse]
         ]
 
         for (read, mappings) in proposed_mappings:
-            print(F"Number of proposed mappings (forward = {read.is_forward}):", len(mappings))
+            print(F"Number of proposed mappings ({'Forward' if read.is_forward else 'Backward'}):", len(mappings))
 
         # Choose which to go with
         # Note: overwrites these variables
@@ -236,10 +204,13 @@ class TestPipeline(TestCase):
 
         # Perform local alignment of the read in the vicinity of j
         grace_margin = expected_read_length // 2
-        jj = slice(j - i - grace_margin, j - i + expected_read_length + grace_margin)
+        a = j - i - grace_margin
+        b = j - i + expected_read_length + grace_margin
+        jj = slice(a, b)
         # Note: this fails if j is close to the boundary of the genome
         self.assertEqual(len(genome_seq[jj]), expected_read_length + grace_margin * 2)
 
+        print("Range on the genome: ", [a, b])
 
         #
         # STEP 4: GET AN ALIGNMENT
@@ -257,10 +228,18 @@ class TestPipeline(TestCase):
 
 
         #
-        # STEP 5: DUMP TO SAM
+        # STEP 5: CHECK WITH SAM
         #
 
-        # Unfinished
+        from pysam import AlignedSegment
+        from aligner03.io import from_sam
+        from aligner03.io.sam import FlagFormat
+        segment: AlignedSegment
+        for segment in from_sam(unlist1(source_path.glob("*.sam"))):
+            # print(segment.query_name, segment.flag, segment.qname)
+            name = segment.query_name + {True: "/1", False: "/2"}[FlagFormat.isMinusStrand(segment.flag)]
+            if (example_read.name == name):
+                print("Reference alignment:", segment, sep='\n')
 
 
         # TODO
