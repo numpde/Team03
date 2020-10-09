@@ -3,6 +3,7 @@
 import os
 import sys
 from collections import defaultdict
+from aligner03.utils import relpath, unlist1
 
 import numpy as np
 import typing
@@ -13,16 +14,6 @@ from inclusive import range
 
 from warnings import warn as warning
 
-
-def unlist(L):
-    L = list(L)
-    if not (len(L) == 1):
-        raise ValueError(F"Expected an interable of length 1, got {len(L)}.")
-    return L[0]
-
-
-def relpath(path):
-    return os.path.relpath(str(path), os.getcwd())
 
 
 class TestPipeline(TestCase):
@@ -77,7 +68,7 @@ class TestPipeline(TestCase):
         # STEP 1: LOAD THE REFERENCE GENOME
         #
 
-        genome_file_fasta = unlist(source_path.glob("genome*.fa"))
+        genome_file_fasta = unlist1(source_path.glob("genome*.fa"))
 
         print(F"Loading {relpath(genome_file_fasta)}")
 
