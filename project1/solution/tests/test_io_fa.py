@@ -1,4 +1,6 @@
-from aligner03.io.fasta import Fasta
+# JG, 2020-10
+
+from aligner03.io.fasta__orphaned import Fasta
 import filecmp
 import io
 import sys
