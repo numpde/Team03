@@ -109,7 +109,7 @@ class TestAlign(TestCase):
                 ref = template
                 query = read.query_sequence
                 aligner = SmithWaterman()
-                for alignment in aligner(query=query, ref=ref):
+                for alignment in aligner(ref=ref, query=query):
                     if verbose:
                         print(alignment.cigar_string, ' vs ', read.cigarstring)
                         print(read.query_qualities, ' vs ', alignment.score)

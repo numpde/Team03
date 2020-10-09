@@ -118,7 +118,7 @@ class Smith_Waterman:
             if scoring_matrix[i, j] == 0:
                 end_condition = True
             if self.traceback_matrix[i, j] == 1:
-                if ref[j - 1] == query[i - 1]:
+                if query[j - 1] == ref[i - 1]:
                     aligner.insert_to_cigar_string('=')
                 else:
                     aligner.insert_to_cigar_string('X')
@@ -150,12 +150,11 @@ class Smith_Waterman:
         i.e. one for each last matching pair
         (assuming negative scores for mutation/indel)
         """
-        scoring_matrix = self.create_scoring_matrix(ref, query)
+        scoring_matrix = self.create_scoring_matrix(ref=ref, query=query)
         self.score = np.max(scoring_matrix)
         maxima = np.where(scoring_matrix == self.score)
-
         for loc in zip(*maxima):
-            yield from self.traceback(scoring_matrix, max_pos=loc, ref=ref, query=query)
+            yield from self.traceback(scoring_matrix, ref=ref, query=query, max_pos=loc)
 
 
 if __name__ == '__main__':
