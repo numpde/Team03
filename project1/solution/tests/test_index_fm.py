@@ -1,3 +1,4 @@
+# RA, 2020-10-09
 
 from aligner03.index.fm import FM_Index
 
@@ -11,25 +12,17 @@ class TestIndex(TestCase):
     def test_dollar(self):
         pass
 
-    def test_perfect_match(self):
-        ref = "TAGAGAGATCGATCGACTGACTGACTCAG"
-        query = "ACT"
+    def test_perfect_match_mini(self):
+        ref = "TAGAGAGATCGATTTTTTCTTGACTGACTGACTCAG"
 
-        fm_index = FM_Index(ref)
-        hits = fm_index.query(query)
+        for query in ["ACT", "T", "TTT", "TTTT"]:
+            fm_index = FM_Index(ref)
+            hits = fm_index.query(query)
 
-        for i in hits:
-            self.assertEqual(ref[i:(i + len(query))], query)
+            # Test for precision
+            for i in hits:
+                self.assertEqual(ref[i:(i + len(query))], query)
 
-        def find(pattern, template):
-            """
-            Find all occurrences of pattern string in template string.
-            Note: returns a list of starting positions with 1- based indexing.
-            """
-            import re
-            return [(m.start() + 1) for m in re.finditer("(?=" + pattern + ")", template)]
-
-
-        # TODO:
-        # Make sure that _all_ occurrences are returned
-
+            # Test for recall
+            from aligner03.utils import find_all
+            self.assertCountEqual(hits, find_all(template=ref, pattern=query))
