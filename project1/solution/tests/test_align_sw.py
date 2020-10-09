@@ -5,21 +5,7 @@ import pysam
 
 Read = pysam.libcalignedsegment.AlignedSegment
 
-
-def read_sam(file) -> Iterable[Read]:
-    """
-    `file` can be file name or file descriptor
-    """
-
-    if (type(file) is str):
-        with open(file, mode='r') as file:
-            yield from read_sam(file)
-        return
-
-    # https://pysam.readthedocs.io/en/latest/api.html
-    with pysam.AlignmentFile(file) as af:
-        for read in af.fetch():
-            yield read
+from aligner03.io import from_sam as read_sam
 
 
 def test_read_sam(file):
