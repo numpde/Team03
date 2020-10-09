@@ -6,7 +6,7 @@ from pathlib import Path
 from aligner03.io import from_fastq, Read
 
 
-class FQ(unittest.TestCase):
+class TestFastqReader(unittest.TestCase):
     def test_on_data_small(self):
         data_root = Path(__file__).parent / "data_for_tests"
         source_path = data_root / "data_small"

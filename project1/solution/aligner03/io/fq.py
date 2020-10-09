@@ -51,16 +51,16 @@ def from_fastq(file) -> typing.Iterable[Read]:
 
     try:
         file.seek(0)
-    except:
-        # Assume `file` needs to be opened first
+    except AttributeError:
         with open(file, mode="r") as file:
             yield from from_fastq(file)
             return
     else:
+        line = (lambda: file.readline().rstrip() or None)
+        SEP = '\t'
+
         while 1:
             try:
-                SEP = '\t'
-                line = (lambda: file.readline().rstrip() or None)
                 (at_name, desc) = (line().split(SEP, 1) + [None])[0:2]
                 seq = line()
                 line()
