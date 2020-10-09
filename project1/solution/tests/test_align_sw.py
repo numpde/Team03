@@ -1,7 +1,8 @@
 from unittest import TestCase
-from aligner03.align import Smith_Waterman
+from aligner03.align import SmithWaterman
 from typing import Iterable
 import pysam
+import numpy as np
 
 Read = pysam.libcalignedsegment.AlignedSegment
 
@@ -62,6 +63,7 @@ class TestAlign(TestCase):
         """
         Test if sw_aligner finds the right scoring matrix and the right matching blocks
         """
+
         mutation_costs = {
             # Deletion
             'D': -2,
@@ -70,24 +72,25 @@ class TestAlign(TestCase):
             # Mutation
             'X': -1,
             # Match
-            '=': 3,
+            '=': 1,
         }
-        aligner = Smith_Waterman(mutation_costs=mutation_costs)
+        aligner = SmithWaterman(mutation_costs=mutation_costs)
+        matching_blocks = []
         for alignment in aligner(ref='ATGGCCTC', query='ACGGCTC'):
-            matching_blocks = alignment.get_matching_blocks()
-            # print(matching_blocks)
+            matching_blocks.append(alignment.get_matching_blocks())
+        matching_blocks = matching_blocks[0]
         # true values from http://rna.informatik.uni-freiburg.de/Teaching/index.jsp?toolName=Smith-Waterman#
         true_scoring_matrix = [[0, 0, 0, 0, 0, 0, 0, 0],
                                [0, 1, 0, 0, 0, 0, 0, 0],
                                [0, 0, 0, 0, 0, 0, 1, 0],
                                [0, 0, 0, 1, 1, 0, 0, 0],
                                [0, 0, 0, 1, 2, 0, 0, 0],
-                               [0, 0, 1, 0, 0, 3, 0, 1],
-                               [0, 0, 1, 0, 0, 1, 0, 1],
-                               [0, 0, 0, 0, 0, 0, 2, 0],
+                               [0, 0, 1, 0, 0, 3, 1, 1],
+                               [0, 0, 1, 0, 0, 1, 2, 2],
+                               [0, 0, 0, 0, 0, 0, 2, 1],
                                [0, 0, 1, 0, 0, 1, 0, 3]]
         # true matching blocks calculated on paper
-        true_matching_blocks = [(1, 1), (3, 4), (6, 8)]
+        true_matching_blocks = [(3, 5)]
 
         if verbose:
             x, y, z = alignment.visualize(ref='ATGGCCTC', query='ACGGCTC')
@@ -96,10 +99,12 @@ class TestAlign(TestCase):
             print(z)
             print('matching blocks = ', matching_blocks)
 
-        assert (aligner.create_scoring_matrix(ref='ATGGCCTC', query='ACGGCTC') == true_scoring_matrix).all
-        assert matching_blocks == true_matching_blocks
+        self.assertTrue(
+            (aligner.create_scoring_matrix(ref='ATGGCCTC', query='ACGGCTC') == np.array(true_scoring_matrix)).all())
+        self.assertEqual(matching_blocks, true_matching_blocks)
 
-    def test_sw_on_data(self):
+    def test_sw_on_data(self, verbose=0):
+
         from pathlib import Path
         from Bio import SeqIO
 
@@ -108,16 +113,18 @@ class TestAlign(TestCase):
         template = str(SeqIO.read(fa, format='fasta').seq)
 
         in_file = list((Path(__file__).parent.parent.parent / "input/data_small/").glob("*.sam")).pop()
+        nbr_iterations = 1
+        i = 0
         with open(in_file, mode='rb') as fd_sam:
             for read in read_sam(fd_sam):
+                if i >= nbr_iterations:
+                    break
                 read: Read
                 ref = template
                 query = read.query_sequence
-                aligner = Smith_Waterman()
-                nbr_iterations = 1
-                # somehow breaks after one iteration
-                for i, alignment in enumerate(aligner(query=query, ref=ref)):
-                    if i < nbr_iterations:
+                aligner = SmithWaterman()
+                for alignment in aligner(query=query, ref=ref):
+                    if verbose:
                         print(alignment.cigar_string, ' vs ', read.cigarstring)
                         print(read.query_qualities, ' vs ', alignment.score)
                         x, y, z = alignment.visualize(ref, query)
@@ -125,11 +132,9 @@ class TestAlign(TestCase):
                         print(y)
                         print(z)
                         print(alignment.get_matching_blocks(), ' vs ', read.cigar)
-                        for alignment in aligner(ref=template, query=reversed):
-                            self.assertEqual(alignment.cigar_string,
-                                             read.cigarstring), f'{alignment.cigar_string} is not equal to cigar from sam file {read.cigarstring}'
-                    else:
-                        break
+                    self.assertEqual(alignment.cigar_string, read.cigarstring), \
+                    f'{alignment.cigar_string} is not equal to cigar from sam file {read.cigarstring}'
+                i += 1
 
 
 if __name__ == '__main__':

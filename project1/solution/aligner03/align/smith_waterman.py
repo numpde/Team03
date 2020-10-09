@@ -134,7 +134,7 @@ class Smith_Waterman:
         aligner.start_coord = (i, j)
         yield aligner
 
-    def __call__(self, ref, query):
+    def __call__(self, ref: str, query: str):
         """
         Implements the Smith-Waterman alignment
         with linear gap penalty (same scores for opening and extending a gap)
