@@ -1,3 +1,5 @@
+# LB, pre- 2020-10-09
+
 # Can be used to create a FM-index. Upon creation a Burrows Wheeler (BW) object (size: 2* len(reference genome)), a compressed version of the first column in the BW matrix (size: dict of 6 entries), tally/rank matrix (size: 5*len(reference_genome), the kmer constant (size: 1 int) and a helper dict to find the next lexicographical character in the context of DNA (size: dict of 5 entries) is stored. The FM-index works only for strings that contains the characters ['A','C','G','T']
 
 
@@ -10,31 +12,38 @@
 # First column compressed to a dict of 6 entries
 
 
-from .bw import BurrowsWheeler
+from aligner03.index import BurrowsWheeler
 from typing import List
 
 
-class FM_Index(object):
+class FM_Index:
+    def __string_checks(self, string):
 
-    # No need for k here
-    def __init__(self, reference_genome, k=3):
+        if '$' in string:
+            raise ValueError("The string should not contain '$'")
 
-        if (k < 1 or k > len(reference_genome)):
-            raise IndexError(
-                ' k has to be greater than 0 and smaller than the length of the reference genome. Make sure reference genome is not empty')
+        if not set(string).issubset(set("ACGTN")):
+            raise ValueError("The string contains unexpected characters.")
 
-        # make sure the reference_genome terminates with a '$'
-        if (reference_genome[-1] != '$'):
-            reference_genome = reference_genome + "$"
+        if 'N' in string:
+            raise NotImplementedError("The string contains the character 'N'.")
 
-        # contains the Burrows Wheeler transformation of the reference genome and the offsets of the suffix array (so far uncompressed => both of size len(ref_genome)
+        if not string:
+            raise ValueError("The string may not be empty.")
+
+
+    def __init__(self, reference_genome):
+        self.__string_checks(reference_genome)
+
+        reference_genome += "$"
+
+        # contains the Burrows Wheeler transformation of the reference genome
+        # and the offsets of the suffix array
+        # so far uncompressed => both of size len(ref_genome)
         self.bwt = BurrowsWheeler(reference_genome)
 
         # compressed first column of Burrows Wheeler matrix (e.g. cumulative frequencies of characters)
-        self.F = self.shifts_F(reference_genome)
-
-        # number of characters used (kmer) to find a match in the index
-        self.k = k
+        self.F = self._shifts_F(reference_genome)
 
         # ranks of bases
         # Structure: A| C | G | T
@@ -43,7 +52,7 @@ class FM_Index(object):
         # helper dictionary to determine the next character (used in query method)
         self.next_chars = {'$': 'A', 'A': 'C', 'C': 'G', 'G': 'T', 'T': None}
 
-    def shifts_F(self, reference_genome):
+    def _shifts_F(self, reference_genome):
         """
         Returns the shifts in the first column of the Burrows Wheeler matrix (compressed).
         Works only for DNA strings (A,C,G,T).
@@ -83,7 +92,7 @@ class FM_Index(object):
         count_G = G[0]
         count_T = T[0]
 
-        for count, item in enumerate(bw_transform[1:], start=1):
+        for (count, item) in enumerate(bw_transform[1:], start=1):
 
             count_S = count_S + (item == '$')
             count_A = count_A + (item == 'A')
@@ -91,7 +100,7 @@ class FM_Index(object):
             count_G = count_G + (item == 'G')
             count_T = count_T + (item == 'T')
 
-            if count % step == 0:
+            if not (count % step):
                 S.append(count_S)
                 A.append(count_A)
                 C.append(count_C)
@@ -100,31 +109,27 @@ class FM_Index(object):
 
         return {'$': S, 'A': A, 'C': C, 'G': G, 'T': T}
 
-    def query(self, sample: str, k=None) -> List[int]:
+    def query(self, kmer: str) -> List[int]:
+        self.__string_checks(kmer)
+
         # query index for a given sample
         # this searches ONLY FOR A MATCH OF THE FIRST K characters of the sample
         # sample should be a string
         # return a list of all positions in the reference genome
         # TODO: 1- or 0- based?
 
-        k = k or self.k
-
-        if (len(sample) < k):
-            raise ValueError('sample length needs to be greater than k = ' + str(self.k))
-
-        if (len(sample) > len(self.bwt.code) - 1):
+        if (len(kmer) >= len(self.bwt.code)):
             raise ValueError(
-                'sample length needs to be smaller than reference genome <= ' + str(len(self.bwt.code) - 1))
-
-        kmer = sample[:k]
+                F"Sample length may not exceed that of the reference genome ({(len(self.bwt.code) - 1)})."
+            )
 
         i = len(kmer) - 1
         c = kmer[i]
         sp = self.F[c]
         ep = self.F[self.next_chars[c]] - 1
 
-        while (sp <= ep) and (i >= 1):
-            c = sample[i - 1]
+        while (ep >= sp) and (i >= 1):
+            c = kmer[i - 1]
             sp = self.F[c] + self.tally[c][sp - 1]
             ep = self.F[c] + self.tally[c][ep] - 1
             i = i - 1
@@ -134,38 +139,26 @@ class FM_Index(object):
         else:
             return [self.bwt.sa[i] for i in range(sp, ep + 1)]
 
-# DONT NEED
-# searching for a match of the first k letters of the sample in the reference genome
-# sample should be string
-def query_index(sample, index, k=None):
-    return index.query(sample, k)
-
-
-# searching for a perfect match of the sample in the reference genome
-# sample should be string
-def perfect_match(sample, index):
-    return index.query(sample, len(sample))
 
 
 if __name__ == "__main__":
-    ref_genome = 'TAGAGAGATCGATCGACTGACTGACTCAG$'
+    ref_genome = 'TAGAGAGATCGATCGACTGACTGACTCAG'
 
-    sample = 'ACTACTGTCA'
+    sample = 'ACT'
 
-    print("reference genome: ", ref_genome)
-    print("sample: ", sample, "\n")
+    print("Reference genome: ", ref_genome)
+    print("Sample: ", sample, "\n")
 
-    k = 3
-    index = FM_Index(ref_genome, k)
+    index = FM_Index(ref_genome)
 
-    print('kmer match  (', sample[:k], ')')
-    match = query_index(sample, index)
+    print(F'kmer match {sample}')
+    match = index.query(sample)
     print(match, '\n')
 
     for m in match:
-        assert (ref_genome[m:m+k] == sample[:k])
+        assert (ref_genome[m:(m + len(sample))] == sample)
 
     print('perfect match')
-    perfect_match = perfect_match(sample, index)
+    perfect_match = index.query(sample)
 
     print(perfect_match)

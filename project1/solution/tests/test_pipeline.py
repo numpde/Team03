@@ -17,42 +17,6 @@ from warnings import warn as warning
 
 
 class TestPipeline(TestCase):
-    def test_index(self):
-        from aligner03.index import FM_Index as GenomeIndex
-
-        with self.assertRaises(ValueError):
-            GenomeIndex("ACTG$")
-
-        with self.assertRaises(ValueError):
-            GenomeIndex("$ACTG")
-
-        with self.assertRaises(ValueError):
-            GenomeIndex("#ACTG")
-
-        with self.assertRaises(ValueError):
-            GenomeIndex("")
-
-        with self.assertRaises(ValueError):
-            GenomeIndex("ACGT").query("ACGTTTTTTTTT")
-
-        with self.assertRaises(ValueError):
-            GenomeIndex("ACGT").query("GT$")
-
-        self.assertListEqual(GenomeIndex("ATTTTATTTG").query("TTTTTT"), [])
-
-        GenomeIndex("A")
-        GenomeIndex("N")
-        GenomeIndex("ACTG")
-        GenomeIndex("ACTGN")
-
-        # Check the type
-        loc_in_genome = GenomeIndex("ATTTTATTTG").query("TTT")
-        self.assertIsInstance(loc_in_genome, list)
-        for __ in loc_in_genome:
-            self.assertIsInstance(__, int)
-
-        self.assertCountEqual(GenomeIndex("ATTTTATTTTG").query("TTT"), [1, 2, 6, 7])
-
     def test_sanity(self):
         # import builtins
         # def print(*args, **kwargs):
@@ -78,7 +42,6 @@ class TestPipeline(TestCase):
         EXPECTED_LENGTH = 4980
         self.assertIsInstance(genome_seq, str)
         self.assertEqual(len(genome_seq), EXPECTED_LENGTH)
-        # all_reads: List[Read]
 
         #
         # STEP 2: INDEX THE REFERENCE GENOME
@@ -101,7 +64,7 @@ class TestPipeline(TestCase):
         query_the_genome = genome_index.query
 
         expected_read_length = 125
-        expected_query_length = 20
+        expected_query_length = 26
 
         # HACK
         try:
@@ -132,7 +95,7 @@ class TestPipeline(TestCase):
 
         from aligner03.io import from_fastq
         for read in from_fastq(read_file_fastq_12[0]):
-            # read.name, read.desc, read.seq, read.phred
+            # print(read.name, read.desc, read.seq, read.phred)
             self.assertEqual(len(read.seq), len(read.phred))
 
         reads_by_file = {
@@ -140,6 +103,7 @@ class TestPipeline(TestCase):
             for file in read_file_fastq_12
         }
 
+        # Check that we got some reads from each file
         for (f, reads) in reads_by_file.items():
             self.assertNotEqual(len(reads), 0)
 
@@ -171,7 +135,11 @@ class TestPipeline(TestCase):
 
         from aligner03.map import all_kmers_by_score
 
-        # print("These are all kmers from the read:", *sorted(all_kmers_by_score(example_read).items()), sep="\n > ")
+        # print(
+        #     "These are all kmers from the read:",
+        #     *sorted(all_kmers_by_score(example_read).items()),
+        #     sep="\n > "
+        # )
 
         def propose_mapping(kmers_by_phred: dict):
             for (phred, kmers) in sorted(kmers_by_phred.items(), reverse=True):
@@ -221,7 +189,7 @@ class TestPipeline(TestCase):
 
         print(F"Trying to align {example_read.seq} within {genome_seq[jj]}")
 
-        alignments = list(aligner(genome_seq[jj], example_read.seq))
+        alignments = list(aligner(ref=genome_seq[jj], query=example_read.seq))
 
         for alignment in alignments:
             print(" >", alignment)
@@ -233,11 +201,11 @@ class TestPipeline(TestCase):
 
         from pysam import AlignedSegment
         from aligner03.io import from_sam
-        from aligner03.io.sam import FlagFormat
+        from aligner03.io.sam import Flag
         segment: AlignedSegment
         for segment in from_sam(unlist1(source_path.glob("*.sam"))):
             # print(segment.query_name, segment.flag, segment.qname)
-            name = segment.query_name + {True: "/1", False: "/2"}[FlagFormat.isMinusStrand(segment.flag)]
+            name = segment.query_name + {True: "/1", False: "/2"}[Flag.isMinusStrand(segment.flag)]
             if (example_read.name == name):
                 print("Reference alignment:", segment, sep='\n')
 
