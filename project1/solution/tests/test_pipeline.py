@@ -58,7 +58,7 @@ class TestPipeline(TestCase):
         # def print(*args, **kwargs):
         #     return builtins.print(*args, file=sys.stderr, **kwargs)
 
-        data_root = (Path(__file__).parent / "test_pipeline_data")
+        data_root = Path(__file__).parent / "data_for_tests"
         source_path = data_root / "data_small"
 
         rs: np.random.RandomState
