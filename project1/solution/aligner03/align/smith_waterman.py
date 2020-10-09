@@ -51,7 +51,7 @@ class Aligner:
 
         return matching_blocks
 
-    def visualize(self, ref, query):
+    def visualize(self, ref: str, query: str):
         cigar = self.cigar_string
         total = self.count_total()
         end_pos = self.start_pos + total
@@ -89,7 +89,7 @@ class Smith_Waterman:
         self.gap_cost = mutation_costs['D']
         self.insertion_cost = mutation_costs['I']
 
-    def create_scoring_matrix(self, query: str, ref: str):
+    def create_scoring_matrix(self, ref: str, query: str):
         """
         Creates scoring matrix
         """
