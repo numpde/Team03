@@ -1,47 +1,14 @@
+# HK, pre- 2020-10-09
+# RA, 2020-10-09
+
 from unittest import TestCase
 from aligner03.align import SmithWaterman
-from typing import Iterable
 import pysam
 import numpy as np
 
 Read = pysam.libcalignedsegment.AlignedSegment
 
-from aligner03.io import from_sam as read_sam
-
-
-def test_read_sam(file):
-    with open(file, mode='rb') as fd_sam:
-        for read in read_sam(fd_sam):
-            read: Read
-
-            # https://en.wikipedia.org/wiki/SAM_(file_format)
-            # Col   Field	Type	Brief description
-            #   1   QNAME	String  Query template NAME
-            #   2   FLAG	Int	    bitwise FLAG
-            #   3   RNAME	String  References sequence NAME
-            #   4   POS     Int     1- based leftmost mapping POSition
-            #   5   MAPQ	Int     MAPping Quality
-            #   6   CIGAR	String	CIGAR String
-            #   7   RNEXT	String	Ref. name of the mate/next read
-            #   8   PNEXT	Int     Position of the mate/next read
-            #   9   TLEN	Int     observed Template LENgth
-            #  10	SEQ     String  segment SEQuence
-            #  11	QUAL	String  ASCII of Phred-scaled base QUALity+33
-
-            print("QNAME ", read.query_name)
-            print("FLAG  ", read.flag)
-            print("RNAME ", read.reference_id)
-            print("POS   ", read.reference_start)
-            print("MAPQ  ", read.mapping_quality)
-            print("CIGAR ", read.cigartuples)
-            print("RNEXT ", read.next_reference_id)
-            print("PNEXT ", read.next_reference_start)
-            print("TLEN  ", read.template_length)
-            print("SEQ   ", read.query_sequence)
-            print("QUAL  ", read.query_qualities)
-
-            # print(read.get_aligned_pairs())
-            print(read.get_blocks())
+from aligner03.io import from_sam
 
 
 class TestAlign(TestCase):
@@ -61,10 +28,10 @@ class TestAlign(TestCase):
             '=': 1,
         }
         aligner = SmithWaterman(mutation_costs=mutation_costs)
-        matching_blocks = []
+        matching_segments = []
         for alignment in aligner(ref='ATGGCCTC', query='ACGGCTC'):
-            matching_blocks.append(alignment.get_matching_blocks())
-        matching_blocks = matching_blocks[0]
+            matching_segments.append(alignment.matching_subsegments())
+        matching_segments = matching_segments[0]
         # true values from http://rna.informatik.uni-freiburg.de/Teaching/index.jsp?toolName=Smith-Waterman#
         true_scoring_matrix = [[0, 0, 0, 0, 0, 0, 0, 0],
                                [0, 1, 0, 0, 0, 0, 0, 0],
@@ -76,51 +43,52 @@ class TestAlign(TestCase):
                                [0, 0, 0, 0, 0, 0, 2, 1],
                                [0, 0, 1, 0, 0, 1, 0, 3]]
         # true matching blocks calculated on paper
-        true_matching_blocks = [(3, 5)]
+        true_matching_segments = [(3, 5)]
 
         if verbose:
             x, y, z = alignment.visualize(ref='ATGGCCTC', query='ACGGCTC')
             print(x)
             print(y)
             print(z)
-            print('matching blocks = ', matching_blocks)
+            print('matching blocks = ', matching_segments)
 
         self.assertTrue(
-            (aligner.create_scoring_matrix(ref='ATGGCCTC', query='ACGGCTC') == np.array(true_scoring_matrix)).all())
-        self.assertEqual(matching_blocks, true_matching_blocks)
+            (
+                    aligner._compute_scoring_matrix(ref='ATGGCCTC', query='ACGGCTC')
+                    ==
+                    np.array(true_scoring_matrix)
+            ).all()
+        )
+        self.assertEqual(matching_segments, true_matching_segments)
 
     def test_sw_on_data(self, verbose=0):
-
         from pathlib import Path
         from Bio import SeqIO
 
-        fa = Path(__file__).parent.parent.parent / "input/data_small/genome.chr22.5K.fa"
+        fa = Path(__file__).parent / "data_for_tests/data_small/genome.chr22.5K.fa"
 
-        template = str(SeqIO.read(fa, format='fasta').seq)
+        reference = str(SeqIO.read(fa, format='fasta').seq)
 
-        in_file = list((Path(__file__).parent.parent.parent / "input/data_small/").glob("*.sam")).pop()
-        nbr_iterations = 1
-        i = 0
-        with open(in_file, mode='rb') as fd_sam:
-            for read in read_sam(fd_sam):
-                if i >= nbr_iterations:
-                    break
-                read: Read
-                ref = template
-                query = read.query_sequence
-                aligner = SmithWaterman()
-                for alignment in aligner(ref=ref, query=query):
-                    if verbose:
-                        print(alignment.cigar_string, ' vs ', read.cigarstring)
-                        print(read.query_qualities, ' vs ', alignment.score)
-                        x, y, z = alignment.visualize(ref, query)
-                        print(x)
-                        print(y)
-                        print(z)
-                        print(alignment.get_matching_blocks(), ' vs ', read.cigar)
-                    self.assertEqual(alignment.cigar_string, read.cigarstring), \
+        in_file = list((Path(__file__).parent / "data_for_tests/data_small/").glob("*.sam")).pop()
+        max_reads = 2
+        for (read, __) in zip(from_sam(in_file), range(max_reads)):
+            read: Read
+            ref = reference
+            query = read.query_sequence
+            aligner = SmithWaterman()
+            for alignment in aligner(ref=ref, query=query):
+                if verbose:
+                    print(alignment.cigar_string, ' vs ', read.cigarstring)
+                    print(read.query_qualities, ' vs ', alignment.score)
+                    x, y, z = alignment.visualize(ref, query)
+                    print(x)
+                    print(y)
+                    print(z)
+                    print(alignment.matching_subsegments(), ' vs ', read.cigar)
+                self.assertEqual(
+                    alignment.cigar_string, read.cigarstring,
                     f'{alignment.cigar_string} is not equal to cigar from sam file {read.cigarstring}'
-                i += 1
+                )
 
 
 if __name__ == '__main__':

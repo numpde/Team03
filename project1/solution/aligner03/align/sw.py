@@ -1,9 +1,14 @@
+# HK, pre- 2020-10-09
+# RA, 2020-10-09
+
 import itertools
 import numpy as np
 from typing import List, Tuple
 import re
 
-default_mutation_costs = {
+from frozendict import frozendict
+
+default_mutation_costs = frozendict({
     # Deletion
     'D': -2,
     # Insertion
@@ -12,10 +17,10 @@ default_mutation_costs = {
     'X': -1,
     # Match
     '=': 3,
-}
+})
 
 
-class Aligner:
+class Alignment:
     def __init__(self):
         self.cigar_string = ''
         self.start_pos = None
@@ -26,7 +31,7 @@ class Aligner:
     def __repr__(self):
         return F"Aligns at {self.start_pos} with CIGAR = {self.cigar_string} and score = {self.score}"
 
-    def insert_to_cigar_string(self, symbol: str):
+    def prepend_to_cigar_string(self, symbol: str):
         if self.cigar_string and symbol == re.findall(r"[XIDS=]", self.cigar_string)[0]:
             current_count = re.findall(r"[0-9]+", self.cigar_string)[0]
             self.cigar_string = str(int(current_count) + 1) + self.cigar_string[len(current_count):]
@@ -34,24 +39,34 @@ class Aligner:
             self.cigar_string = f'1{symbol}' + self.cigar_string
 
     def count_total(self) -> int:
+        """
+        TODO: What does this count?
+        """
         total = 0
         for count in re.findall(r"[0-9]+", self.cigar_string):
             total += int(count)
         return total
 
-    def get_matching_blocks(self) -> List[Tuple]:
+    def matching_subsegments(self) -> List[Tuple]:
+        """
+        TODO: Description
+        0 or 1 based?
+        """
         cigar = self.cigar_string
         idx = self.start_pos - 1
-        matching_blocks = []
+        segment = []
         for (n, a) in re.findall(r"([0-9]+)([XIDS=])", cigar):
             n = int(n)
             if a == '=':
-                matching_blocks.append((idx + 1, idx + n))
+                segment.append((idx + 1, idx + n))
             idx += n
 
-        return matching_blocks
+        return segment
 
-    def visualize(self, ref: str, query: str):
+    def visualize(self, *, ref: str, query: str):
+        """
+        TODO: Description
+        """
         cigar = self.cigar_string
         total = self.count_total()
         end_pos = self.start_pos + total
@@ -82,16 +97,20 @@ class Aligner:
         return (x, y, z)
 
 
-class Smith_Waterman:
+class SmithWaterman:
+    """
+    TODO: Usage example
+    """
     def __init__(self, mutation_costs=default_mutation_costs):
         self.match_score = mutation_costs['=']
         self.mismatch_cost = mutation_costs['X']
         self.gap_cost = mutation_costs['D']
         self.insertion_cost = mutation_costs['I']
 
-    def create_scoring_matrix(self, ref: str, query: str):
+    def _compute_scoring_matrix(self, *, ref: str, query: str):
         """
         Creates scoring matrix
+        TODO: Meaningful description
         """
         H = np.zeros((len(ref) + 1, len(query) + 1), np.int)
         traceback_matrix = np.zeros((len(ref) + 1, len(query) + 1), np.int)
@@ -108,33 +127,36 @@ class Smith_Waterman:
         self.traceback_matrix = traceback_matrix
         return H
 
-    def traceback(self, scoring_matrix, ref: str, query: str, max_pos: tuple):
-        i, j = max_pos
-        end_condition = False  # end if encounter 0
-        aligner = Aligner()
-        aligner.end_coord = (i, j)
-        aligner.score = self.score
-        while not end_condition:
-            if scoring_matrix[i, j] == 0:
-                end_condition = True
+    def _traceback(self, *, ref: str, query: str, loc: tuple):
+        """
+        TODO: Description
+        """
+        (i, j) = loc
+        am_i_done_yet = False  # end if encounter 0
+        alignment = Alignment()
+        alignment.end_coord = (i, j)
+        alignment.score = self.score
+        while not am_i_done_yet:
+            if self.scoring_matrix[i, j] == 0:
+                am_i_done_yet = True
             if self.traceback_matrix[i, j] == 1:
                 if query[j - 1] == ref[i - 1]:
-                    aligner.insert_to_cigar_string('=')
+                    alignment.prepend_to_cigar_string('=')
                 else:
-                    aligner.insert_to_cigar_string('X')
+                    alignment.prepend_to_cigar_string('X')
                 i -= 1
                 j -= 1
             elif self.traceback_matrix[i, j] == 3:
                 j -= 1
-                aligner.insert_to_cigar_string('D')
+                alignment.prepend_to_cigar_string('D')
             elif self.traceback_matrix[i, j] == 2:
                 i -= 1
-                aligner.insert_to_cigar_string('I')
-        aligner.start_pos = j + 1
-        aligner.start_coord = (i, j)
-        yield aligner
+                alignment.prepend_to_cigar_string('I')
+        alignment.start_pos = j + 1
+        alignment.start_coord = (i, j)
+        yield alignment
 
-    def __call__(self, ref: str, query: str):
+    def __call__(self, *, ref: str, query: str):
         """
         Implements the Smith-Waterman alignment
         with linear gap penalty (same scores for opening and extending a gap)
@@ -150,22 +172,22 @@ class Smith_Waterman:
         i.e. one for each last matching pair
         (assuming negative scores for mutation/indel)
         """
-        scoring_matrix = self.create_scoring_matrix(ref=ref, query=query)
-        self.score = np.max(scoring_matrix)
-        maxima = np.where(scoring_matrix == self.score)
+        self.scoring_matrix = self._compute_scoring_matrix(ref=ref, query=query)
+        self.score = np.max(self.scoring_matrix)
+        maxima = np.where(self.scoring_matrix == self.score)
         for loc in zip(*maxima):
-            yield from self.traceback(scoring_matrix, ref=ref, query=query, max_pos=loc)
+            yield from self._traceback(ref=ref, query=query, loc=loc)
 
 
 if __name__ == '__main__':
     ref = 'ATGGCCTC'
     query = 'ACGGCTC'
-    aligner = Smith_Waterman()
+    aligner = SmithWaterman()
     for alignment in aligner(query=query, ref=ref):
         print(alignment.cigar_string)
-        x, y, z = alignment.visualize(ref, query)
+        x, y, z = alignment.visualize(ref=ref, query=query)
         print(x)
         print(y)
         print(z)
-        print(alignment.get_matching_blocks())
+        print(alignment.matching_subsegments())
         print(alignment.start_pos)
