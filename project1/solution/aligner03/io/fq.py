@@ -8,6 +8,7 @@
 
 import typing
 
+PHRED_OFFSET = 0x21
 
 class Read:
     name: str
@@ -16,7 +17,7 @@ class Read:
     # Note: Ignore the "+" line
     phred: typing.List[int]
 
-    def __init__(self, name, desc, seq, phred, is_forward=True):
+    def __init__(self, name: str, desc: str, seq: str, phred: typing.List[int], is_forward=True):
         self.name = name
         self.desc = desc
         self.seq = seq
@@ -25,6 +26,10 @@ class Read:
 
     def __str__(self):
         return F"Name: {self.name} ({self.desc}): {self.seq} ({self.phred})"
+
+    @property
+    def phred_as_string(self):
+        return ''.join([chr(i + PHRED_OFFSET) for i in self.phred])
 
     @property
     def reverse(self):
@@ -40,7 +45,7 @@ def from_fastq(file) -> typing.Iterable[Read]:
 
     def phred_as_ints(phred_as_string: str) -> typing.List[int]:
         # https://en.wikipedia.org/wiki/FASTQ_format
-        phred = [(ord(c) - 0x21) for c in phred_as_string]
+        phred = [(ord(c) - PHRED_OFFSET) for c in phred_as_string]
         assert (len(phred) == len(phred_as_string))
         return phred
 
@@ -67,6 +72,6 @@ def from_fastq(file) -> typing.Iterable[Read]:
                 yield Read(at_name[1:].strip(), desc, seq, phred_as_ints(phred))
 
 
-def test_reads():
+def example():
     for read in from_fastq(filename):
         print(read)
