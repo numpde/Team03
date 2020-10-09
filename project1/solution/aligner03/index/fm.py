@@ -47,7 +47,7 @@ class FM_Index:
 
         # ranks of bases
         # Structure: A| C | G | T
-        self.tally = self.build_tally(self.bwt.code, 1)
+        self.tally = self._build_tally(self.bwt.code, 1)
 
         # helper dictionary to determine the next character (used in query method)
         self.next_chars = {'$': 'A', 'A': 'C', 'C': 'G', 'G': 'T', 'T': None}
@@ -77,8 +77,10 @@ class FM_Index:
 
         return shifts
 
-    # Returns tally matrix (e.g. ranks of characters)
-    def build_tally(self, bw_transform, step=1):
+    def _build_tally(self, bw_transform, step=1) -> dict:
+        """
+        Returns tallies, i.e. ranks of characters.
+        """
 
         S = [int(bw_transform[0] == '$')]
         A = [int(bw_transform[0] == 'A')]
@@ -93,7 +95,6 @@ class FM_Index:
         count_T = T[0]
 
         for (count, item) in enumerate(bw_transform[1:], start=1):
-
             count_S = count_S + (item == '$')
             count_A = count_A + (item == 'A')
             count_C = count_C + (item == 'C')
@@ -110,13 +111,15 @@ class FM_Index:
         return {'$': S, 'A': A, 'C': C, 'G': G, 'T': T}
 
     def query(self, kmer: str) -> List[int]:
-        self.__string_checks(kmer)
+        """
+        Query index for a given sample
+        this searches ONLY FOR A MATCH OF THE FIRST K characters of the sample
+        sample should be a string
+        return a list of all positions in the reference genome
+        TODO: 1- or 0- based?
+        """
 
-        # query index for a given sample
-        # this searches ONLY FOR A MATCH OF THE FIRST K characters of the sample
-        # sample should be a string
-        # return a list of all positions in the reference genome
-        # TODO: 1- or 0- based?
+        self.__string_checks(kmer)
 
         if (len(kmer) >= len(self.bwt.code)):
             raise ValueError(

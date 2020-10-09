@@ -59,29 +59,12 @@ class TestPipeline(TestCase):
 
         GenomeIndex("ATTTTATTTTG").query("TTT")
 
-        genome_index = GenomeIndex(genome_seq)
-
-        query_the_genome = genome_index.query
+        query_the_genome = GenomeIndex(genome_seq).query
 
         expected_read_length = 125
-        expected_query_length = 26
+        query_length = 26
 
-        # HACK
-        try:
-            assert not query_the_genome(
-                genome_seq[0:expected_query_length] +
-                "".join(rs.choice(list("ACTG"), expected_query_length))
-            )
-        except AssertionError:
-            __genome_index = GenomeIndex(genome_seq, k=expected_query_length)
-
-            def query_the_genome(query):
-                assert len(query) == expected_query_length
-                return __genome_index.query(query, expected_query_length)
-        finally:
-            del genome_index
-
-        self.assertEqual(query_the_genome(genome_seq[0:expected_query_length]), [0])
+        self.assertEqual(query_the_genome(genome_seq[0:query_length]), [0])
 
         #
         # STEP 3: LOAD SOME READS
@@ -120,7 +103,7 @@ class TestPipeline(TestCase):
             warning("Either the whole read is there or another error.")
 
         # kmer length
-        k = expected_query_length
+        k = query_length
 
         # https://en.wikipedia.org/wiki/Phred_quality_score
         #
@@ -171,12 +154,16 @@ class TestPipeline(TestCase):
         (phred, kmer, i, j) = min(proposed_mappings)
 
         # Perform local alignment of the read in the vicinity of j
-        grace_margin = expected_read_length // 2
-        a = j - i - grace_margin
-        b = j - i + expected_read_length + grace_margin
+        from aligner03.map import propose_window
+        (a, b) = propose_window(
+            read_length=len(example_read.seq),
+            read_loc=i,
+            ref_length=len(genome_seq),
+            ref_loc=j,
+        )
+
+        # Slices into the reference genome
         jj = slice(a, b)
-        # Note: this fails if j is close to the boundary of the genome
-        self.assertEqual(len(genome_seq[jj]), expected_read_length + grace_margin * 2)
 
         print("Range on the genome: ", [a, b])
 
@@ -205,7 +192,8 @@ class TestPipeline(TestCase):
         segment: AlignedSegment
         for segment in from_sam(unlist1(source_path.glob("*.sam"))):
             # print(segment.query_name, segment.flag, segment.qname)
-            name = segment.query_name + {True: "/1", False: "/2"}[Flag.isMinusStrand(segment.flag)]
+            flag = Flag(segment.flag)
+            name = segment.query_name + {True: "/1", False: "/2"}[flag.is_minus_strand]
             if (example_read.name == name):
                 print("Reference alignment:", segment, sep='\n')
 
