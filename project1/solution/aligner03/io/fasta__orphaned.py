@@ -1,3 +1,5 @@
+# Jannik G, 2020-10
+
 import os
 import sys
 class Fasta:

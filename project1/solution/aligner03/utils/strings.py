@@ -3,7 +3,7 @@
 import typing
 
 
-def find_all(pattern: str, template: str) -> typing.List[int]:
+def find_all(*, pattern: str, template: str) -> typing.List[int]:
     """
     Find all occurrences of pattern string in template string.
     Returns a list of starting positions with 0- based indexing.
