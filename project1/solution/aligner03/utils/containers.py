@@ -1,6 +1,18 @@
 # RA, 2020-10-09
 
 
+def first(X):
+    return next(iter(X))
+
+
+def at_most_n(X, n):
+    """
+    Yields at most n elements from iterable X.
+    """
+    for (x, __) in zip(X, range(n)):
+        yield x
+
+
 def unlist1(L):
     """
     Check that L has only one element at return it.
