@@ -129,6 +129,12 @@ class FmIndex:
         """
         return (len(self.bwt.code) - 1)
 
+    def __str__(self):
+        """
+        Returns the original string.
+        """
+        return self.bwt.decode()
+
     def query(self, sample: str) -> List[int]:
         """
         Query index for a given sample.

@@ -9,6 +9,10 @@ class TestIndex(TestCase):
     def test_constructor(self):
         GenomeIndex("ACGT")
 
+    def test_returns_original(self):
+        original = "ACGT"
+        self.assertEqual(original, str(GenomeIndex(original)))
+
     def test_basic(self):
 
         with self.assertRaises(ValueError):
@@ -52,7 +56,7 @@ class TestIndex(TestCase):
         ref = "TAGAGAGATCGATTTTTTCTTGACTGACTGACTCAG"
 
         for query in ["ACT", "T", "TTT", "TTTT"]:
-            fm_index = FmIndex(ref)
+            fm_index = GenomeIndex(ref)
             hits = fm_index.query(query)
 
             # Test for precision
