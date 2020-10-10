@@ -40,7 +40,9 @@ class Alignment:
 
     def count_total(self) -> int:
         """
-        TODO: What does this count?
+        Returns the total count of matches, deletions, mutations and insertions. I.e. it returns the lengths of the
+        expanded cigar string.
+        Example: returns 2+1+3 = 6 for 2=1I3=
         """
         total = 0
         for count in re.findall(r"[0-9]+", self.cigar_string):
@@ -49,8 +51,11 @@ class Alignment:
 
     def matching_subsegments(self) -> List[Tuple]:
         """
-        TODO: Description
-        0 or 1 based?
+        Returns a list of all matching 1-based subsegments of the query.
+        Example:
+        AAAAC
+        AAABC
+        returns: [(1,3),(5,5)]
         """
         cigar = self.cigar_string
         idx = self.start_pos - 1
@@ -65,7 +70,7 @@ class Alignment:
 
     def visualize(self, *, ref: str, query: str):
         """
-        TODO: Description
+        Returns the reference and the query together with the expanded cigar string for viusalsation.
         """
         cigar = self.cigar_string
         total = self.count_total()
@@ -99,8 +104,16 @@ class Alignment:
 
 class SmithWaterman:
     """
-    TODO: Usage example
+    Example:
+        ref = 'ATGGCCTC'
+        query = 'ACGGCTC'
+        aligner = SmithWaterman()
+        for alignment in aligner(query=query, ref=ref):
+            print(alignment.cigar_string)
+
+        1=1X2=1I3=
     """
+
     def __init__(self, mutation_costs=default_mutation_costs):
         self.match_score = mutation_costs['=']
         self.mismatch_cost = mutation_costs['X']
@@ -109,8 +122,8 @@ class SmithWaterman:
 
     def _compute_scoring_matrix(self, *, ref: str, query: str):
         """
-        Creates scoring matrix
-        TODO: Meaningful description
+        Creates scoring matrix using the Smith Waterman algorithm with linear gap penalty.
+        Keeps track of which value was computed using which neighbour in the traceback matrix.
         """
         H = np.zeros((len(ref) + 1, len(query) + 1), np.int)
         traceback_matrix = np.zeros((len(ref) + 1, len(query) + 1), np.int)
@@ -129,7 +142,7 @@ class SmithWaterman:
 
     def _traceback(self, *, ref: str, query: str, loc: tuple):
         """
-        TODO: Description
+        Traces back the steps done for the computation of the scoring matrix.
         """
         (i, j) = loc
         am_i_done_yet = False  # end if encounter 0

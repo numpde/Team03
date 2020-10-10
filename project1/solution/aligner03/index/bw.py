@@ -1,6 +1,9 @@
 # LB, pre- 2020-10-09
 # RA, 2020-10-09
 
+from typing import List, Tuple
+
+
 class BurrowsWheeler:
     """
     Generates the Burrows Wheeler transform (BWT) and
@@ -13,7 +16,7 @@ class BurrowsWheeler:
     or via rotation of the string (specified at initialisation).
     """
 
-    def __init__(self, reference_genome, strategy='S'):
+    def __init__(self, reference_genome: str, strategy: str = 'S'):
         # choose encoding strategy to build the Burrows-Wheeler Transform
         # R = via rotation of the string
         # S = via suffix array (preferred method)
@@ -24,21 +27,29 @@ class BurrowsWheeler:
         if len(reference_genome) < 1:
             raise ValueError('please provide a non empty string for the reference genome')
 
+
         self.encode_strategy = strategy
+
+        reference_genome = reference_genome + '$'
 
         # get Burrows Wheeler transformation and corresponding offsets in the suffix array
         (self.code, self.sa) = self.bwt_encode(reference_genome)
 
-    # Given a reference genome, returns the Burrows Wheeler transformation
-    def bwt_encode(self, reference_genome):
+    def bwt_encode(self, reference_genome: str):
+        '''
+        Returns the Burrows Wheeler transformation, given a reference genome,
+        '''
 
         if (self.encode_strategy == 'R'):
             return self.bwt_encode_rot(reference_genome)
         else:
             return self.bwt_encode_suffix(reference_genome)
 
-    # Given a reference_genome, returns the Burrows-Wheeler Transform constructed by the rotation of the reference_genome
-    def bwt_encode_rot(self, reference_genome):
+    def bwt_encode_rot(self, reference_genome: str) -> str:
+        '''
+        Returns the Burrows-Wheeler Transform
+        constructed by the rotation of the reference_genome, given a reference_genome
+        '''
 
         n = len(reference_genome)
         bw_transform = sorted([reference_genome[i:n] + reference_genome[0:i] for i in range(n)])
@@ -46,9 +57,11 @@ class BurrowsWheeler:
 
         return L
 
-        # Given a reference_genome, returns the Burrows-Wheeler Transform constructed by suffix array offsets
-
-    def bwt_encode_suffix(self, reference_genome):
+    def bwt_encode_suffix(self, reference_genome: str) -> Tuple[str, List[int]]:
+        '''
+        Returns the Burrows-Wheeler Transform (suffix, offset)
+        constructed by the suffix array of the reference_genome
+        '''
 
         suffix_array_offsets = self.suffix_array_offsets(reference_genome)
         bw_transform = []
@@ -61,24 +74,31 @@ class BurrowsWheeler:
 
         return (''.join(bw_transform), suffix_array_offsets)
 
-    # Given a reference_genome, returns the sorted suffix array (suffix, offset)    
-    def suffix_array(self, reference_genome):
+    def suffix_array(self, reference_genome: str) -> List[Tuple[str, int]]:
+        '''
+        Returns the sorted suffix array (suffix, offset), given a reference_genome,
+        '''
 
         n = len(reference_genome)
         suffix_array = sorted([(reference_genome[i:], i) for i in range(n)])
 
         return suffix_array
 
-    # Given a reference_genome, returns the offsets of the sorted suffixes in reference genome
     def suffix_array_offsets(self, reference_genome):
+        '''
+        Returns the offsets of the sorted suffixes in reference genome
+        Given a reference_genome
+        '''
 
         suffix_array = self.suffix_array(reference_genome)
         offsets = [i[1] for i in suffix_array]
 
         return (offsets)
 
-    # returns the original string
-    def decode(self, bw_transform=None):
+    def decode(self, bw_transform: str = None) -> str:
+        '''
+        Returns original string
+        '''
 
         bw_transform = bw_transform or self.code
 
@@ -93,14 +113,4 @@ class BurrowsWheeler:
             if row.endswith("$"):
                 s = row
 
-        return s
-
-
-if __name__ == "__main__":
-    ref_genome = 'This is a test string to verify the correctness of the Burrows Wheeler transformation. This functionality is used for the 1. project of the course Computational Biomedicine at ETH Zurich.'
-
-    bwt = BurrowsWheeler(ref_genome)
-
-    print("test: \n", ref_genome, "\n")
-    print("encoded: \n", bwt.code, "\n")
-    print("decoded:\n", bwt.decode(), "\n")
+        return s[:-1]
