@@ -24,4 +24,27 @@ class TestATKH(TestCase):
         aligner = Aligner()
         
         atkh = AllTheKingsHorses(genome_index=index, sequence_aligner=aligner, ref_genome=ref_genome)
-        list(atkh.map_paired(file1, file2))
+
+
+        from aligner03.io import AlignedSegment
+        from pysam import AlignedSegment as pysam_AlignedSegment
+        from aligner03.io import from_sam
+
+        from_aether = atkh.map_paired(file1, file2)
+
+        mine: AlignedSegment
+        theirs: pysam_AlignedSegment
+        for (mine, theirs) in zip(from_aether, from_sam(unlist1(source_path.glob("*.sam")))):
+            self.assertEqual(mine.flag.is_minus_strand, bool(theirs.flag & 16))
+            self.assertEqual(mine.flag.is_secondary_alignment, bool(theirs.flag & 256))
+
+            cigar_match = (mine.cigar == theirs.cigarstring)
+
+            if not cigar_match:
+                print(F"Read {mine.qname}, has non-matching cigar.")
+                print(F"Mine:  ", mine.cigar)
+                print(F"Theirs:", theirs.cigarstring)
+                print(F"Read:  ", mine.seq)
+                print(F"Neighborhood:  ", ref_genome[(mine.pos - 10):(mine.pos + 10 + len(mine.seq))])
+
+

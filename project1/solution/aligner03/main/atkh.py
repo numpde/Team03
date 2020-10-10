@@ -64,7 +64,7 @@ class AllTheKingsHorses:
         j = int(numpy.percentile(in_ref, 50, interpolation='nearest'))
         return max(options, key=(lambda x: (x[3] == j)))
 
-    def map_pair(self, read1, read2):
+    def map_pair(self, read1, read2) -> typing.Iterable[AlignedSegment]:
         (read1, options1) = self.map_one(read1).popitem()
         (read2, options2) = self.map_one(read2).popitem()
 
@@ -76,45 +76,48 @@ class AllTheKingsHorses:
 
         ref_length = len(self.ref_genome)
 
-        (i1, _, _, j1) = self.select_option(options1)
-        (i2, _, _, j2) = self.select_option(options2)
+        read2seg = {}
 
-        w1 = propose_window(read_length=len(read1), read_loc=i1, ref_length=ref_length, ref_loc=j1)
-        w2 = propose_window(read_length=len(read2), read_loc=i2, ref_length=ref_length, ref_loc=j2)
+        for (read, options) in zip([read1, read2], [options1, options2]):
+            (i, _, _, j) = self.select_option(options)
 
-        w1_segment = self.ref_genome[w1[0]:w1[1]]
-        w2_segment = self.ref_genome[w2[0]:w2[1]]
+            w = propose_window(read_length=len(read), read_loc=i, ref_length=ref_length, ref_loc=j)
 
-        alignment1: Alignment
-        alignment2: Alignment
-        alignment1 = first(self.align(ref=w1_segment, query=read1.seq))
-        alignment2 = first(self.align(ref=w2_segment, query=read2.seq))
+            w_segment = self.ref_genome[w[0]:w[1]]
 
-        alignment1._start_pos += w1[0]
-        alignment2._start_pos += w2[0]
+            alignment: Alignment
+            alignment = first(self.align(ref=w_segment, query=read.seq))
 
+            loc_in_ref = (alignment.loc_in_ref + w[0])
 
-        for (read, alignment) in zip([read1, read2], [alignment1, alignment2]):
             seg = AlignedSegment()
             seg.qname = read.preprocessed.name
-            seg.flag.is_minus_strand = read.is_forward # Correct?
+            # Need to set two flags:
+            # is_reversed, is_secondary_alignment
+            seg.flag.is_minus_strand = not read.is_forward
+            seg.flag.is_secondary_alignment = False
             seg.cigar = alignment.cigar
-            print(alignment._start_pair)
-            # print(seg.pos)
-            # print(seg)
+            seg.pos = loc_in_ref + 1
+            seg.seq = read.seq
+            seg.qual = read.phred_as_string
 
+            read2seg[read] = seg
 
-        # Now we have one read forward and one backward
-        # Expect that forward comes before backward
+        # Get position of mate
+        read2seg[read1].pnext = read2seg[read2].pos
+        read2seg[read2].pnext = read2seg[read1].pos
 
-    def map_paired(self, file1, file2):
+        for read in [read1, read2]:
+            yield read2seg[read]
+
+    def map_paired(self, file1, file2) -> typing.Iterable[AlignedSegment]:
         assert_order_consistency(file1, file2)
 
         unmapped_pairs = 0
 
         for (read1, read2) in zip(from_fastq(file1), from_fastq(file2)):
             try:
-                yield self.map_pair(read1, read2)
+                yield from self.map_pair(read1, read2)
             except UnmappedReadpair:
                 unmapped_pairs += 1
                 print("Unmapped reads:", unmapped_pairs)
