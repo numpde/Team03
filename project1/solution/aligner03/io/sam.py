@@ -2,7 +2,6 @@
 
 import pysam
 import typing
-import pandas
 import collections
 
 
@@ -92,20 +91,20 @@ class _:
     is_minus_strand = 16
     is_secondary_alignment = 256
 
-    # https://bioinformatics-core-shared-training.github.io/cruk-summer-school-2017/Day1/Session5-alignedReads.html
-    pandas.Series(name="Flag", dtype=int, data={
-        "isPaired": 1,
-        "isProperPair": 2,
-        "isUnmappedQuery": 4,
-        "hasUnmappedMate": 8,
-        "isMinusStrand": 16,
-        "isMateMinusStrand": 32,
-        "isFirstMateRead": 64,
-        "isSecondMateRead": 128,
-        "isSecondaryAlignment": 256,
-        "isNotPassingQualityControls": 512,
-        "isDuplicate": 1024,
-    })
+    # # https://bioinformatics-core-shared-training.github.io/cruk-summer-school-2017/Day1/Session5-alignedReads.html
+    # pandas.Series(name="Flag", dtype=int, data={
+    #     "isPaired": 1,
+    #     "isProperPair": 2,
+    #     "isUnmappedQuery": 4,
+    #     "hasUnmappedMate": 8,
+    #     "isMinusStrand": 16,
+    #     "isMateMinusStrand": 32,
+    #     "isFirstMateRead": 64,
+    #     "isSecondMateRead": 128,
+    #     "isSecondaryAlignment": 256,
+    #     "isNotPassingQualityControls": 512,
+    #     "isDuplicate": 1024,
+    # })
 
     @classmethod
     def getter(cls, f):
