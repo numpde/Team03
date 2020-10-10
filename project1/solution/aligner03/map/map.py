@@ -24,9 +24,11 @@ def all_kmers_by_score(read: aligner03.io.Read, k: int) -> typing.Dict[float, ty
     return dict(by_score)
 
 
-def random_kmers(read: aligner03.io.Read, k) -> typing.Iterable[typing.Tuple[int, str, float]]:
+def random_kmers(read: aligner03.io.Read, k, maxn=10) -> typing.Iterable[typing.Tuple[int, str, float]]:
     """
     Generate all k-mers of length `k` from the `read` in random order.
+
+    Yield only `maxn` of those (all if `maxn` is None).
 
     Yields tuples (loc, kmer, qual) where
         `loc` is the location in the read (0-based),
@@ -36,8 +38,9 @@ def random_kmers(read: aligner03.io.Read, k) -> typing.Iterable[typing.Tuple[int
     seq = read.seq
     phred = read.phred
     ii = numpy.arange(len(read) - k)
+    maxn = maxn or len(ii)
     _random_state.shuffle(ii)
-    for i in ii:
+    for (i, __) in zip(ii, range(maxn)):
         yield (i, seq[i:(i + k)], numpy.mean(phred[i:(i + k)]))
 
 
