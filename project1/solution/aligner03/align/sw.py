@@ -3,20 +3,11 @@
 import itertools
 import numpy as np
 
-from aligner03.utils import minidict
+from aligner03.align.costs import default_mutation_costs
 from aligner03.align import Alignment
 from aligner03.align.alignment import prepend_to_cigar_string
 
-default_mutation_costs = minidict({
-    # Deletion
-    'D': -2,
-    # Insertion
-    'I': -2,
-    # Mutation
-    'X': -1,
-    # Match
-    '=': 3,
-})
+import typing
 
 
 class SmithWaterman:
@@ -57,7 +48,7 @@ class SmithWaterman:
         self.traceback_matrix = traceback_matrix
         return H
 
-    def _traceback(self, *, ref: str, query: str, loc: tuple):
+    def _traceback(self, *, ref: str, query: str, loc: tuple) -> typing.Iterator[Alignment]:
         """
         Traces back the steps done for the computation of the scoring matrix.
         """
@@ -91,7 +82,7 @@ class SmithWaterman:
         alignment.start_coord = (i, j)
         yield alignment
 
-    def __call__(self, *, ref: str, query: str):
+    def __call__(self, *, ref: str, query: str) -> typing.Iterator[Alignment]:
         """
         Implements the Smith-Waterman alignment
         with linear gap penalty (same scores for opening and extending a gap)
