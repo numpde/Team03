@@ -7,11 +7,21 @@ Run aligner on `data_small`:
 ```
 I="./input/data_small" \
 O="./output/data_small" \
-    python solution/bin/aligner03.py \
+    python solution/bin/humdum.py \
     ${I}/genome.chr22.5K.fa \
     ${I}/*30xCov1.fq ${I}/*30xCov2.fq \
     > ${O}/alignment.sam
 ```
+
+
+## Humpty Dumpty
+
+    Humpty Dumpty sat on a wall,
+    Humpty Dumpty had a great fall;
+    All the King's horses
+    And all the King's men,
+    Couldn't put Humpty together again.
+
 
 
 ## Reference aligner
