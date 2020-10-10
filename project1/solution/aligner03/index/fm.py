@@ -13,17 +13,21 @@
 from aligner03.index import BurrowsWheeler
 from typing import List
 
+from aligner03.utils import minidict
+
 
 class FmIndex:
     """
-    Can be used to create a FM-index.
+    Implements the FM-index for substring lookup.
+
     Upon creation
-        Burrows Wheeler (BW) object (size: 2* len(reference genome))
+        Burrows Wheeler (BW) object of size: 2 x len(reference genome)
         compressed version of the first column in the BW matrix (size: dict of 6 entries)
-        tally/rank/occurrence matrix (size: 5*len(reference_genome)
+        tally/rank/occurrence matrix of size: 5 x len(reference_genome)
         helper dict to find the next lexicographical character in the context of DNA (size: dict of 5 entries)
     is stored.
-    The FM-index works only for strings that contains the characters ['A','C','G','T']
+
+    The FM-index works only for strings over the alphabet {A, C, G, T}.
     """
 
     def __string_checks(self, string):
@@ -42,6 +46,9 @@ class FmIndex:
     def __init__(self, reference_genome: str):
         self.__string_checks(reference_genome)
 
+        # helper dictionary to determine the next character (used in query method)
+        self.next_chars = minidict({'$': 'A', 'A': 'C', 'C': 'G', 'G': 'T', 'T': None})
+
         # This creates a copy of the whole string?
         reference_genome += "$"
 
@@ -53,12 +60,9 @@ class FmIndex:
         # compressed first column of Burrows Wheeler matrix (e.g. cumulative frequencies of characters)
         self.F = self._shifts_F(reference_genome)
 
-        # ranks of bases/ occurrence matrix
-        # Structure: A| C | G | T
+        # ranks of bases / occurrence matrix
+        # Structure: A | C | G | T
         self.tally = self._build_tally(self.bwt.code, 1)
-
-        # helper dictionary to determine the next character (used in query method)
-        self.next_chars = {'$': 'A', 'A': 'C', 'C': 'G', 'G': 'T', 'T': None}
 
     def _shifts_F(self, reference_genome: str) -> dict:
         """
@@ -66,7 +70,8 @@ class FmIndex:
         Works only for DNA strings over the alphabet {A,C,G,T}.
         """
 
-        shifts = {'$': 0, 'A': 0, 'C': 0, 'G': 0, 'T': 0, None: 0}
+        # `None` key is added later
+        shifts = {k: 0 for k in self.next_chars.keys()}
 
         for i in range(len(reference_genome)):
             shifts[reference_genome[i]] = shifts[reference_genome[i]] + 1
@@ -119,6 +124,9 @@ class FmIndex:
         return {'$': S, 'A': A, 'C': C, 'G': G, 'T': T}
 
     def __len__(self):
+        """
+        The length of the reference string.
+        """
         return (len(self.bwt.code) - 1)
 
     def query(self, sample: str) -> List[int]:
