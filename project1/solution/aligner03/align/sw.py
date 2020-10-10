@@ -1,12 +1,11 @@
-# HK, pre- 2020-10-09
-# RA, 2020-10-09
+# HK, RA
 
 import itertools
 import numpy as np
-from typing import List, Tuple
-import re
 
 from aligner03.utils import minidict
+from aligner03.align import Alignment
+from aligner03.align.alignment import prepend_to_cigar_string
 
 default_mutation_costs = minidict({
     # Deletion
@@ -18,88 +17,6 @@ default_mutation_costs = minidict({
     # Match
     '=': 3,
 })
-
-
-class Alignment:
-    def __init__(self):
-        self.cigar_string = ''
-        self.start_pos = None
-        self.start_coord = None  # (i,j) coordinates of start_pos
-        self.end_coord = None  # (i,j) coordinates of end_pos
-        self.score = None
-
-    def __repr__(self):
-        return F"Aligns at {self.start_pos} with CIGAR = {self.cigar_string} and score = {self.score}"
-
-    def prepend_to_cigar_string(self, symbol: str):
-        if self.cigar_string and symbol == re.findall(r"[XIDS=]", self.cigar_string)[0]:
-            current_count = re.findall(r"[0-9]+", self.cigar_string)[0]
-            self.cigar_string = str(int(current_count) + 1) + self.cigar_string[len(current_count):]
-        else:
-            self.cigar_string = f'1{symbol}' + self.cigar_string
-
-    def count_total(self) -> int:
-        """
-        Returns the total count of matches, deletions, mutations and insertions. I.e. it returns the lengths of the
-        expanded cigar string.
-        Example: returns 2+1+3 = 6 for 2=1I3=
-        """
-        total = 0
-        for count in re.findall(r"[0-9]+", self.cigar_string):
-            total += int(count)
-        return total
-
-    def matching_subsegments(self) -> List[Tuple]:
-        """
-        Returns a list of all matching 1-based subsegments of the query.
-        Example:
-        AAAAC
-        AAABC
-        returns: [(1,3),(5,5)]
-        """
-        cigar = self.cigar_string
-        idx = self.start_pos - 1
-        segment = []
-        for (n, a) in re.findall(r"([0-9]+)([XIDS=])", cigar):
-            n = int(n)
-            if a == '=':
-                segment.append((idx + 1, idx + n))
-            idx += n
-
-        return segment
-
-    def visualize(self, *, ref: str, query: str):
-        """
-        Returns the reference and the query together with the expanded cigar string for viusalsation.
-        """
-        cigar = self.cigar_string
-        total = self.count_total()
-        end_pos = self.start_pos + total
-
-        query = query[self.start_coord[0]:self.end_coord[0]]
-        if self.start_pos:
-            cigar = str(self.start_pos) + 'S' + cigar
-        if (len(ref) - end_pos):
-            cigar += str(len(ref) - end_pos) + 'S'
-
-        i = j = 0
-        x = y = z = ""
-        for (n, a) in re.findall(r"([0-9]+)([XIDS=])", cigar):
-            n = int(n)
-            z += a * n
-            if (a in '=XDS'):
-                x += ref[i:(i + n)]
-                i += n
-            if (a in '=XI'):
-                y += query[j:(j + n)]
-                j += n
-            if (a == 'I'):
-                x += "-" * n
-            if (a == 'S'):
-                y += " " * n
-            if (a == 'D'):
-                y += "-" * n
-        return (x, y, z)
 
 
 class SmithWaterman:
@@ -145,26 +62,31 @@ class SmithWaterman:
         Traces back the steps done for the computation of the scoring matrix.
         """
         (i, j) = loc
-        am_i_done_yet = False  # end if encounter 0
         alignment = Alignment()
         alignment.end_coord = (i, j)
         alignment.score = self.score
-        while not am_i_done_yet:
+        while 1:
+            c = None
+
             if self.scoring_matrix[i, j] == 0:
-                am_i_done_yet = True
+                break
             if self.traceback_matrix[i, j] == 1:
                 if query[j - 1] == ref[i - 1]:
-                    alignment.prepend_to_cigar_string('=')
+                    c = '='
                 else:
-                    alignment.prepend_to_cigar_string('X')
+                    c = 'X'
                 i -= 1
                 j -= 1
             elif self.traceback_matrix[i, j] == 3:
                 j -= 1
-                alignment.prepend_to_cigar_string('D')
+                c = 'D'
             elif self.traceback_matrix[i, j] == 2:
                 i -= 1
-                alignment.prepend_to_cigar_string('I')
+                c = 'I'
+
+            # This is inefficient: construct the string then compress [RA]
+            alignment.cigar_string = prepend_to_cigar_string(c, alignment.cigar_string)
+
         alignment.start_pos = j + 1
         alignment.start_coord = (i, j)
         yield alignment

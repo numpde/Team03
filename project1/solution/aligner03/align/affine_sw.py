@@ -1,111 +1,12 @@
-# HK, pre- 2020-10-09
-# RA, 2020-10-09
+# HK, RA
 
 import itertools
 import numpy as np
 from typing import List, Tuple
 import re
 
-from frozendict import frozendict
-
-default_mutation_costs = frozendict({
-    # Deletion
-    'D': -2,
-    # Insertion
-    'I': -2,
-    # Mutation
-    'X': -10,
-    # Match
-    '=': 10,
-})
-
-
-class Alignment:
-    def __init__(self):
-        self.cigar_string = ''
-        self.start_pos = None  # 1-based start position of query in ref
-        self.start_coord = None  # (i,j) coordinates of start_pos, 1-based
-        self.end_coord = None  # (i,j) coordinates of end_pos, 1-based
-        self.score = None
-
-    def __repr__(self):
-        return F"Aligns at {self.start_pos} with CIGAR = {self.cigar_string} and score = {self.score}"
-
-    def prepend_to_cigar_string(self, symbol: str, count: int = 1):
-        """
-        Prepends a symbol to the cigar string.
-        symbol: symbol to prepend
-        count: count of symbol to prepend
-        """
-        if self.cigar_string and symbol == re.findall(r"[XIDS=]", self.cigar_string)[0]:
-            current_count = re.findall(r"[0-9]+", self.cigar_string)[0]
-            self.cigar_string = str(int(current_count) + count) + self.cigar_string[len(current_count):]
-        else:
-            self.cigar_string = f'{count}{symbol}' + self.cigar_string
-
-    def count_total(self) -> int:
-        """
-        Returns the total count of matches, deletions, mutations and insertions. I.e. it returns the lengths of the
-        expanded cigar string.
-        Example: returns 2+1+3 = 6 for 2=1I3=
-        """
-        total = 0
-        for count in re.findall(r"[0-9]+", self.cigar_string):
-            total += int(count)
-        return total
-
-    def matching_subsegments(self) -> List[Tuple]:
-        """
-        Returns a list of all matching 1-based subsegments of the query.
-        Example:
-        AAAAC
-        AAABC
-        returns: [(1,3),(5,5)]
-        """
-        cigar = self.cigar_string
-        idx = self.start_pos + 1  # +1 since start_pos is 0-based
-        segment = []
-        for (n, a) in re.findall(r"([0-9]+)([XIDS=])", cigar):
-            n = int(n)
-            if a == '=':
-                segment.append((idx + 1, idx + n))
-            idx += n
-
-        return segment
-
-    def visualize(self, *, ref: str, query: str):
-        """
-        Returns the reference and the query together with the expanded cigar string for viusalsation.
-        """
-        cigar = self.cigar_string
-        total = self.count_total()
-        end_pos = self.start_pos + total  # 0-based
-
-        query = query[self.start_coord[1]:self.end_coord[1]]
-        if self.start_pos:
-            cigar = str(self.start_pos + 1) + 'S' + cigar
-        if (len(ref) - 1 - end_pos) > 0:
-            cigar += str(len(ref) - end_pos) + 'S'
-
-        i = j = 0
-        x = y = z = ""
-        for (n, a) in re.findall(r"([0-9]+)([XIDS=])", cigar):
-            n = int(n)
-            z += a * n
-            if (a in '=XDS'):
-                x += ref[i:(i + n)]
-                i += n
-            if (a in '=XI'):
-                y += query[j:(j + n)]
-                j += n
-            if (a == 'I'):
-                x += "-" * n
-            if (a == 'S'):
-                y += " " * n
-            if (a == 'D'):
-                y += "-" * n
-        return (x, y, z)
-
+from aligner03.align.sw import default_mutation_costs
+from aligner03.align import Alignment
 
 class SmithWaterman:
     """
