@@ -29,7 +29,7 @@ import collections
 # From the problem description:
 # Needs to be present:
 #   qname
-#   flag (is_reversed, is_secondary_alignment)
+#   flag (is reversed, is secondary alignment)
 #   rname
 #   pos
 #   cigar
@@ -37,6 +37,9 @@ import collections
 # (if the specification allows)
 # or be set to their default values
 # (0 for integers, * for strings).
+
+# On secondary alignment
+# https://www.biostars.org/p/206396/
 
 
 # THIS IS UGLY
