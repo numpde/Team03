@@ -38,55 +38,8 @@ import collections
 # or be set to their default values
 # (0 for integers, * for strings).
 
-class AlignedSegment:
-    qname: str
-    flag: int
-    rname: str
-    pos: int
-    mapq: int
-    cigar: str
-    rnext: str
-    pnext: int
-    tlen: int
-    seq: str
-    qual: str
 
-    def __str__(self):
-        return '\t'.join(map(str, [
-            self.qname or "*",
-            self.flag or 0,
-            self.rname or "*",
-            self.pos or 0,
-            self.mapq or 0,
-            self.cigar or "*",
-            self.rnext or "*",
-            self.pnext or 0,
-            self.tlen or 0,
-            self.seq or "*",
-            self.qual or "*",
-        ]))
-
-
-def from_sam(file) -> typing.Iterable[pysam.AlignedSegment]:
-    """
-    `file` can be file name or file descriptor.
-    Note: seek(0) is called.
-    """
-
-    try:
-        file.seek(0)
-    except AttributeError:
-        with open(file, mode='r') as file:
-            yield from from_sam(file)
-            return
-
-    # https://pysam.readthedocs.io/en/latest/api.html
-    with pysam.AlignmentFile(file) as af:
-        for read in af.fetch():
-            read: pysam.AlignedSegment
-            yield read
-
-
+# THIS IS UGLY
 class _:
     is_minus_strand = 16
     is_secondary_alignment = 256
@@ -148,6 +101,56 @@ class Flag:
 
     def __repr__(self):
         return F"Flag({self.value})"
+
+
+class AlignedSegment:
+    def __init__(self):
+        self.qname = "*"
+        self.flag = Flag(0)
+        self.rname = "*"
+        self.pos = 0
+        self.mapq = 0
+        self.cigar = "*"
+        self.rnext = "*"
+        self.pnext = 0
+        self.tlen = 0
+        self.seq = "*"
+        self.qual = "*"
+
+    def __str__(self):
+        return '\t'.join(map(str, [
+            self.qname or "*",
+            self.flag.value or 0,
+            self.rname or "*",
+            self.pos or 0,
+            self.mapq or 0,
+            self.cigar or "*",
+            self.rnext or "*",
+            self.pnext or 0,
+            self.tlen or 0,
+            self.seq or "*",
+            self.qual or "*",
+        ]))
+
+
+def from_sam(file) -> typing.Iterable[pysam.AlignedSegment]:
+    """
+    `file` can be file name or file descriptor.
+    Note: seek(0) is called.
+    """
+
+    try:
+        file.seek(0)
+    except AttributeError:
+        with open(file, mode='r') as file:
+            yield from from_sam(file)
+            return
+
+    # https://pysam.readthedocs.io/en/latest/api.html
+    with pysam.AlignmentFile(file) as af:
+        for read in af.fetch():
+            read: pysam.AlignedSegment
+            yield read
 
 
 def test_flag():
