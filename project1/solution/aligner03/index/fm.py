@@ -15,7 +15,7 @@ from typing import List
 
 
 class FmIndex:
-    '''
+    """
     Can be used to create a FM-index.
     Upon creation
         Burrows Wheeler (BW) object (size: 2* len(reference genome))
@@ -24,12 +24,11 @@ class FmIndex:
         helper dict to find the next lexicographical character in the context of DNA (size: dict of 5 entries)
     is stored.
     The FM-index works only for strings that contains the characters ['A','C','G','T']
-    '''
+    """
 
     def __string_checks(self, string):
-
         if ('$' in string):
-            raise ValueError("The string should not contain '$'")
+            raise ValueError("The string should not contain '$'.")
 
         if (not set(string).issubset(set("ACGTN"))):
             raise ValueError("The string contains unexpected characters.")
@@ -43,6 +42,7 @@ class FmIndex:
     def __init__(self, reference_genome: str):
         self.__string_checks(reference_genome)
 
+        # This creates a copy of the whole string?
         reference_genome += "$"
 
         # contains the Burrows Wheeler transformation of the reference genome
@@ -63,7 +63,7 @@ class FmIndex:
     def _shifts_F(self, reference_genome: str) -> dict:
         """
         Returns the shifts in the first column of the Burrows Wheeler matrix (compressed).
-        Works only for DNA strings (A,C,G,T).
+        Works only for DNA strings over the alphabet {A,C,G,T}.
         """
 
         shifts = {'$': 0, 'A': 0, 'C': 0, 'G': 0, 'T': 0, None: 0}
@@ -118,18 +118,20 @@ class FmIndex:
 
         return {'$': S, 'A': A, 'C': C, 'G': G, 'T': T}
 
+    def __len__(self):
+        return (len(self.bwt.code) - 1)
+
     def query(self, sample: str) -> List[int]:
         """
-        Query index for a given sample
-        this searches ONLY FOR A MATCH OF THE FIRST K characters of the sample
-        Returns a list of all positions in the reference genome (0-based)
+        Query index for a given sample.
+        Returns a list of all positions in the reference genome (0-based).
         """
 
         self.__string_checks(sample)
 
         if (len(sample) >= len(self.bwt.code)):
             raise ValueError(
-                F"Sample length may not exceed that of the reference genome ({(len(self.bwt.code) - 1)})."
+                F"Sample length may not exceed that of the reference genome ({len(self)})."
             )
 
         i = len(sample) - 1
