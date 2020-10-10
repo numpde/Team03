@@ -2,15 +2,15 @@
 # RA, 2020-10-09
 
 from unittest import TestCase
-from aligner03.align import SmithWaterman
-from aligner03.align import Alignment
+from humdum.align import SmithWaterman
+from humdum.align import Alignment
 import pysam
 import numpy as np
 
 Read = pysam.AlignedSegment
 
-from aligner03.io import from_sam
-from aligner03.utils import first
+from humdum.io import from_sam
+from humdum.utils import first
 
 
 class TestAlign(TestCase):

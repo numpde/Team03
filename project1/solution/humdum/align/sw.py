@@ -3,9 +3,9 @@
 import itertools
 import numpy as np
 
-from aligner03.align.costs import default_mutation_costs
-from aligner03.align import Alignment
-from aligner03.align.alignment import prepend_to_cigar_string
+from humdum.align.costs import default_mutation_costs
+from humdum.align import Alignment
+from humdum.align.alignment import prepend_to_cigar_string
 
 import typing
 

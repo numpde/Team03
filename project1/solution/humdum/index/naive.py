@@ -6,7 +6,7 @@ class NaiveIndex:
         self.ref = ref
 
     def query(self, kmer):
-        from aligner03.utils import find_all
+        from humdum.utils import find_all
         return find_all(pattern=kmer, template=self.ref)
 
     def __len__(self):

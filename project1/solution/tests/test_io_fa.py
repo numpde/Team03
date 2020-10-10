@@ -3,7 +3,7 @@
 import unittest
 from pathlib import Path
 
-from aligner03.io import from_fasta, Sequence
+from humdum.io import from_fasta, Sequence
 
 
 class TestFastaReader(unittest.TestCase):

@@ -48,7 +48,7 @@ class Read:
         """
         Genetic reverse complement of this read.
         """
-        from aligner03.utils.strings import reverse as reverse_complement
+        from humdum.utils.strings import reverse as reverse_complement
         return Read(self.name, self.desc, reverse_complement(self.seq), self.phred[-1::-1], not self.is_forward)
 
 

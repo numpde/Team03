@@ -1,6 +1,6 @@
 # RA, 2020-10-09
 
-import aligner03.io
+import humdum.io
 import collections
 import typing
 import inclusive
@@ -9,7 +9,7 @@ import numpy
 _random_state = numpy.random.RandomState(0)
 
 
-def all_kmers_by_score(read: aligner03.io.Read, k: int) -> typing.Dict[float, typing.List[tuple]]:
+def all_kmers_by_score(read: humdum.io.Read, k: int) -> typing.Dict[float, typing.List[tuple]]:
     """
     Get all kmers arranged by phred score.
     """
@@ -24,7 +24,7 @@ def all_kmers_by_score(read: aligner03.io.Read, k: int) -> typing.Dict[float, ty
     return dict(by_score)
 
 
-def random_kmers(read: aligner03.io.Read, k, maxn=10) -> typing.Iterable[typing.Tuple[int, str, float]]:
+def random_kmers(read: humdum.io.Read, k, maxn=10) -> typing.Iterable[typing.Tuple[int, str, float]]:
     """
     Generate all k-mers of length `k` from the `read` in random order.
 

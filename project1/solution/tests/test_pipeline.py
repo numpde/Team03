@@ -3,7 +3,7 @@
 import os
 import sys
 from collections import defaultdict
-from aligner03.utils import relpath, unlist1
+from humdum.utils import relpath, unlist1
 
 import numpy as np
 import typing
@@ -36,7 +36,7 @@ class TestPipeline(TestCase):
 
         print(F"Loading {relpath(genome_file_fasta)}")
 
-        from aligner03.io import from_fasta
+        from humdum.io import from_fasta
         genome_seq = unlist1(from_fasta(genome_file_fasta)).seq
 
         EXPECTED_LENGTH = 4980
@@ -47,7 +47,7 @@ class TestPipeline(TestCase):
         # STEP 2: INDEX THE REFERENCE GENOME
         #
 
-        from aligner03.index import FmIndex as GenomeIndex
+        from humdum.index import FmIndex as GenomeIndex
 
         try:
             GenomeIndex("ATTTTATTTG").query("T")
@@ -73,10 +73,10 @@ class TestPipeline(TestCase):
         read_file_fastq_12 = sorted(source_path.glob("*.fq"))
         self.assertEqual(len(read_file_fastq_12), 2)
 
-        from aligner03.io import Read
+        from humdum.io import Read
         from_fastq: typing.Callable[[typing.AnyStr], typing.Iterable[Read]]
 
-        from aligner03.io import from_fastq
+        from humdum.io import from_fastq
         for read in from_fastq(read_file_fastq_12[0]):
             # print(read.name, read.desc, read.seq, read.phred)
             self.assertEqual(len(read.seq), len(read.phred))
@@ -96,7 +96,7 @@ class TestPipeline(TestCase):
 
         try:
             # It's unlikely that the whole read is in the genome
-            from aligner03.utils.strings import reverse, forward
+            from humdum.utils.strings import reverse, forward
             self.assertListEqual(query_the_genome(forward(example_read.seq)), [])
             self.assertListEqual(query_the_genome(reverse(example_read.seq)), [])
         except:
@@ -116,7 +116,7 @@ class TestPipeline(TestCase):
         # | 50                  | 1 in 100,000                       | 99.999%            |
         # | 60                  | 1 in 1,000,000                     | 99.9999%           |
 
-        from aligner03.map import all_kmers_by_score
+        from humdum.map import all_kmers_by_score
 
         # print(
         #     "These are all kmers from the read:",
@@ -154,7 +154,7 @@ class TestPipeline(TestCase):
         (phred, kmer, i, j) = min(proposed_mappings)
 
         # Perform local alignment of the read in the vicinity of j
-        from aligner03.map import propose_window
+        from humdum.map import propose_window
         (a, b) = propose_window(
             read_length=len(example_read.seq),
             read_loc=i,
@@ -171,7 +171,7 @@ class TestPipeline(TestCase):
         # STEP 4: GET AN ALIGNMENT
         #
 
-        from aligner03.align import SmithWaterman as Aligner
+        from humdum.align import SmithWaterman as Aligner
         aligner = Aligner()
 
         print(F"Trying to align {example_read.seq} within {genome_seq[jj]}")
@@ -187,8 +187,8 @@ class TestPipeline(TestCase):
         #
 
         from pysam import AlignedSegment
-        from aligner03.io import from_sam
-        from aligner03.io.sam import Flag
+        from humdum.io import from_sam
+        from humdum.io.sam import Flag
         segment: AlignedSegment
         for segment in from_sam(unlist1(source_path.glob("*.sam"))):
             # print(segment.query_name, segment.flag, segment.qname)

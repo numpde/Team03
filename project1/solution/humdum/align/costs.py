@@ -1,6 +1,6 @@
-import aligner03.utils
+import humdum.utils
 
-default_mutation_costs = aligner03.utils.minidict({
+default_mutation_costs = humdum.utils.minidict({
     # Deletion
     'D': -2,
     # Insertion

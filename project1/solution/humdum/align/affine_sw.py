@@ -5,8 +5,8 @@ import numpy as np
 from typing import List, Tuple
 import re
 
-from aligner03.align.sw import default_mutation_costs
-from aligner03.align import Alignment
+from humdum.align.sw import default_mutation_costs
+from humdum.align import Alignment
 
 class SmithWaterman:
     """

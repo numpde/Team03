@@ -1,7 +1,7 @@
 
 # TODO:
 # Take input filenames as arguments and output SAM file to stdout
-# python aligner03 path/to/genome path/to/1.fq path/to/2.fq > alignment.sam
+# python humdum path/to/genome path/to/1.fq path/to/2.fq > alignment.sam
 
 import sys
 import time
@@ -11,7 +11,7 @@ import resource
 input_args=sys.argv
 if len(input_args)< 4:
     print('''Please give the arguments in the form:
-python aligner03.py alignment.sam path/to/genome [path/to/1.fq]+ ''')
+python humdum.py alignment.sam path/to/genome [path/to/1.fq]+ ''')
     exit()
 PATH=input_args.pop(0)
 OUTPUT_PATH=input_args.pop(0)

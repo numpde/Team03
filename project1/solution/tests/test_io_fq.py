@@ -3,7 +3,7 @@
 import unittest
 from pathlib import Path
 
-from aligner03.io import from_fastq, Read
+from humdum.io import from_fastq, Read
 
 
 class TestFastqReader(unittest.TestCase):

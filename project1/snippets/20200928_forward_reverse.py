@@ -22,7 +22,7 @@ reverse = (lambda s: ''.join({'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}[c] for c i
 # Expect that one of the paired reads will be matched as reverse-complement
 # Note: if read the reverse-complement r' of r is matched, it shows up in the SAM file as r' (not r)
 
-# NOTE: See aligner03.utils.strings
+# NOTE: See humdum.utils.strings
 def find(pattern, template):
     """
     Find all occurrences of pattern string in template string.

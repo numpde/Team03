@@ -1,6 +1,6 @@
 # RA, 2020-10-09
 
-from aligner03.index import FmIndex as GenomeIndex
+from humdum.index import FmIndex as GenomeIndex
 
 from unittest import TestCase
 
@@ -67,5 +67,5 @@ class TestIndex(TestCase):
                 self.assertEqual(ref[i:(i + len(query))], query)
 
             # Test for recall
-            from aligner03.utils import find_all
+            from humdum.utils import find_all
             self.assertCountEqual(hits, find_all(template=ref, pattern=query))

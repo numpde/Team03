@@ -4,14 +4,14 @@
 The decision nexus.
 """
 
-from aligner03.index import FmIndex as GenomeIndex
-from aligner03.align import SmithWaterman as SequenceAligner
-from aligner03.align import Alignment
+from humdum.index import FmIndex as GenomeIndex
+from humdum.align import SmithWaterman as SequenceAligner
+from humdum.align import Alignment
 
-from aligner03.io import assert_order_consistency, from_fastq, Read
-from aligner03.io import AlignedSegment
-from aligner03.map import random_kmers, propose_window
-from aligner03.utils import at_most_n, first
+from humdum.io import assert_order_consistency, from_fastq, Read
+from humdum.io import AlignedSegment
+from humdum.map import random_kmers, propose_window
+from humdum.utils import at_most_n, first
 
 import typing
 import numpy

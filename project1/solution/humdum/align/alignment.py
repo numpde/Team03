@@ -2,7 +2,7 @@
 
 import re
 from typing import List, Tuple
-from aligner03.utils import first
+from humdum.utils import first
 
 
 class Alignment:

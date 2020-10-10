@@ -2,7 +2,7 @@
 from unittest import TestCase
 
 # Note: there could be an issue with multiple TestCase classes per file [RA]
-from aligner03.index.bw import BurrowsWheeler
+from humdum.index.bw import BurrowsWheeler
 from typing import List
 
 

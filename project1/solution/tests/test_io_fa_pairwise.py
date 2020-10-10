@@ -7,7 +7,7 @@ in FASTQ files.
 
 from pathlib import Path
 from unittest import TestCase
-from aligner03.io import assert_order_consistency
+from humdum.io import assert_order_consistency
 
 
 class TestPairwise(TestCase):

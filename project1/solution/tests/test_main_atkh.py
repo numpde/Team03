@@ -3,12 +3,12 @@
 from unittest import TestCase
 from pathlib import Path
 
-from aligner03.io import from_fasta
-from aligner03.main import AllTheKingsHorses
-from aligner03.utils import relpath, unlist1
-from aligner03.index import FmIndex as GenomeIndex
-from aligner03.align import SmithWaterman as Aligner
-# from aligner03.index import NaiveIndex as GenomeIndex
+from humdum.io import from_fasta
+from humdum.main import AllTheKingsHorses
+from humdum.utils import relpath, unlist1
+from humdum.index import FmIndex as GenomeIndex
+from humdum.align import SmithWaterman as Aligner
+# from humdum.index import NaiveIndex as GenomeIndex
 
 
 class TestATKH(TestCase):
@@ -26,9 +26,9 @@ class TestATKH(TestCase):
         atkh = AllTheKingsHorses(genome_index=index, sequence_aligner=aligner, ref_genome=ref_genome)
 
 
-        from aligner03.io import AlignedSegment
+        from humdum.io import AlignedSegment
         from pysam import AlignedSegment as pysam_AlignedSegment
-        from aligner03.io import from_sam
+        from humdum.io import from_sam
 
         from_aether = atkh.map_paired(file1, file2)
 

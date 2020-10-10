@@ -1,4 +1,4 @@
-## This is the readme file for the package aligner03
+## This is the readme file for the package humdum
 
 
 ## To run the tests:

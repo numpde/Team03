@@ -10,10 +10,10 @@
 # First column compressed to a dict of 6 entries
 
 
-from aligner03.index import BurrowsWheeler
+from humdum.index import BurrowsWheeler
 from typing import List
 
-from aligner03.utils import minidict
+from humdum.utils import minidict
 
 
 class FmIndex:
