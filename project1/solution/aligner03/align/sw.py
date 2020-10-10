@@ -6,9 +6,9 @@ import numpy as np
 from typing import List, Tuple
 import re
 
-from frozendict import frozendict
+from aligner03.utils import minidict
 
-default_mutation_costs = frozendict({
+default_mutation_costs = minidict({
     # Deletion
     'D': -2,
     # Insertion
