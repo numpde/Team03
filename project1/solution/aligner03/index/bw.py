@@ -30,7 +30,8 @@ class BurrowsWheeler:
 
         self.encode_strategy = strategy
 
-        reference_genome = reference_genome + '$'
+        if(reference_genome[-1] != '$'):
+            reference_genome = reference_genome + '$'
 
         # get Burrows Wheeler transformation and corresponding offsets in the suffix array
         (self.code, self.sa) = self.bwt_encode(reference_genome)
