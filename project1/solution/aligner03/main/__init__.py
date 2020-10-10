@@ -1,1 +1,1 @@
-from .main import AllTheKingsHorses
+from .atkh import AllTheKingsHorses
