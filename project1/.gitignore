@@ -5,7 +5,9 @@
 !**/UV/*_meta.txt
 # Big files:
 input/data/**
+tests/data_for_tests/data/**
 */cache/download
+
 # PyCharm:
 .idea
 
