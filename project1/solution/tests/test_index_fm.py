@@ -1,16 +1,15 @@
 # RA, 2020-10-09
 
-from aligner03.index.fm import FmIndex
+from aligner03.index import FmIndex as GenomeIndex
 
 from unittest import TestCase
 
 
 class TestIndex(TestCase):
     def test_constructor(self):
-        pass
+        GenomeIndex("ACGT")
 
     def test_basic(self):
-        from aligner03.index import FmIndex as GenomeIndex
 
         with self.assertRaises(ValueError):
             GenomeIndex("ACTG$")
