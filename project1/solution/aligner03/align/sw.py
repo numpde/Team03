@@ -34,18 +34,20 @@ class SmithWaterman:
         Keeps track of which value was computed using which neighbour in the traceback matrix.
         """
         H = np.zeros((len(ref) + 1, len(query) + 1), np.int)
-        traceback_matrix = np.zeros((len(ref) + 1, len(query) + 1), np.int)
+        self.traceback_matrix = np.zeros((len(ref) + 1, len(query) + 1), np.int)
         for i, j in itertools.product(range(1, H.shape[0]), range(1, H.shape[1])):
             match = H[i - 1, j - 1] + (
-                self.match_score if ref[i - 1] == query[j - 1] else + self.mismatch_cost)
+                self.match_score if (ref[i - 1] == query[j - 1]) else
+                self.mismatch_cost
+            )
             delete = H[i - 1, j] + self.gap_cost
             insert = H[i, j - 1] + self.insertion_cost
             scores = [match, delete, insert]
             maximum = max(match, delete, insert, 0)
             H[i, j] = maximum
 
-            traceback_matrix[i, j] = scores.index(maximum) + 1 if maximum in scores else 0
-        self.traceback_matrix = traceback_matrix
+            self.traceback_matrix[i, j] = (maximum in scores) and (scores.index(maximum) + 1)
+
         return H
 
     def _traceback(self, *, ref: str, query: str, loc: tuple) -> typing.Iterator[Alignment]:
@@ -54,13 +56,14 @@ class SmithWaterman:
         """
         (i, j) = loc
         alignment = Alignment()
-        alignment.end_coord = (i, j)
+        alignment._end_pair = (i, j)
         alignment.score = self.score
         while 1:
             c = None
 
             if self.scoring_matrix[i, j] == 0:
                 break
+
             if self.traceback_matrix[i, j] == 1:
                 if query[j - 1] == ref[i - 1]:
                     c = '='
@@ -76,10 +79,10 @@ class SmithWaterman:
                 c = 'I'
 
             # This is inefficient: construct the string then compress [RA]
-            alignment.cigar_string = prepend_to_cigar_string(c, alignment.cigar_string)
+            alignment.cigar = prepend_to_cigar_string(c, alignment.cigar)
 
-        alignment.start_pos = j + 1
-        alignment.start_coord = (i, j)
+        alignment._start_pos = j + 1
+        alignment._start_pair = (i, j)
         yield alignment
 
     def __call__(self, *, ref: str, query: str) -> typing.Iterator[Alignment]:
@@ -110,10 +113,10 @@ if __name__ == '__main__':
     query = 'ACGGCTC'
     aligner = SmithWaterman()
     for alignment in aligner(query=query, ref=ref):
-        print(alignment.cigar_string)
+        print(alignment.cigar)
         x, y, z = alignment.visualize(ref=ref, query=query)
         print(x)
         print(y)
         print(z)
         print(alignment.matching_subsegments())
-        print(alignment.start_pos)
+        print(alignment._start_pos)

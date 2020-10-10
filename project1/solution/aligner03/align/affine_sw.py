@@ -80,7 +80,7 @@ class SmithWaterman:
         (i, j) = loc
         am_i_done_yet = False  # end if encounter 0
         alignment = Alignment()
-        alignment.end_coord = (i, j)
+        alignment._end_pair = (i, j)
         alignment.score = self.score
         while not am_i_done_yet:
             if self.scoring_matrix[i, j] == 0:
@@ -98,8 +98,8 @@ class SmithWaterman:
             elif self.traceback_matrix[i, j][0] == 'LEFT':
                 alignment.prepend_to_cigar_string('I', count=self.traceback_matrix[i, j][1])
                 j -= (self.traceback_matrix[i, j][1])
-        alignment.start_pos = i - 1  # -1 because 0-based
-        alignment.start_coord = (i, j)
+        alignment._start_pos = i - 1  # -1 because 0-based
+        alignment._start_pair = (i, j)
         yield alignment
 
     def __call__(self, *, ref: str, query: str):
@@ -130,10 +130,10 @@ if __name__ == '__main__':
     query = 'ACGGCTC'
     aligner = SmithWaterman()
     for alignment in aligner(query=query, ref=ref):
-        print(alignment.cigar_string)
+        print(alignment.cigar)
         x, y, z = alignment.visualize(ref=ref, query=query)
         print(x)
         print(y)
         print(z)
         print(alignment.matching_subsegments())
-        print(alignment.start_pos)
+        print(alignment._start_pos)

@@ -3,15 +3,31 @@
 
 from unittest import TestCase
 from aligner03.align import SmithWaterman
+from aligner03.align import Alignment
 import pysam
 import numpy as np
 
-Read = pysam.libcalignedsegment.AlignedSegment
+Read = pysam.AlignedSegment
 
 from aligner03.io import from_sam
+from aligner03.utils import first
 
 
 class TestAlign(TestCase):
+    def test_indexing(self):
+        aligner = SmithWaterman()
+
+        alignment = first(aligner(ref="AB", query="A"))
+        self.assertIsInstance(alignment, Alignment)
+
+        alignment = first(aligner(ref="ABCDEFG", query="CDE"))
+        self.assertEqual(alignment.loc_in_query, 0)
+        self.assertEqual(alignment.loc_in_ref, 2)
+
+        # Note: we need semi-local alignment
+        alignment = first(aligner(ref="ABCDEFG", query="ZCDE"))
+        self.assertEqual(alignment.loc_in_query, 0)
+
     def test_smith_waterman_aligner(self, verbose=0):
         """
         Test if sw_aligner finds the right scoring matrix and the right matching blocks
@@ -78,7 +94,7 @@ class TestAlign(TestCase):
             aligner = SmithWaterman()
             for alignment in aligner(ref=ref, query=query):
                 if verbose:
-                    print(alignment.cigar_string, ' vs ', read.cigarstring)
+                    print(alignment.cigar, ' vs ', read.cigarstring)
                     print(read.query_qualities, ' vs ', alignment.score)
                     x, y, z = alignment.visualize(ref, query)
                     print(x)
@@ -86,8 +102,8 @@ class TestAlign(TestCase):
                     print(z)
                     print(alignment.matching_subsegments(), ' vs ', read.cigar)
                 self.assertEqual(
-                    alignment.cigar_string, read.cigarstring,
-                    f'{alignment.cigar_string} is not equal to cigar from sam file {read.cigarstring}'
+                    alignment.cigar, read.cigarstring,
+                    f'{alignment.cigar} is not equal to cigar from sam file {read.cigarstring}'
                 )
 
 

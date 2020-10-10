@@ -7,14 +7,33 @@ from aligner03.utils import first
 
 class Alignment:
     def __init__(self):
-        self.cigar_string = ""
-        self.start_pos = None
-        self.start_coord = None  # (i,j) coordinates of start_pos
-        self.end_coord = None  # (i,j) coordinates of end_pos
+        # CIGAR string
+        self.cigar = ""
+        # Alignment score
         self.score = None
+        # Position of first match in the query:
+        self._start_pos = None
+        # (i,j) coordinates of start_pos:
+        self._start_pair = None
+        # (i,j) coordinates of end_pos
+        self._end_pair = None
+
+    @property
+    def loc_in_query(self):
+        """
+        0-based.
+        """
+        return self._start_pair[1]
+
+    @property
+    def loc_in_ref(self):
+        """
+        0-based.
+        """
+        return self._start_pair[0]
 
     def __repr__(self):
-        return F"(Alignment at {self.start_pos} with CIGAR `{self.cigar_string}` and score {self.score})"
+        return F"(Alignment at {self.loc_in_query} => {self.loc_in_ref} with CIGAR `{self.cigar}` and score {self.score})"
 
     def prepend_to_cigar_string(self, c):
         raise NotImplementedError("This is deprecated, use the function outside of the class.")
@@ -27,7 +46,7 @@ class Alignment:
         Example: for 2=1I3= returns 2+1+3 = 6.
         """
         total = 0
-        for count in re.findall(r"[0-9]+", self.cigar_string):
+        for count in re.findall(r"[0-9]+", self.cigar):
             total += int(count)
         return total
 
@@ -39,8 +58,8 @@ class Alignment:
             AAABC
             returns: [(1,3), (5,5)]
         """
-        cigar = self.cigar_string
-        idx = self.start_pos - 1
+        cigar = self.cigar
+        idx = self._start_pos - 1
         segment = []
         for (n, a) in re.findall(r"([0-9]+)([XIDS=])", cigar):
             n = int(n)
@@ -61,13 +80,13 @@ class Alignment:
         From
             https://github.com/numpde/cbb/tree/master/20200610-CIGAR
         """
-        cigar = self.cigar_string
+        cigar = self.cigar
         total = self.matched_length()
-        end_pos = self.start_pos + total
+        end_pos = self._start_pos + total
 
-        query = query[self.start_coord[0]:self.end_coord[0]]
-        if self.start_pos:
-            cigar = str(self.start_pos) + 'S' + cigar
+        query = query[self._start_pair[0]:self._end_pair[0]]
+        if self._start_pos:
+            cigar = str(self._start_pos) + 'S' + cigar
         if (len(ref) - end_pos):
             cigar += str(len(ref) - end_pos) + 'S'
 
