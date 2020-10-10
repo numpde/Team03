@@ -151,7 +151,7 @@ class SmithWaterman:
 
     def _compute_scoring_matrix(self, *, ref: str, query: str):
         """
-        Creates scoring matrix using the Smith Waterman algorithm with linear gap penalty.
+        Creates scoring matrix using the Smith Waterman algorithm with affine gap penalty.
         Keeps track of which value was computed using which neighbour in the traceback matrix.
         """
         H = np.zeros((len(ref) + 1, len(query) + 1), np.int)
@@ -204,7 +204,7 @@ class SmithWaterman:
     def __call__(self, *, ref: str, query: str):
         """
         Implements the Smith-Waterman alignment
-        with linear gap penalty (same scores for opening and extending a gap)
+        with affine gap penalty: implementation from Computational Biomedicine lecture 3, slide 26
         new score = max(
             match bonus  + prev score (i-1, j-1)
             substitution + prev score (i-1, j-1)
