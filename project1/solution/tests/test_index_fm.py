@@ -13,6 +13,9 @@ class TestIndex(TestCase):
         original = "ACGT"
         self.assertEqual(original, str(GenomeIndex(original)))
 
+        original = "ACGT" * 100
+        self.assertEqual(original, str(GenomeIndex(original)))
+
     def test_basic(self):
 
         with self.assertRaises(ValueError):
