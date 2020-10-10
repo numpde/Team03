@@ -10,6 +10,7 @@ import typing
 
 PHRED_OFFSET = 0x21
 
+
 class Read:
     name: str
     desc: str
@@ -24,15 +25,29 @@ class Read:
         self.phred = phred
         self.is_forward = is_forward
 
+    def __len__(self):
+        return len(self.seq)
+
     def __str__(self):
         return F"Name: {self.name} ({self.desc}): {self.seq} ({self.phred})"
+
+    @property
+    def preprocessed(self):
+        """
+        Returns a copy with preprocessed name.
+        """
+        preprocess_name = (lambda name: name.split('/')[0])
+        return Read(preprocess_name(self.name), self.desc, self.seq, self.phred, self.is_forward)
 
     @property
     def phred_as_string(self):
         return ''.join([chr(i + PHRED_OFFSET) for i in self.phred])
 
     @property
-    def reverse(self):
+    def reversed(self):
+        """
+        Genetic reverse complement of this read.
+        """
         from aligner03.utils.strings import reverse as reverse_complement
         return Read(self.name, self.desc, reverse_complement(self.seq), self.phred[-1::-1], not self.is_forward)
 
@@ -70,6 +85,27 @@ def from_fastq(file) -> typing.Iterable[Read]:
                 break
             else:
                 yield Read(at_name[1:].strip(), desc, seq, phred_as_ints(phred))
+
+
+def assert_order_consistency(file1, file2):
+    assert file1 != file2
+
+    read_names1 = [read.preprocessed.name for read in from_fastq(file1)]
+    read_names2 = [read.preprocessed.name for read in from_fastq(file2)]
+
+    assert read_names1 == read_names2
+
+
+class Pairwise:
+    """
+    Given two cognate FASTQ files, arrange
+    the reads pairwise with their `other`.
+    """
+
+    def __init__(self, file1, file2):
+        reads1 = from_fastq(file1)
+        reads2 = from_fastq(file2)
+        raise NotImplementedError
 
 
 def example():

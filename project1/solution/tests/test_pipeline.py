@@ -47,7 +47,7 @@ class TestPipeline(TestCase):
         # STEP 2: INDEX THE REFERENCE GENOME
         #
 
-        from aligner03.index import FM_Index as GenomeIndex
+        from aligner03.index import FmIndex as GenomeIndex
 
         try:
             GenomeIndex("ATTTTATTTG").query("T")
@@ -132,7 +132,7 @@ class TestPipeline(TestCase):
 
         proposed_mappings = [
             (read, list(propose_mapping(all_kmers_by_score(read, k))))
-            for read in [example_read, example_read.reverse]
+            for read in [example_read, example_read.reversed]
         ]
 
         for (read, mappings) in proposed_mappings:
@@ -165,7 +165,7 @@ class TestPipeline(TestCase):
         # Slices into the reference genome
         jj = slice(a, b)
 
-        print("Range on the genome: ", [a, b])
+        print("Range on the genome to align the read: ", [a, b])
 
         #
         # STEP 4: GET AN ALIGNMENT

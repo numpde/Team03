@@ -1,6 +1,6 @@
 # RA, 2020-10-09
 
-from aligner03.index.fm import FM_Index
+from aligner03.index.fm import FmIndex
 
 from unittest import TestCase
 
@@ -10,7 +10,7 @@ class TestIndex(TestCase):
         pass
 
     def test_basic(self):
-        from aligner03.index import FM_Index as GenomeIndex
+        from aligner03.index import FmIndex as GenomeIndex
 
         with self.assertRaises(ValueError):
             GenomeIndex("ACTG$")
@@ -53,7 +53,7 @@ class TestIndex(TestCase):
         ref = "TAGAGAGATCGATTTTTTCTTGACTGACTGACTCAG"
 
         for query in ["ACT", "T", "TTT", "TTTT"]:
-            fm_index = FM_Index(ref)
+            fm_index = FmIndex(ref)
             hits = fm_index.query(query)
 
             # Test for precision
