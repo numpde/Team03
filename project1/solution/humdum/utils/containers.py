@@ -2,6 +2,9 @@
 
 
 def first(X):
+    """
+    Returns the first element of an iterable X.
+    """
     return next(iter(X))
 
 
