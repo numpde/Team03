@@ -10,6 +10,8 @@ from humdum.index import FmIndex as GenomeIndex
 from humdum.align import SmithWaterman as Aligner
 # from humdum.index import NaiveIndex as GenomeIndex
 
+from itertools import count
+
 
 class TestATKH(TestCase):
     def test_on_data_small(self):
@@ -22,9 +24,8 @@ class TestATKH(TestCase):
         index = GenomeIndex(ref_genome)
 
         aligner = Aligner()
-        
-        atkh = AllTheKingsHorses(genome_index=index, sequence_aligner=aligner, ref_genome=ref_genome)
 
+        atkh = AllTheKingsHorses(genome_index=index, sequence_aligner=aligner, ref_genome=ref_genome)
 
         from humdum.io import AlignedSegment
         from pysam import AlignedSegment as pysam_AlignedSegment
@@ -34,17 +35,21 @@ class TestATKH(TestCase):
 
         mine: AlignedSegment
         theirs: pysam_AlignedSegment
-        for (mine, theirs) in zip(from_aether, from_sam(unlist1(source_path.glob("*.sam")))):
+        for ((mine, theirs), n) in zip(zip(from_aether, from_sam(unlist1(source_path.glob("*.sam")))), count()):
             self.assertEqual(mine.flag.is_minus_strand, bool(theirs.flag & 16))
             self.assertEqual(mine.flag.is_secondary_alignment, bool(theirs.flag & 256))
 
-            cigar_match = (mine.cigar == theirs.cigarstring)
+            # NOTE: pysam returns zero-based indexes
+            adjust_pysam_index = (lambda pos: pos + 1)
 
-            if not cigar_match:
-                print(F"Read {mine.qname}, has non-matching cigar.")
-                print(F"Mine:  ", mine.cigar)
-                print(F"Theirs:", theirs.cigarstring)
+            cigar_match = (mine.cigar == theirs.cigarstring)
+            pos_match = (mine.pos == adjust_pysam_index(theirs.pos))
+
+            if cigar_match and pos_match:
+                print(F"Read {mine.qname} looks good.")
+            else:
+                print(F"Read {mine.qname} does not match.")
+                print(F"Mine:  ", mine.cigar, "at", mine.pos)
+                print(F"Theirs:", theirs.cigarstring, "at", adjust_pysam_index(theirs.pos))
                 print(F"Read:  ", mine.seq)
                 print(F"Neighborhood:  ", ref_genome[(mine.pos - 10):(mine.pos + 10 + len(mine.seq))])
-
-
