@@ -36,6 +36,7 @@ class TestATKH(TestCase):
         mine: AlignedSegment
         theirs: pysam_AlignedSegment
         for ((mine, theirs), n) in zip(zip(from_aether, from_sam(unlist1(source_path.glob("*.sam")))), count()):
+            # See io/sam.py for the explanations
             self.assertEqual(mine.flag.is_minus_strand, bool(theirs.flag & 16))
             self.assertEqual(mine.flag.is_secondary_alignment, bool(theirs.flag & 256))
 
