@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 from humdum.main import AllTheKingsHorses
-
+from humdum.utils import assert_exists
 
 def get_args():
     parser = ArgumentParser(description="Align reads to a reference genome.")
@@ -18,10 +18,6 @@ def get_args():
     )
 
     args = parser.parse_args()
-
-    def assert_exists(file: Path):
-        assert file.exists(), F"Oh, file `{file}`, where art thou?"
-        return file
 
     return {
         'fa': assert_exists(Path(args.fasta[0])),
