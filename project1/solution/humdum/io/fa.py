@@ -40,4 +40,8 @@ def from_fasta(file) -> typing.Iterable[Sequence]:
                 yield sequence
             sequence = Sequence(line[1:], "")
         else:
-            sequence.seq += line
+            try:
+                sequence.seq += line
+            except:
+                print("Format seems broken. Is it a FASTA file?")
+                raise
