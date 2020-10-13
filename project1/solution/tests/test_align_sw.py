@@ -96,7 +96,7 @@ class TestAlign(TestCase):
                 if verbose:
                     print(alignment.cigar, ' vs ', read.cigarstring)
                     print(read.query_qualities, ' vs ', alignment.score)
-                    x, y, z = alignment.visualize(ref, query)
+                    x, y, z = alignment.visualize(ref=ref, query=query)
                     print(x)
                     print(y)
                     print(z)
