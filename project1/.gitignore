@@ -4,9 +4,9 @@
 !**/UV/unversioned
 !**/UV/*_meta.txt
 # Big files:
-input/data/**
-tests/data_for_tests/data/**
-*/cache/download
+**/input/data/**
+**/data_for_tests/data/**
+**/cache/download
 
 # PyCharm:
 .idea
