@@ -106,6 +106,14 @@ class TestAlign(TestCase):
                     f'{alignment.cigar} is not equal to cigar from sam file {read.cigarstring}'
                 )
 
+    def test_linker_adapter_Ingolia2009(self):
+        oNTI200 = "CAAGCAGAAGACGGCATA"
+        oNTI201 = "AATGATACGGCGACCACCGACAGGTTCAGAGTTCTACAGTCCGACG"
+        oNTI202 = "                 CGACAGGTTCAGAGTTCTACAGTCCGACGATC"
+        aligner = SmithWaterman()
+        from humdum.utils import reverse
+        (list(aligner(ref=oNTI202, query=(oNTI201))))
+
 
 if __name__ == '__main__':
     pass
