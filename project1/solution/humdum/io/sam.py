@@ -154,15 +154,3 @@ def from_sam(file) -> typing.Iterable[pysam.AlignedSegment]:
         for read in af.fetch():
             read: pysam.AlignedSegment
             yield read
-
-
-def test_flag():
-    f = Flag(0)
-    for p in [0, 1, 1, 0, 1, 1, 0, 0, 0, 1]:
-        f.is_minus_strand = bool(p)
-        print(p, f.is_minus_strand)
-        assert (p == f.is_minus_strand)
-
-
-if __name__ == '__main__':
-    test_flag()
