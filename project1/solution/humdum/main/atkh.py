@@ -4,14 +4,17 @@
 The decision nexus.
 """
 
-from humdum.index import FmIndex as GenomeIndex
-from humdum.align import SmithWaterman as SequenceAligner
-from humdum.align import Alignment
-
-from humdum.io import assert_order_consistency, from_fastq, Read
+from humdum.io import from_fasta
 from humdum.io import AlignedSegment
+from humdum.io import assert_order_consistency, from_fastq, Read
+
+from humdum.index import FmIndex as GenomeIndex
+
+from humdum.align import Alignment
+from humdum.align import SmithWaterman as SequenceAligner
+
 from humdum.map import random_kmers, propose_window
-from humdum.utils import at_most_n, first
+from humdum.utils import unlist1, at_most_n, first
 
 import typing
 import numpy
@@ -27,6 +30,7 @@ class AllTheKingsHorses:
     """
 
     class _:
+        # Settings
         kmers_per_read = 5
         seed_kmer_size = 26
 
@@ -34,6 +38,7 @@ class AllTheKingsHorses:
         self.index = genome_index
         self.align = sequence_aligner
         self.ref_genome = ref_genome or str(genome_index)
+        self.unmapped_readpairs = None
 
     def map_one(self, read, decide=True) -> typing.Dict[Read, typing.List]:
         """
@@ -111,17 +116,43 @@ class AllTheKingsHorses:
             yield read2seg[read]
 
     def map_paired(self, file1, file2) -> typing.Iterable[AlignedSegment]:
+        """
+        Yield aligned segments.
+
+        Check the member variable `unmapped_readpairs` for the number of discarded pairs.
+        """
+
         assert_order_consistency(file1, file2)
 
-        unmapped_pairs = 0
+        self.unmapped_readpairs = 0
 
         for (read1, read2) in zip(from_fastq(file1), from_fastq(file2)):
             try:
                 yield from self.map_pair(read1, read2)
             except UnmappedReadpair:
-                unmapped_pairs += 1
-                print("Unmapped reads:", unmapped_pairs)
+                self.unmapped_readpairs += 1
 
-    def print_header(self):
+    @classmethod
+    def header(self):
         # TODO
         raise NotImplementedError
+
+    @classmethod
+    def from_files(cls, *, fa, fq1, fq2):
+        """
+        Reference genome file `fa`.
+        FASTQ files `fq1` and `fq2`.
+
+        Creates an instance of AllTheKingsHorses and
+        yields from its map_paired(...) member function.
+        """
+
+        ref_genome = unlist1(from_fasta(fa)).seq
+
+        index = GenomeIndex(ref_genome)
+        aligner = SequenceAligner()
+
+        atkh = AllTheKingsHorses(genome_index=index, sequence_aligner=aligner, ref_genome=ref_genome)
+
+        for alignment in atkh.map_paired(fq1, fq2):
+            yield alignment
