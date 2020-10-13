@@ -136,7 +136,7 @@ class AlignedSegment:
         ]))
 
 
-def from_sam(file) -> typing.Iterable[pysam.AlignedSegment]:
+def from_sam_pysam(file) -> typing.Iterable[pysam.AlignedSegment]:
     """
     `file` can be file name or file descriptor.
     Note: seek(0) is called.
@@ -146,7 +146,7 @@ def from_sam(file) -> typing.Iterable[pysam.AlignedSegment]:
         file.seek(0)
     except AttributeError:
         with open(file, mode='r') as file:
-            yield from from_sam(file)
+            yield from from_sam_pysam(file)
             return
 
     # https://pysam.readthedocs.io/en/latest/api.html
@@ -154,3 +154,7 @@ def from_sam(file) -> typing.Iterable[pysam.AlignedSegment]:
         for read in af.fetch():
             read: pysam.AlignedSegment
             yield read
+
+
+def from_sam(file):
+    raise NotImplementedError

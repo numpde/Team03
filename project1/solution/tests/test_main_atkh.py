@@ -8,7 +8,7 @@ from humdum.utils import relpath, unlist1
 
 from humdum.io import AlignedSegment
 
-from humdum.io import from_sam
+from humdum.io import from_sam_pysam
 from pysam import AlignedSegment as pysam_AlignedSegment
 
 from itertools import count
@@ -26,7 +26,7 @@ class TestATKH(TestCase):
 
         mine: AlignedSegment
         theirs: pysam_AlignedSegment
-        for ((mine, theirs), n) in zip(zip(aligned_segments, from_sam(unlist1(source_path.glob("*.sam")))), count()):
+        for ((mine, theirs), n) in zip(zip(aligned_segments, from_sam_pysam(unlist1(source_path.glob("*.sam")))), count()):
             # See io/sam.py for the explanations
             self.assertEqual(mine.flag.is_minus_strand, bool(theirs.flag & 16))
             self.assertEqual(mine.flag.is_secondary_alignment, bool(theirs.flag & 256))

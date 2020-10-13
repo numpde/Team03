@@ -9,7 +9,7 @@ import numpy as np
 
 Read = pysam.AlignedSegment
 
-from humdum.io import from_sam
+from humdum.io import from_sam_pysam
 from humdum.utils import first
 
 
@@ -87,7 +87,7 @@ class TestAlign(TestCase):
 
         in_file = list((Path(__file__).parent / "data_for_tests/data_small/").glob("*.sam")).pop()
         max_reads = 2
-        for (read, __) in zip(from_sam(in_file), range(max_reads)):
+        for (read, __) in zip(from_sam_pysam(in_file), range(max_reads)):
             read: Read
             ref = reference
             query = read.query_sequence

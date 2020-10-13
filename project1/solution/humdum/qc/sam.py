@@ -11,7 +11,8 @@ except:
 import numpy as np
 
 from pathlib import Path
-from typing import Iterable
+
+from humdum.io import from_sam_pysam
 
 
 # On alignment quality
@@ -27,22 +28,6 @@ from typing import Iterable
 # https://learn.gencore.bio.nyu.edu/alignment/
 
 
-def read_sam(file) -> Iterable[Read]:
-    """
-    `file` can be file name or file descriptor
-    """
-
-    if (type(file) is str):
-        with open(file, mode='r') as file:
-            yield from read_sam(file)
-        return
-
-    # https://pysam.readthedocs.io/en/latest/api.html
-    with pysam.AlignmentFile(file) as af:
-        for read in af.fetch():
-            yield read
-
-
 def coverage_pbp(file, reference_length=None):
     """
     Reads the SAM file and computes the per-based coverage
@@ -56,7 +41,7 @@ def coverage_pbp(file, reference_length=None):
     """
     zeros = (lambda n: np.zeros(n, dtype=int))
     counts = zeros(reference_length or 0)
-    for read in read_sam(file):
+    for read in from_sam_pysam(file):
         for (a, b) in read.get_blocks():
             # A block is a no-gap alignment
             # Note: Blocks are 1- based
@@ -70,7 +55,7 @@ def coverage_pbp(file, reference_length=None):
 
 def test_read_sam(file):
     with open(file, mode='rb') as fd_sam:
-        for read in read_sam(fd_sam):
+        for read in from_sam_pysam(fd_sam):
             read: Read
 
             # https://en.wikipedia.org/wiki/SAM_(file_format)

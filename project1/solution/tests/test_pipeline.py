@@ -187,10 +187,10 @@ class TestPipeline(TestCase):
         #
 
         from pysam import AlignedSegment
-        from humdum.io import from_sam
+        from humdum.io import from_sam_pysam
         from humdum.io.sam import Flag
         segment: AlignedSegment
-        for segment in from_sam(unlist1(source_path.glob("*.sam"))):
+        for segment in from_sam_pysam(unlist1(source_path.glob("*.sam"))):
             # print(segment.query_name, segment.flag, segment.qname)
             flag = Flag(segment.flag)
             name = segment.query_name + {True: "/1", False: "/2"}[flag.is_minus_strand]
