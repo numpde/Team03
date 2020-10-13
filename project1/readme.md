@@ -1,8 +1,25 @@
 ## Team03 solution manual
 
-TODO: This is the readme file on how to run our solution
+This is the readme file on how to run our solution.
 
-Run aligner on `data_small`:
+
+### Humpty Dumpty
+
+Our aligner is called Humpy Dumpty (humdum).
+
+    Humpty Dumpty sat on a wall,
+    Humpty Dumpty had a great fall;
+    All the King's horses
+    And all the King's men,
+    Couldn't put Humpty together again.
+
+
+### Usage
+
+To put the reads 
+on the provided `data_small` dataset
+together again, 
+run the aligner as follows:
 
 ```
 I="./input/data_small" \
@@ -12,15 +29,6 @@ O="./output/data_small" \
     ${I}/*30xCov1.fq ${I}/*30xCov2.fq \
     > ${O}/alignment.sam
 ```
-
-
-## Humpty Dumpty
-
-    Humpty Dumpty sat on a wall,
-    Humpty Dumpty had a great fall;
-    All the King's horses
-    And all the King's men,
-    Couldn't put Humpty together again.
 
 
 
@@ -33,6 +41,6 @@ This is in the folder [output_ref](./output_ref).
 
 
 
-## Team03 members
+## Team members
 
-TODO
+RA, LB, HK
