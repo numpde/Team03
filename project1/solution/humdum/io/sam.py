@@ -145,7 +145,8 @@ def from_sam_pysam(file) -> typing.Iterable[pysam.AlignedSegment]:
     try:
         file.seek(0)
     except AttributeError:
-        with open(file, mode='r') as file:
+        from humdum.io import open_maybe_gz
+        with open_maybe_gz(file) as file:
             yield from from_sam_pysam(file)
             return
 
