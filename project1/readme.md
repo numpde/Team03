@@ -22,12 +22,18 @@ together again,
 run the aligner as follows:
 
 ```
-I="./input/data_small" \
-O="./output/data_small" \
-    python solution/bin/humdum.py \
-    ${I}/genome.chr22.5K.fa \
-    ${I}/*30xCov1.fq ${I}/*30xCov2.fq \
-    > ${O}/alignment.sam
+cd solution
+
+I="../input/data_small"
+O="../output/data_small"
+
+mkdir -p "${O}"
+
+PYTHONPATH=. \
+    python bin/humdum_aligner.py \
+    "${I}/genome.chr22.5K.fa" \
+    "${I}"/*30xCov1.fq "${I}"/*30xCov2.fq \
+    > "${O}/alignment.sam"
 ```
 
 
