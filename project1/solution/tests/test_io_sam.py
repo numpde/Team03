@@ -12,6 +12,12 @@ source_path = data_root / "data_small"
 class TestIoSam(TestCase):
     def test_import(self):
         from humdum.io import from_sam
+        pass
+
+    def test_no_import(self):
+        with self.assertRaises(ImportError):
+            from humdum.io import from_sam_pysam
+            pass
 
     def test_from_sam(self):
         from humdum.io import from_sam
