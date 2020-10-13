@@ -19,6 +19,7 @@ class TestFm(TestCase):
             (fd.readline())
 
     def test_index(self):
+        # Maybe use biopython here
         genome = first(from_fasta(genome_file))
         print(len(genome))
         raise NotImplementedError
