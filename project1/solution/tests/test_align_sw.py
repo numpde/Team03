@@ -25,12 +25,21 @@ class TestAlign(TestCase):
         self.assertEqual(alignment.loc_in_ref, 2)
 
         # Note: we need semi-local alignment
-        alignment = first(aligner(ref="ABCDEFG", query="ZCDE"))
+        alignment = first(aligner(ref="ABCDEFG", query="ZBCDE"))
         self.assertEqual(alignment.loc_in_query, 0)
+
+    def test_aligner_on_integers(self):
+        aligner = SmithWaterman()
+        ref = "ABCDEFG"
+        query = "CDE"
+        A1 = list(aligner(ref=ref, query=query))
+        to_int = (lambda s: np.array([ord(c) for c in s]))
+        A2 = list(aligner(ref=to_int(ref), query=to_int(query)))
+        self.assertCountEqual([a.cigar for a in A1], [a.cigar for a in A2])
 
     def test_smith_waterman_aligner(self, verbose=0):
         """
-        Test if sw_aligner finds the right scoring matrix and the right matching blocks
+        Test if sw_aligner finds the right scoring matrix and the right matching blocks.
         """
 
         mutation_costs = {
@@ -113,9 +122,3 @@ class TestAlign(TestCase):
         aligner = SmithWaterman()
         from humdum.utils import reverse
         (list(aligner(ref=oNTI202, query=(oNTI201))))
-
-
-if __name__ == '__main__':
-    pass
-# test_smith_waterman_aligner(1)
-# test_sw_on_data()
