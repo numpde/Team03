@@ -1,6 +1,11 @@
 # LB, pre- 2020-10-09
 # RA, 2020-10-09
 
+#How the Burrows Wheeler transform works by Ben Langmead
+#https://www.youtube.com/watch?v=4n7NPk5lwbI
+#https://www.youtube.com/watch?v=6BJbEWyO_N0
+#https://www.youtube.com/watch?v=GWFb_C4IR14&t=1035s
+
 from typing import List, Tuple
 
 

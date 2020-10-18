@@ -9,6 +9,20 @@
 # DONE:
 # First column compressed to a dict of 6 entries
 
+"""
+Paolo Ferragina and Giovanni Manzini
+An experimental study of a compressed index
+InformationSciences, 135(1-2):13–28, June 2001
+ISSN 00200255
+doi:10.1016/S0020-0255(01)00098-6
+URL: http://linkinghub.elsevier.com/retrieve/pii/S0020025501000986.
+"""
+
+#How the FM-Index works by Ben Langmead
+#https://www.youtube.com/watch?v=kvVGj5V65io
+#https://www.youtube.com/watch?v=UHGgpfxlaiE
+#https://www.youtube.com/watch?v=DYyXgxYmSYU
+
 
 from humdum.index import BurrowsWheeler
 from typing import List
