@@ -53,9 +53,6 @@ class FmIndex:
         if (not set(string).issubset(set("ACGTN"))):
             raise ValueError("The string contains unexpected characters.")
 
-        if ('N' in string):
-            raise NotImplementedError("The string contains the character 'N'.")
-
         if (not string):
             raise ValueError("The string may not be empty.")
 
@@ -63,7 +60,7 @@ class FmIndex:
         self.__string_checks(reference_genome)
 
         # helper dictionary to determine the next character (used in query method)
-        self.next_chars = minidict({'$': 'A', 'A': 'C', 'C': 'G', 'G': 'T', 'T': None})
+        self.next_chars = minidict({'$': 'A', 'A': 'C', 'C': 'G', 'G': 'N', 'N': 'T', 'T': None})
 
         # This creates a copy of the whole string?
         reference_genome += "$"
@@ -77,8 +74,9 @@ class FmIndex:
         self.F = self._shifts_F(reference_genome)
 
         # ranks of bases / occurrence matrix
-        # Structure: A | C | G | T
+        # Structure: A | C | G | N | T
         self.tally = self._build_tally(self.bwt.code, 1)
+
 
     def _shifts_F(self, reference_genome: str) -> dict:
         """
@@ -95,12 +93,14 @@ class FmIndex:
         count_A = shifts['$']
         count_C = count_A + shifts['A']
         count_G = count_C + shifts['C']
-        count_T = count_G + shifts['G']
+        count_N = count_G + shifts['G']
+        count_T = count_N + shifts['N']
 
         shifts['$'] = 0
         shifts['A'] = count_A
         shifts['C'] = count_C
         shifts['G'] = count_G
+        shifts['N'] = count_N
         shifts['T'] = count_T
         shifts[None] = len(reference_genome)
 
@@ -115,12 +115,14 @@ class FmIndex:
         A = [int(bw_transform[0] == 'A')]
         C = [int(bw_transform[0] == 'C')]
         G = [int(bw_transform[0] == 'G')]
+        N = [int(bw_transform[0] == 'N')]
         T = [int(bw_transform[0] == 'T')]
 
         count_S = S[0]
         count_A = A[0]
         count_C = C[0]
         count_G = G[0]
+        count_N = N[0]
         count_T = T[0]
 
         for (count, item) in enumerate(bw_transform[1:], start=1):
@@ -128,6 +130,7 @@ class FmIndex:
             count_A = count_A + (item == 'A')
             count_C = count_C + (item == 'C')
             count_G = count_G + (item == 'G')
+            count_N = count_N + (item == 'N')
             count_T = count_T + (item == 'T')
 
             if not (count % step):
@@ -135,9 +138,10 @@ class FmIndex:
                 A.append(count_A)
                 C.append(count_C)
                 G.append(count_G)
+                N.append(count_N)
                 T.append(count_T)
 
-        return {'$': S, 'A': A, 'C': C, 'G': G, 'T': T}
+        return {'$': S, 'A': A, 'C': C, 'G': G, 'N': N, 'T': T}
 
     def __len__(self):
         """
@@ -180,13 +184,12 @@ class FmIndex:
         else:
             return [self.bwt.sa[i] for i in range(sp, ep + 1)]
 
-    def write(self, path: str = None):
+    def write(self, path: str = "", fileName: str = "index.data"):
         """
         writing index_data to disk (index.data)
         """
 
-        path = path  or ""
-        path += "index.data"
+        path += fileName
 
         test = bz2.BZ2File(path, 'w')
         pickle.dump(self,test)
@@ -194,13 +197,12 @@ class FmIndex:
         return
 
     @classmethod
-    def read(cls, path: str = None):
+    def read(cls, path: str = "", fileName: str = "index.data"):
         """
         returns index that is stored in path
         """
 
-        path = path or ""
-        path += "index.data"
+        path += fileName
 
         test = bz2.BZ2File(path,'r')
         index = pickle.load(test)
@@ -210,14 +212,15 @@ class FmIndex:
 
 
 if __name__ == "__main__":
-    ref_genome = 'TAGAGAGATCGATCGACTGACTGACTCAG'
+    ref_genome = 'TAGAGAGATCGATCGACTGACTGACTCAGN'
 
-    sample = 'ACT'
+    sample = 'CTCAGN'
 
     print("Reference genome: ", ref_genome)
     print("Sample: ", sample, "\n")
 
     index = FmIndex(ref_genome)
+
 
     print(F'kmer match {sample}')
     match = index.query(sample)
