@@ -69,3 +69,23 @@ class TestIndex(TestCase):
             # Test for recall
             from humdum.utils import find_all
             self.assertCountEqual(hits, find_all(template=ref, pattern=query))
+
+    def test_read_write(self):
+
+        ref = "TAGAGAGACGTACGATCGACTGACTAGCTAGCACACACACTGACTCGATCGAC"
+
+        fm_index = GenomeIndex(ref)
+
+        fm_index.write("data_for_tests/index_data/")
+        fm_index2 = GenomeIndex.read("data_for_tests/index_data/")
+
+        self.assertIsInstance(fm_index2,GenomeIndex)
+
+        self.assertEqual(fm_index.bwt.code, fm_index2.bwt.code)
+        self.assertEqual(fm_index.bwt.sa, fm_index2.bwt.sa)
+        self.assertEqual(fm_index.bwt.decode(), fm_index2.bwt.decode())
+
+        self.assertEqual(fm_index.F, fm_index2.F)
+        self.assertEqual(fm_index.tally, fm_index2.tally)
+        self.assertEqual(fm_index.next_chars._data, fm_index2.next_chars._data)
+
