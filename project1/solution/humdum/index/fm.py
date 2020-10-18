@@ -9,16 +9,32 @@
 # DONE:
 # First column compressed to a dict of 6 entries
 
+"""
+Paolo Ferragina and Giovanni Manzini
+An experimental study of a compressed index_data
+InformationSciences, 135(1-2):13–28, June 2001
+ISSN 00200255
+doi:10.1016/S0020-0255(01)00098-6
+URL: http://linkinghub.elsevier.com/retrieve/pii/S0020025501000986.
+"""
+
+# How the FM-Index works by Ben Langmead
+# https://www.youtube.com/watch?v=kvVGj5V65io
+# https://www.youtube.com/watch?v=UHGgpfxlaiE
+# https://www.youtube.com/watch?v=DYyXgxYmSYU
+
 
 from humdum.index import BurrowsWheeler
 from typing import List
+import bz2
+import pickle
 
 from humdum.utils import minidict
 
 
 class FmIndex:
     """
-    Implements the FM-index for substring lookup.
+    Implements the FM-index_data for substring lookup.
 
     Upon creation
         Burrows Wheeler (BW) object of size: 2 x len(reference genome)
@@ -27,7 +43,7 @@ class FmIndex:
         helper dict to find the next lexicographical character in the context of DNA (size: dict of 5 entries)
     is stored.
 
-    The FM-index works only for strings over the alphabet {A, C, G, T}.
+    The FM-index_data works only for strings over the alphabet {A, C, G, T}.
     """
 
     def __string_checks(self, string):
@@ -137,7 +153,7 @@ class FmIndex:
 
     def query(self, sample: str) -> List[int]:
         """
-        Query index for a given sample.
+        Query index_data for a given sample.
         Returns a list of all positions in the reference genome (0-based).
         """
 
@@ -164,6 +180,34 @@ class FmIndex:
         else:
             return [self.bwt.sa[i] for i in range(sp, ep + 1)]
 
+    def write(self, path: str = None):
+        """
+        writing index_data to disk (index.data)
+        """
+
+        path = path  or ""
+        path += "index.data"
+
+        test = bz2.BZ2File(path, 'w')
+        pickle.dump(self,test)
+        test.close()
+        return
+
+    @classmethod
+    def read(cls, path: str = None):
+        """
+        returns index that is stored in path
+        """
+
+        path = path or ""
+        path += "index.data"
+
+        test = bz2.BZ2File(path,'r')
+        index = pickle.load(test)
+        test.close()
+
+        return index
+
 
 if __name__ == "__main__":
     ref_genome = 'TAGAGAGATCGATCGACTGACTGACTCAG'
@@ -186,3 +230,25 @@ if __name__ == "__main__":
     perfect_match = index.query(sample)
 
     print(perfect_match)
+
+    print(index.bwt.code)
+    print(index.bwt.decode())
+
+    index.write()
+
+    index2 = FmIndex.read()
+
+    print(F'kmer match {sample}')
+    match = index2.query(sample)
+    print(match, '\n')
+
+    for m in match:
+        assert (ref_genome[m:(m + len(sample))] == sample)
+
+    print('perfect match')
+    perfect_match = index2.query(sample)
+
+    print(perfect_match)
+
+    print(index2.bwt.code)
+    print(index2.bwt.decode())
