@@ -24,7 +24,8 @@ class TestAlign(TestCase):
         self.assertEqual(alignment.loc_in_query, 0)
         self.assertEqual(alignment.loc_in_ref, 2)
 
-        # Note: we need semi-local alignment
+    def test_semilocal(self):
+        aligner = SmithWaterman()
         alignment = first(aligner(ref="ABCDEFG", query="ZBCDE"))
         self.assertEqual(alignment.loc_in_query, 0)
 
