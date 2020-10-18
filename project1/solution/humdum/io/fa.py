@@ -1,6 +1,7 @@
 # RA, 2020-10-09
 
 import typing
+from itertools import count
 
 
 class Sequence:
@@ -16,6 +17,8 @@ def from_fasta(file) -> typing.Iterable[Sequence]:
     """
     Yields sequences from FASTA file (filename or descriptor).
     Note: seek(0) is called.
+
+    Assumes there is only one record in the FASTA file.
     """
     try:
         file.seek(0)
@@ -25,24 +28,13 @@ def from_fasta(file) -> typing.Iterable[Sequence]:
             yield from from_fasta(file)
             return
 
-    get_line = (lambda: file.readline().rstrip() or None)
-
     MARKER = ">"
-    sequence = None
 
-    while 1:
-        line = get_line()
-        if not line:
-            assert sequence is not None
-            yield sequence
-            break
-        if line.startswith(MARKER):
-            if sequence is not None:
-                yield sequence
-            sequence = Sequence(line[1:], "")
-        else:
-            try:
-                sequence.seq += line
-            except:
-                print("Format seems broken. Is it a FASTA file?")
-                raise
+    header = file.readline().strip()
+    assert header.startswith(MARKER)
+    sequence = Sequence(header[1:], "")
+    sequence.seq = "".join(map(str.strip, file.readlines()))
+
+    assert MARKER not in sequence.seq
+
+    yield sequence

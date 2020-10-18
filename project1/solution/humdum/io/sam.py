@@ -41,6 +41,20 @@ import collections
 # On secondary alignment
 # https://www.biostars.org/p/206396/
 
+# https://en.wikipedia.org/wiki/SAM_(file_format)
+# Col   Field	Type	Brief description
+#   1   QNAME	String  Query template NAME
+#   2   FLAG	Int	    bitwise FLAG
+#   3   RNAME	String  References sequence NAME
+#   4   POS     Int     1- based leftmost mapping POSition
+#   5   MAPQ	Int     MAPping Quality
+#   6   CIGAR	String	CIGAR String
+#   7   RNEXT	String	Ref. name of the mate/next read
+#   8   PNEXT	Int     Position of the mate/next read
+#   9   TLEN	Int     observed Template LENgth
+#  10	SEQ     String  segment SEQuence
+#  11	QUAL	String  ASCII of Phred-scaled base QUALity+33
+
 
 # THIS IS UGLY
 class _:
@@ -157,5 +171,40 @@ def from_sam_pysam(file) -> typing.Iterable[pysam.AlignedSegment]:
             yield read
 
 
-def from_sam(file):
-    raise NotImplementedError
+def from_sam(file) -> typing.Iterable[AlignedSegment]:
+    """
+    `file` can be file name or file descriptor.
+    Note: seek(0) is called.
+    """
+
+    try:
+        file.seek(0)
+    except AttributeError:
+        from humdum.io import open_maybe_gz
+        with open_maybe_gz(file) as file:
+            yield from from_sam(file)
+            return
+
+    lines = map(str.strip, file.readlines())
+    MARKER = '@'
+    SEP = '\t'
+
+    for line in lines:
+        if not line.startswith(MARKER):
+            items = line.split(SEP)
+
+            aligned_segment = AlignedSegment()
+
+            aligned_segment.qname = str(items[0])
+            aligned_segment.flag = Flag(int(items[1]))
+            aligned_segment.rname = str(items[2])
+            aligned_segment.pos = int(items[3])
+            aligned_segment.mapq = int(items[4])
+            aligned_segment.cigar = str(items[5])
+            aligned_segment.rnext = str(items[6])
+            aligned_segment.pnext = int(items[7])
+            aligned_segment.tlen = int(items[8])
+            aligned_segment.seq = str(items[9])
+            aligned_segment.qual = str(items[10])
+
+            yield aligned_segment
