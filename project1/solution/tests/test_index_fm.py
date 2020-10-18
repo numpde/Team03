@@ -42,23 +42,18 @@ class TestIndex(TestCase):
         GenomeIndex("ACTG")
 
         # Check the type
-        loc_in_genome = GenomeIndex("ATTTTATTTG").query("TTT")
+        loc_in_genome = GenomeIndex("NANNTTTTATTTG").query("TTT")
         self.assertIsInstance(loc_in_genome, list)
         for __ in loc_in_genome:
             self.assertIsInstance(__, int)
 
-        self.assertCountEqual(GenomeIndex("ATTTTATTTTG").query("TTT"), [1, 2, 6, 7])
+        self.assertCountEqual(GenomeIndex("ATTTTANNTTTTGN").query("TTT"), [1, 2, 8, 9])
 
-        with self.assertRaises(NotImplementedError):
-            GenomeIndex("N")
-
-        with self.assertRaises(NotImplementedError):
-            GenomeIndex("ACTGN")
 
     def test_perfect_match_mini(self):
-        ref = "TAGAGAGATCGATTTTTTCTTGACTGACTGACTCAG"
+        ref = "TAGANNGAGATCNGNNNATTNTTTNTCTNNNTGANCTGNACTGACTCAGN"
 
-        for query in ["ACT", "T", "TTT", "TTTT"]:
+        for query in ["ACT", "T", "TTT", "TTTT", "GNACT"]:
             fm_index = GenomeIndex(ref)
             hits = fm_index.query(query)
 
@@ -72,7 +67,7 @@ class TestIndex(TestCase):
 
     def test_read_write(self):
 
-        ref = "TAGAGAGACGTACGATCGACTGACTAGCTAGCACACACACTGACTCGATCGAC"
+        ref = "NTAGAGNANGACGTACNGATCGANCTGACTNAGCTNNNAGCACACACACTGACTCNNGATCGACNNN"
 
         fm_index = GenomeIndex(ref)
 
