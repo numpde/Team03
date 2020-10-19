@@ -3,8 +3,22 @@
 import contextlib
 import io
 
+
 @contextlib.contextmanager
 def open_maybe_gz(file, *, mode='r'):
+    """
+    Open `file` for reading that could be a
+     - file descriptor
+     - path to file
+     - path to gzipped file
+
+    `mode` is either 'r' or 'rb', and has to be specified.
+
+    Usage:
+        with open_maybe_gz(path_to_file, mode='r') as fd:
+            print(fd.read())
+    """
+
     assert mode in ['r', 'rb']
 
     if isinstance(file, io.IOBase):
