@@ -34,7 +34,7 @@ class TestFm(TestCase):
                 line = fd.readline().rstrip()
                 if not line:
                     break
-        print("lenght", len(genome))
+        print("length", len(genome))
 
         index = GenomeIndex(genome)
 
