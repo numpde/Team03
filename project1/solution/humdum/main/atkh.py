@@ -91,7 +91,7 @@ class AllTheKingsHorses:
             w_segment = self.ref_genome[w[0]:w[1]]
 
             alignment: Alignment
-            alignment = first(self.align(ref=w_segment, query=read.seq))
+            alignment = first(self.align(ref=w_segment, query=read.seq, alignment_type='semi-local'))
 
             loc_in_ref = (alignment.loc_in_ref + w[0])
 

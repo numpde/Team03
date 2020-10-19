@@ -8,6 +8,7 @@ import re
 from humdum.align.sw import default_mutation_costs
 from humdum.align import Alignment
 
+
 class SmithWaterman:
     """
     Example:
@@ -35,6 +36,7 @@ class SmithWaterman:
         """
         i, j = pos
         if gap_type == 'D':
+            # todo need to store maximum in each matrix cell such that only need to compare one value at each interation
             costs = [a + c for a, c in
                      zip(H[:i, j][::-1],
                          range(self.opening_cost, self.opening_cost + len(H[:i, j]) * (self.extention_cost),

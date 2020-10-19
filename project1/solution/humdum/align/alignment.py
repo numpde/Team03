@@ -109,6 +109,24 @@ class Alignment:
                 y += "-" * n
         return (x, y, z)
 
+    def make_alingment_semilocal(self, query: str, mismatch_cost: int) -> None:
+        """
+        Makes the local alignment semi-local by adding a mismatch penalty to all mismatching elements before and
+        after the alignment
+        """
+        # check if mismatch cost needs to be added in the beginning of alignment
+        if self.loc_in_query:
+            self.score += -self.loc_in_query * mismatch_cost
+            self.cigar = f'{self.loc_in_query}X' + self.cigar
+            # todo this only works if start_pos[0]>=start_pos[1]
+            self._start_pair = (self._start_pair[0] - self.loc_in_query, self._start_pair[1] - self.loc_in_query)
+        # check if mismatch cost needs to be added at the end of the alignment
+        if len(query) - self._end_pair[1] > 0:
+            mismatch_tail = len(query) - self._end_pair[1]
+            self.score += -mismatch_tail * mismatch_cost
+            self.cigar += f'{mismatch_tail}X'
+            self._end_pair = (self._end_pair[0]+mismatch_tail, self._end_pair[1]+mismatch_tail)
+
 
 def prepend_to_cigar_string(symbol: str, cigar: str):
     if cigar and (symbol == first(re.findall(r"[XIDS=]", cigar))):

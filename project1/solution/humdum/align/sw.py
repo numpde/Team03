@@ -27,6 +27,7 @@ class SmithWaterman:
         self.mismatch_cost = mutation_costs['X']
         self.gap_cost = mutation_costs['D']
         self.insertion_cost = mutation_costs['I']
+        self.alignment_type = None
 
     def _compute_scoring_matrix(self, *, ref: str, query: str):
         """
@@ -50,7 +51,8 @@ class SmithWaterman:
 
         return H
 
-    def _traceback(self, *, ref: str, query: str, loc: tuple) -> typing.Iterator[Alignment]:
+    def _traceback(self, *, ref: str, query: str, loc: tuple) -> typing.Iterator[
+        Alignment]:
         """
         Traces back the steps done for the computation of the scoring matrix.
         """
@@ -83,9 +85,11 @@ class SmithWaterman:
 
         alignment._start_pos = j + 1
         alignment._start_pair = (i, j)
+        if self.alignment_type == 'semi-local':
+            alignment.make_alingment_semilocal(query=query, mismatch_cost=self.mismatch_cost)
         yield alignment
 
-    def __call__(self, *, ref: str, query: str) -> typing.Iterator[Alignment]:
+    def __call__(self, *, ref: str, query: str, alignment_type: str = 'local') -> typing.Iterator[Alignment]:
         """
         Implements the Smith-Waterman alignment
         with linear gap penalty (same scores for opening and extending a gap)
@@ -103,6 +107,7 @@ class SmithWaterman:
         """
         self.scoring_matrix = self._compute_scoring_matrix(ref=ref, query=query)
         self.score = np.max(self.scoring_matrix)
+        self.alignment_type = alignment_type
         maxima = np.where(self.scoring_matrix == self.score)
         for loc in zip(*maxima):
             yield from self._traceback(ref=ref, query=query, loc=loc)
@@ -112,7 +117,7 @@ if __name__ == '__main__':
     ref = 'ATGGCCTC'
     query = 'ACGGCTC'
     aligner = SmithWaterman()
-    for alignment in aligner(query=query, ref=ref):
+    for alignment in aligner(query=query, ref=ref, alignment_type='semi-local'):
         print(alignment.cigar)
         x, y, z = alignment.visualize(ref=ref, query=query)
         print(x)
