@@ -5,6 +5,7 @@ from pathlib import Path
 from plox import Plox
 
 from humdum.qc.coverage import coverage_pbp
+from humdum.utils import relpath
 
 
 def with_suffix(suffix):
@@ -44,13 +45,14 @@ def qc1_coverage(sam_file: Path, output_path: Path):
 
     counts = coverage_pbp(sam_file)
 
-    fig_file = with_suffix(".coverage.png")(output_path / sam_file.stem)
+    fig_file = with_suffix(".coverage.png")(output_path / sam_file.name)
 
     with Plox() as px:
         px.a.plot(counts)
         px.a.set_xlabel("Position in genome")
         px.a.set_ylabel("Mapped coverage (counts)")
         px.f.savefig(fig_file)
+        print(relpath(fig_file))
 
 
 def main():
