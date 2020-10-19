@@ -19,3 +19,8 @@ class TestGz(TestCase):
 
         self.assertEqual(reference, candidate)
 
+    def test_open_rb(self):
+        raise NotImplementedError
+
+    def test_open_from_fd(self):
+        raise NotImplementedError

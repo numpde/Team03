@@ -153,58 +153,46 @@ class AlignedSegment:
 def from_sam_pysam(file) -> typing.Iterable[pysam.AlignedSegment]:
     """
     `file` can be file name or file descriptor.
-    Note: seek(0) is called.
     """
 
-    try:
-        file.seek(0)
-    except AttributeError:
-        from humdum.io import open_maybe_gz
-        with open_maybe_gz(file) as file:
-            yield from from_sam_pysam(file)
-            return
+    from humdum.io import open_maybe_gz
 
-    # https://pysam.readthedocs.io/en/latest/api.html
-    with pysam.AlignmentFile(file) as af:
-        for read in af.fetch():
-            read: pysam.AlignedSegment
-            yield read
+    with open_maybe_gz(file) as file:
+        # https://pysam.readthedocs.io/en/latest/api.html
+        with pysam.AlignmentFile(file) as af:
+            for read in af.fetch():
+                read: pysam.AlignedSegment
+                yield read
 
 
 def from_sam(file) -> typing.Iterable[AlignedSegment]:
     """
-    `file` can be file name or file descriptor.
-    Note: seek(0) is called.
+    `file` can be file name (possibly .gz) or file descriptor.
     """
 
-    try:
-        file.seek(0)
-    except AttributeError:
-        from humdum.io import open_maybe_gz
-        with open_maybe_gz(file) as file:
-            yield from from_sam(file)
-            return
+    from humdum.io import open_maybe_gz
 
-    lines = map(str.strip, file.readlines())
-    MARKER = '@'
-    SEP = '\t'
+    with open_maybe_gz(file) as file:
+        lines = map(str.strip, file.readlines())
+        MARKER = '@'
+        SEP = '\t'
 
-    for line in lines:
-        if not line.startswith(MARKER):
-            items = line.split(SEP)
+        for line in lines:
+            if not line.startswith(MARKER):
+                items = line.split(SEP)
 
-            aligned_segment = AlignedSegment()
+                aligned_segment = AlignedSegment()
 
-            aligned_segment.qname = str(items[0])
-            aligned_segment.flag = Flag(int(items[1]))
-            aligned_segment.rname = str(items[2])
-            aligned_segment.pos = int(items[3])
-            aligned_segment.mapq = int(items[4])
-            aligned_segment.cigar = str(items[5])
-            aligned_segment.rnext = str(items[6])
-            aligned_segment.pnext = int(items[7])
-            aligned_segment.tlen = int(items[8])
-            aligned_segment.seq = str(items[9])
-            aligned_segment.qual = str(items[10])
+                aligned_segment.qname = str(items[0])
+                aligned_segment.flag = Flag(int(items[1]))
+                aligned_segment.rname = str(items[2])
+                aligned_segment.pos = int(items[3])
+                aligned_segment.mapq = int(items[4])
+                aligned_segment.cigar = str(items[5])
+                aligned_segment.rnext = str(items[6])
+                aligned_segment.pnext = int(items[7])
+                aligned_segment.tlen = int(items[8])
+                aligned_segment.seq = str(items[9])
+                aligned_segment.qual = str(items[10])
 
-            yield aligned_segment
+                yield aligned_segment

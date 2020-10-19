@@ -15,26 +15,22 @@ class Sequence:
 
 def from_fasta(file) -> typing.Iterable[Sequence]:
     """
-    Yields sequences from FASTA file (filename or descriptor).
-    Note: seek(0) is called.
+    Yields sequences from FASTA file.
+    `file` is a filename, possibly .gz, or io descriptor.
 
     Assumes there is only one record in the FASTA file.
     """
-    try:
-        file.seek(0)
-    except AttributeError:
-        from humdum.io import open_maybe_gz
-        with open_maybe_gz(file) as file:
-            yield from from_fasta(file)
-            return
 
-    MARKER = ">"
+    from humdum.io import open_maybe_gz
 
-    header = file.readline().strip()
-    assert header.startswith(MARKER)
-    sequence = Sequence(header[1:], "")
-    sequence.seq = "".join(map(str.strip, file.readlines()))
+    with open_maybe_gz(file) as file:
+        MARKER = ">"
 
-    assert MARKER not in sequence.seq
+        header = file.readline().strip()
+        assert header.startswith(MARKER)
+        sequence = Sequence(header[1:], "")
+        sequence.seq = "".join(map(str.strip, file.readlines()))
 
-    yield sequence
+        assert (MARKER not in sequence.seq), "Can only read one record from FASTA."
+
+        yield sequence

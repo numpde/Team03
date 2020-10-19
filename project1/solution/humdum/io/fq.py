@@ -64,13 +64,9 @@ def from_fastq(file) -> typing.Iterable[Read]:
         assert (len(phred) == len(phred_as_string))
         return phred
 
-    try:
-        file.seek(0)
-    except AttributeError:
-        with open(file, mode="r") as file:
-            yield from from_fastq(file)
-            return
-    else:
+    from humdum.io import open_maybe_gz
+
+    with open_maybe_gz(file, mode="r") as file:
         line = (lambda: file.readline().rstrip() or None)
         SEP = '\t'
 
