@@ -4,7 +4,7 @@
 !**/UV/unversioned
 !**/UV/*_meta.txt
 # Big files:
-**/input/data/**
+**/input/data/*
 **/data_for_tests/data/**
 **/cache/download
 
