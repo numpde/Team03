@@ -3,9 +3,6 @@
 import numpy as np
 import re
 
-from pathlib import Path
-from humdum.io import from_sam
-
 
 # On alignment quality
 
@@ -20,7 +17,7 @@ from humdum.io import from_sam
 # https://learn.gencore.bio.nyu.edu/alignment/
 
 
-def coverage_pbp(file, reference_length=None):
+def coverage_pbp(file, reference_length=None) -> np.ndarray:
     """
     Reads the SAM file and computes the per-based coverage
     from the aligned blocks.
@@ -31,14 +28,17 @@ def coverage_pbp(file, reference_length=None):
     but there can be an undetected residual at the 'right' end
     if it is not specified.
     """
+
+    from humdum.io import from_sam
+
     zeros = (lambda n: np.zeros(n, dtype=int))
     counts = zeros(reference_length or 0)
     for read in from_sam(file):
         a = read.pos
         for (n, A) in re.findall(r"([0-9]+)([XIDS=])", read.cigar):
             b = a + int(n)
+            assert (a < b), "Only expect positive numbers in CIGAR."
             if (A == '='):
-                assert (a < b)
                 if (b > len(counts)):
                     counts = np.concatenate([counts, zeros(b - len(counts))])
                 counts[a:b] += 1
@@ -47,19 +47,21 @@ def coverage_pbp(file, reference_length=None):
     return counts
 
 
-
 def test_coverage_pbp(file):
     counts = coverage_pbp(file)
     print(*counts)
 
 
 if (__name__ == '__main__'):
+    from pathlib import Path
+
     in_file = list((Path(__file__).parent.parent.parent.parent / "input/data_small/").glob("*.sam")).pop()
     counts = coverage_pbp(in_file)
 
     print(len(counts))
 
     from plox import Plox
+
     with Plox() as px:
         px.a.plot(counts)
         px.show()
