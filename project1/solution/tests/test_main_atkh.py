@@ -44,7 +44,7 @@ class TestATKH(TestCase):
                 print(F"Mine:  ", mine.cigar, "at", mine.pos)
                 print(F"Theirs:", theirs.cigarstring, "at", adjust_pysam_index(theirs.pos))
                 print(F"Read:  ", mine.seq)
-                #print(F"Neighborhood:  ", atkh.ref_genome[(mine.pos - 10):(mine.pos + 10 + len(mine.seq))])
+                # print(F"Neighborhood:  ", aligned_segments.ref_genome[(mine.pos - 10):(mine.pos + 10 + len(mine.seq))])
 
 
     def test_header(self):

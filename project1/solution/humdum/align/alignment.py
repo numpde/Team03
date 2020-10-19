@@ -2,7 +2,6 @@
 
 import re
 from typing import List, Tuple
-from humdum.utils import first
 
 
 class Alignment:
@@ -109,7 +108,7 @@ class Alignment:
                 y += "-" * n
         return (x, y, z)
 
-    def make_alingment_semilocal(self, query: str, mismatch_cost: int) -> None:
+    def make_alignment_semilocal(self, query: str, mismatch_cost: int) -> None:
         """
         Makes the local alignment semi-local by adding a mismatch penalty to all mismatching elements before and
         after the alignment
@@ -125,12 +124,21 @@ class Alignment:
             mismatch_tail = len(query) - self._end_pair[1]
             self.score += -mismatch_tail * mismatch_cost
             self.cigar += f'{mismatch_tail}X'
-            self._end_pair = (self._end_pair[0]+mismatch_tail, self._end_pair[1]+mismatch_tail)
+            self._end_pair = (self._end_pair[0] + mismatch_tail, self._end_pair[1] + mismatch_tail)
 
+    def compress_cigar(self, cigar_list: List):
+        """
+        Compresses a cigar list into a cigar string.
+        Example:
+            [=,=,X,I] -> 2=1X1I
+        """
+        counter = 1
+        compressed = ''
+        for idx in range(len(cigar_list)):
+            if not idx == len(cigar_list) - 1 and cigar_list[idx] == cigar_list[idx + 1]:
+                counter += 1
+            else:
+                compressed += str(counter) + cigar_list[idx]
+                counter = 1
+        self.cigar = compressed
 
-def prepend_to_cigar_string(symbol: str, cigar: str):
-    if cigar and (symbol == first(re.findall(r"[XIDS=]", cigar))):
-        current_count = first(re.findall(r"[0-9]+", cigar))
-        return str(int(current_count) + 1) + cigar[len(current_count):]
-    else:
-        return F"1{symbol}{cigar}"

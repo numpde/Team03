@@ -1,13 +1,12 @@
 # HK, RA
 
 import itertools
+import typing
+
 import numpy as np
 
-from humdum.align.costs import default_mutation_costs
 from humdum.align import Alignment
-from humdum.align.alignment import prepend_to_cigar_string
-
-import typing
+from humdum.align.costs import default_mutation_costs
 
 
 class SmithWaterman:
@@ -60,6 +59,7 @@ class SmithWaterman:
         alignment = Alignment()
         alignment._end_pair = (i, j)
         alignment.score = self.score
+        cigar_list = []
         while 1:
             c = None
 
@@ -79,14 +79,13 @@ class SmithWaterman:
             elif self.traceback_matrix[i, j] == 2:
                 i -= 1
                 c = 'I'
+            cigar_list.append(c)
 
-            # This is inefficient: construct the string then compress [RA]
-            alignment.cigar = prepend_to_cigar_string(c, alignment.cigar)
-
+        alignment.compress_cigar(cigar_list=cigar_list[::-1])
         alignment._start_pos = j + 1
         alignment._start_pair = (i, j)
         if self.alignment_type == 'semi-local':
-            alignment.make_alingment_semilocal(query=query, mismatch_cost=self.mismatch_cost)
+            alignment.make_alignment_semilocal(query=query, mismatch_cost=self.mismatch_cost)
         yield alignment
 
     def __call__(self, *, ref: str, query: str, alignment_type: str = 'local') -> typing.Iterator[Alignment]:
@@ -104,7 +103,12 @@ class SmithWaterman:
         Yields one alignment with maximal score per traceback,
         i.e. one for each last matching pair
         (assuming negative scores for mutation/indel)
+
+        alignment_type: string indicating if the alignment type is local or semi-local
         """
+        if alignment_type not in ['local', 'semi-local']:
+            raise NotImplementedError(
+                f'alignment type: {alignment_type} is not implemented. Chose between "local" and "semi-local"')
         self.scoring_matrix = self._compute_scoring_matrix(ref=ref, query=query)
         self.score = np.max(self.scoring_matrix)
         self.alignment_type = alignment_type

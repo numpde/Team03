@@ -2,10 +2,12 @@
 # RA, 2020-10-09
 
 from unittest import TestCase
-from humdum.align import SmithWaterman
-from humdum.align import Alignment
-import pysam
+
 import numpy as np
+import pysam
+
+from humdum.align import Alignment
+from humdum.align import SmithWaterman
 
 Read = pysam.AlignedSegment
 
@@ -26,7 +28,7 @@ class TestAlign(TestCase):
 
     def test_semilocal(self):
         aligner = SmithWaterman()
-        alignment = first(aligner(ref="ABCDEFG", query="ZBCDE"))
+        alignment = first(aligner(ref="ABCDEFG", query="ZBCDE", alignment_type='semi-local'))
         self.assertEqual(alignment.loc_in_query, 0)
 
     def test_aligner_on_integers(self):
@@ -87,7 +89,7 @@ class TestAlign(TestCase):
         )
         self.assertEqual(matching_segments, true_matching_segments)
 
-    def test_sw_on_data(self, verbose=0):
+    def test_sw_on_data_small(self, verbose=0):
         from pathlib import Path
         from Bio import SeqIO
 
@@ -121,5 +123,4 @@ class TestAlign(TestCase):
         oNTI201 = "AATGATACGGCGACCACCGACAGGTTCAGAGTTCTACAGTCCGACG"
         oNTI202 = "                 CGACAGGTTCAGAGTTCTACAGTCCGACGATC"
         aligner = SmithWaterman()
-        from humdum.utils import reverse
         (list(aligner(ref=oNTI202, query=(oNTI201))))
