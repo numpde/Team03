@@ -6,6 +6,7 @@ from pathlib import Path
 from humdum.main import AllTheKingsHorses
 from humdum.utils import assert_exists
 
+
 def get_args():
     parser = ArgumentParser(description="Align reads to a reference genome.")
 
