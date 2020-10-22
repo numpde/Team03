@@ -538,3 +538,4 @@ if __name__ == "__main__":
     print(bwt.get_sa(6))
 
     sys.getsizeof(bwt)
+
