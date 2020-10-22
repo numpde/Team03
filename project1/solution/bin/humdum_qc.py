@@ -12,6 +12,11 @@ def with_suffix(suffix):
     return (lambda path: Path(str(path) + suffix))
 
 
+def report_this_file(file):
+    print("Check out", relpath(file))
+    return file
+
+
 def get_args():
     parser = ArgumentParser(description="Inspect SAM file for quality metrics.")
 
@@ -52,7 +57,7 @@ def qc1_coverage(sam_file: Path, output_path: Path):
         px.a.set_xlabel("Position in genome")
         px.a.set_ylabel("Mapped coverage (counts)")
         px.f.savefig(fig_file)
-        print(relpath(fig_file))
+        report_this_file(fig_file)
 
 
 def main():
@@ -63,3 +68,9 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+    # TODO
+    # https://hbctraining.github.io/Intro-to-rnaseq-hpc-O2/lessons/04_alignment_quality.html
+    # How many reads map to more than 10 locations on the genome?
+    # How many reads are unmapped due to read length?
+    # What is the average mapped length per read?
