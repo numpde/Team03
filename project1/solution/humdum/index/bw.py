@@ -16,10 +16,12 @@
 import sys
 from typing import List, Tuple
 from BitVector import BitVector
+
 from humdum.utils import minidict
 
 from objsize import get_deep_size
 
+import time
 
 class BurrowsWheeler:
     """
@@ -34,6 +36,8 @@ class BurrowsWheeler:
         6*len(reference_genome) / compression_occ * sizeof(dict(char:List[int]))
     - f is created and stored
         6 * sizeof(dict(char:int))
+    - helper data structures
+        ~ len(reference_genome)
     Works for strings over the alphabet {A, C, G, N, T}.
     The compression for the occurrence matrix (compression_occ)
     and the compression for the suffix array (compression_sa) can be select upon creation of the object.
@@ -408,7 +412,7 @@ class BurrowsWheeler:
             rank = self.get_occ(next_char, next_row)
 
             skip = self.f[next_char]
-            next_row = rank + skip
+            next_row = rank + skip - 1
 
             next_char = self.code[next_row]
             original = next_char + original
@@ -428,9 +432,9 @@ class BurrowsWheeler:
         print("code:\t\t\t\t ", get_deep_size(self.code))
 
         total = get_deep_size(self.compression_occ) + get_deep_size(self.compression_sa) + \
-            get_deep_size(self.next_chars) + get_deep_size(self.sa) + \
-            get_deep_size(self.f) + get_deep_size(self.tally) + get_deep_size(self.bitvector) + \
-            get_deep_size(self.code)
+                get_deep_size(self.next_chars) + get_deep_size(self.sa) + \
+                get_deep_size(self.f) + get_deep_size(self.tally) + get_deep_size(self.bitvector) + \
+                get_deep_size(self.code)
 
         print("Total:\t\t\t\t ", total)
 
@@ -444,14 +448,14 @@ class BurrowsWheeler:
         half_compression = self.compression_occ * 0.5
         n = len(self.code) - 1
 
-        next_char = self.code[index]
+        next_char = char
         next_row = index
 
         rank = 0
 
         # Find rank of char
         if next_row % self.compression_occ == 0:
-            rank = self.tally[next_char][int(next_row / self.compression_occ)] - 1
+            return self.tally[next_char][int(next_row / self.compression_occ)]
 
         elif next_row % self.compression_occ < half_compression \
                 or next_row > int(n / self.compression_occ) * self.compression_occ:
@@ -460,7 +464,7 @@ class BurrowsWheeler:
                 if self.code[up] == next_char:
                     count += 1
 
-            rank = self.tally[next_char][int(next_row / self.compression_occ)] + count - 1
+            return self.tally[next_char][int(next_row / self.compression_occ)] + count
 
         else:
             count = 0
@@ -469,9 +473,8 @@ class BurrowsWheeler:
                 if self.code[down] == next_char:
                     count += 1
 
-            rank = self.tally[next_char][int(next_row / self.compression_occ + 1)] - count - 1
+            return self.tally[next_char][int(next_row / self.compression_occ + 1)] - count
 
-        return rank
 
     def get_sa(self, index: int) -> int:
         """
@@ -494,7 +497,7 @@ class BurrowsWheeler:
                 rank = self.get_occ(next_char, next_row)
 
                 skip = self.f[next_char]
-                next_row = rank + skip
+                next_row = rank + skip - 1
                 next_char = self.code[next_row]
 
                 counter += 1
@@ -503,7 +506,9 @@ class BurrowsWheeler:
 
 
 if __name__ == "__main__":
-    ref_genome = 'ACAAACGTACGATCGACTACTACA'
+
+    ref_genome = 'AGCTA'
+    # ref_genome = 'A'
     sample = 'CTCAGN'
 
     print("Reference genome: ", ref_genome)
@@ -526,7 +531,7 @@ if __name__ == "__main__":
 
     sys.getsizeof(bwt)
 
-    bwt = BurrowsWheeler(ref_genome, strategy='KaerkkaeinenSanders', compression_sa=10)
+    bwt = BurrowsWheeler(ref_genome, strategy='KaerkkaeinenSanders', compression_occ=10,compression_sa=10)
 
     print(bwt.sa)
     print(bwt.get_bwt(ref_genome))
@@ -535,7 +540,13 @@ if __name__ == "__main__":
 
     print(str(bwt))
 
-    print(bwt.get_sa(6))
-
     sys.getsizeof(bwt)
 
+    print(bwt.tally)
+    print(bwt.code)
+
+    for i in range(len(ref_genome)):
+        start = time.perf_counter_ns()
+        print(bwt.get_occ("A", i),time.perf_counter_ns() - start)
+
+    print(str(bwt))

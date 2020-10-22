@@ -104,19 +104,21 @@ class FmIndex:
         sp = self.bwt.f[c] - 1
         ep = self.bwt.f[self.bwt.next_chars[c]] - 1
 
+        div = 1./self.compression
+
         while ep > sp and i >= 1:
             c = sample[i - 1]
 
             if sp % self.compression == 0:
-                rank_sp = self.bwt.tally[c][int(sp / self.compression)]
+                rank_sp = self.bwt.tally[c][int(sp * div)]
 
-            elif sp % self.compression < half_compression or sp > int(n / self.compression) * self.compression:
+            elif sp % self.compression < half_compression or sp > int(n * div) * self.compression:
                 count = 0
                 for up in range(sp, sp - (sp % self.compression), -1):
                     if self.bwt.code[up] == c:
                         count += 1
 
-                rank_sp = self.bwt.tally[c][int(sp / self.compression)] + count
+                rank_sp = self.bwt.tally[c][int(sp * div)] + count
 
             else:
                 count = 0
@@ -124,25 +126,25 @@ class FmIndex:
                     if self.bwt.code[down] == c:
                         count += 1
 
-                rank_sp = self.bwt.tally[c][int(sp / self.compression + 1)] - count
+                rank_sp = self.bwt.tally[c][int(sp * div + 1)] - count
 
             if ep % self.compression == 0:
-                rank_ep = self.bwt.tally[c][int(ep / self.compression)]
+                rank_ep = self.bwt.tally[c][int(ep * div)]
 
-            elif ep % self.compression < half_compression or ep > int(n / self.compression) * self.compression:
+            elif ep % self.compression < half_compression or ep > int(n * div) * self.compression:
                 count = 0
                 for up in range(ep, ep - (ep % self.compression), -1):
                     if self.bwt.code[up] == c:
                         count += 1
 
-                rank_ep = self.bwt.tally[c][int(ep / self.compression)] + count
+                rank_ep = self.bwt.tally[c][int(ep * div)] + count
 
             else:
                 count = 0
                 for down in range(ep + 1, ep + (self.compression - (ep % self.compression)) + 1):
                     if self.bwt.code[down] == c:
                         count += 1
-                rank_ep = self.bwt.tally[c][int(ep / self.compression + 1)] - count
+                rank_ep = self.bwt.tally[c][int(ep * div + 1)] - count
 
             sp = self.bwt.f[c] + rank_sp - 1
             ep = self.bwt.f[c] + rank_ep - 1
