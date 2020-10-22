@@ -473,10 +473,7 @@ class WaveletTree:
 
             curr_index = rank - 1
 
-            if code == 0:
-                curr_node = self.get_left_child(curr_node)
-            else:
-                curr_node = self.get_right_child(curr_node)
+            curr_node = self.meta[curr_node][2 + code]
 
         return rank
 
@@ -515,10 +512,8 @@ class WaveletTree:
         while type(self.meta[curr_node][2]) is not str:
 
             par_node = curr_node
-            if bit == 0:
-                curr_node = self.get_left_child(curr_node)
-            else:
-                curr_node = self.get_right_child(curr_node)
+
+            curr_node = self.meta[curr_node][2 + bit]
 
             curr_index = self.rank_bit(curr_index, par_node) - 1
             bit = self.bits[curr_node][curr_index]
@@ -558,5 +553,8 @@ if __name__ == "__main__":
     print(bwt.get_bwt(ref_genome))
 
     print(str(bwt.bitvector))
+    for i in range(len(ref_genome)):
+        start = time.perf_counter_ns()
+        print(bwt.rank("A", i), time.perf_counter_ns() - start)
 
     print(str(bwt))
