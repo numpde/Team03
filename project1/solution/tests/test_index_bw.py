@@ -3,7 +3,6 @@ from unittest import TestCase
 
 # Note: there could be an issue with multiple TestCase classes per file [RA]
 from humdum.index.bw import BurrowsWheeler
-from typing import List
 
 
 class TestIndexBW(TestCase):
@@ -17,41 +16,39 @@ class TestIndexBW(TestCase):
         with self.assertRaises(ValueError):
             BurrowsWheeler("A", "A")
 
-        BurrowsWheeler("some string")
-        BurrowsWheeler("some string with special characters .:,;{$£}[¨!]+*ç%&/()=?|@#¼½¬|")
+        with self.assertRaises(ValueError):
+            BurrowsWheeler("A", strategy="fun")
 
-        encoded = BurrowsWheeler("some string").code
-        suffix = BurrowsWheeler("some string").sa
+        with self.assertRaises(ValueError):
+            BurrowsWheeler("A", compression_occ=-1)
+
+        with self.assertRaises(ValueError):
+            BurrowsWheeler("A", compression_sa=-1)
+
+        BurrowsWheeler("CACGTACGTGTGCTAACACGTGTGTTTTTGAC")
+
+        suffix = BurrowsWheeler("GCAGTN").sa
+        encoded = BurrowsWheeler("ACGTGTAC").get_bwt("ACGTGTAC")
 
         self.assertIsInstance(encoded, str)
         self.assertIsInstance(suffix, list)
 
+        string = "ACGATCGATCAGTAC"
+        self.assertEqual(len(string), len(BurrowsWheeler(string)))
+
     def test_encode_decode(self):
+        string = "NNCACGTACGTGTGCTAACACGTGTGTTTTTGAC"
+        bwt = BurrowsWheeler(string)
+        self.assertEqual(str(bwt), string)
 
-        self.assertEqual(BurrowsWheeler("simple string").decode(),"simple string")
-        self.assertEqual(BurrowsWheeler("some string with special characters!+*/-.:,;-_+*ç%&/()=?è!£àé<>\}][|@#¼½¬|¢~").decode(),
-                         "some string with special characters!+*/-.:,;-_+*ç%&/()=?è!£àé<>\}][|@#¼½¬|¢~")
-        self.assertEqual(BurrowsWheeler("This is a longer text to test Burrows Wheeler Transform. "
-                                        "Wikipedia: The Burrows–Wheeler transform (BWT, also called block-sorting compression) "
-                                        "rearranges a character string into runs of similar characters. "
-                                        "This is useful for compression, since it tends to be easy to compress a string"
-                                        " that has runs of repeated characters by techniques such as move-to-front"
-                                        " transform and run-length encoding. More importantly, the transformation"
-                                        " is reversible, without needing to store any additional data except"
-                                        " the position of the first original character. The BWT is thus a free "
-                                        "method of improving the efficiency of text compression algorithms,"
-                                        " costing only some extra computation. ").decode(),
-                         "This is a longer text to test Burrows Wheeler Transform. "
-                         "Wikipedia: The Burrows–Wheeler transform (BWT, also called block-sorting compression) "
-                         "rearranges a character string into runs of similar characters. "
-                         "This is useful for compression, since it tends to be easy to compress a string"
-                         " that has runs of repeated characters by techniques such as move-to-front"
-                         " transform and run-length encoding. More importantly, the transformation"
-                         " is reversible, without needing to store any additional data except"
-                         " the position of the first original character. The BWT is thus a free "
-                         "method of improving the efficiency of text compression algorithms,"
-                         " costing only some extra computation. ")
+    def test_sa_compression(self):
 
-
-
-
+        refs = ["TAGAATCGTTTTTTTTTTATCGACTACNACTACAAAAAAAAATGATCNTACNGTAA",
+                "TTTTTTTTTTTAAAAAAAAAACCCCCCCGGN",
+                "AGCTA", "T"]
+        for ref in refs:
+            for comp in range(1, 50):
+                for i in range(1, len(ref)):
+                    bw_uncompressed = BurrowsWheeler(ref, compression_occ=1, compression_sa=1)
+                    bw = BurrowsWheeler(ref, compression_occ=1, compression_sa=comp)
+                    self.assertEqual(bw_uncompressed.sa[i], bw.get_sa(i))

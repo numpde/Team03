@@ -9,13 +9,6 @@ class TestIndex(TestCase):
     def test_constructor(self):
         GenomeIndex("ACGT")
 
-    def test_returns_original(self):
-        original = "ACGT"
-        self.assertEqual(original, str(GenomeIndex(original)))
-
-        original = "ACGT" * 100
-        self.assertEqual(original, str(GenomeIndex(original)))
-
     def test_basic(self):
 
         with self.assertRaises(ValueError):
@@ -36,6 +29,15 @@ class TestIndex(TestCase):
         with self.assertRaises(ValueError):
             GenomeIndex("ACGT").query("GT$")
 
+        with self.assertRaises(ValueError):
+            GenomeIndex("A", -1)
+
+        with self.assertRaises(ValueError):
+            GenomeIndex("A", compression_occ=-1)
+
+        with self.assertRaises(ValueError):
+            GenomeIndex("A", compression_sa=-1)
+
         self.assertListEqual(GenomeIndex("ATTTTATTTG").query("TTTTTT"), [])
 
         GenomeIndex("A")
@@ -49,11 +51,10 @@ class TestIndex(TestCase):
 
         self.assertCountEqual(GenomeIndex("ATTTTANNTTTTGN").query("TTT"), [1, 2, 8, 9])
 
-
     def test_perfect_match_mini(self):
-        ref = "TAGANNGAGATCNGNNNATTNTTTNTCTNNNTGANCTGNACTGACTCAGN"
+        ref = "TAGANNGAGATCNGNNNATTNTTTNTCTNNNTGANCTGNACTGACTCAAAAAGN"
 
-        for query in ["ACT", "T", "TTT", "TTTT", "GNACT"]:
+        for query in ["ACT", "T", "TTT", "TTTT", "GNACT", "AAAA"]:
             fm_index = GenomeIndex(ref)
             hits = fm_index.query(query)
 
@@ -65,6 +66,32 @@ class TestIndex(TestCase):
             from humdum.utils import find_all
             self.assertCountEqual(hits, find_all(template=ref, pattern=query))
 
+    def test_match_with_compression(self):
+        ref = "TAGAATCGTTTTTTTTTTATCGACTACNACTACAAAAAAAAATGATCNTACNGTAANNNNNTTNTTTNTCTNNNTGANCTGNACTGACTCAAAAAGN"
+
+        for comp in range(1, 100):
+
+            fm_index = GenomeIndex(ref, compression_occ=comp, compression_sa=comp + 1)
+            for query in ["ACT", "T", "TTT", "TTTT", "GNACT", "AAAA"]:
+                hits = fm_index.query(query)
+
+                # Test for precision
+                for i in hits:
+                    self.assertEqual(ref[i:(i + len(query))], query)
+
+                # Test for recall
+                from humdum.utils import find_all
+                self.assertCountEqual(hits, find_all(template=ref, pattern=query))
+
+    def test_decoding(self):
+        refs = ["TAGAATCGTTTTTTTTTTATCGACTACNACTACAAAAAAAAATGATCNTACNGTAA",
+                "TTTTTTTTTTTAAAAAAAAAACCCCCCCGGN",
+                "AGCTA", "T"]
+        for ref in refs:
+            for comp in range(1, 50):
+                fm_index = GenomeIndex(ref, compression_occ=comp, compression_sa=comp)
+                self.assertEqual(ref, str(fm_index))
+
     def test_read_write(self):
 
         ref = "NTAGAGNANGACGTACNGATCGANCTGACTNAGCTNNNAGCACACACACTGACTCNNGATCGACNNN"
@@ -74,13 +101,10 @@ class TestIndex(TestCase):
         fm_index.write("data_for_tests/index_data/")
         fm_index2 = GenomeIndex.read("data_for_tests/index_data/")
 
-        self.assertIsInstance(fm_index2,GenomeIndex)
+        self.assertIsInstance(fm_index2, GenomeIndex)
 
-        self.assertEqual(fm_index.bwt.code, fm_index2.bwt.code)
         self.assertEqual(fm_index.bwt.sa, fm_index2.bwt.sa)
-        self.assertEqual(fm_index.bwt.decode(), fm_index2.bwt.decode())
-
-        self.assertEqual(fm_index.F, fm_index2.F)
-        self.assertEqual(fm_index.tally, fm_index2.tally)
-        self.assertEqual(fm_index.next_chars._data, fm_index2.next_chars._data)
-
+        self.assertEqual(str(fm_index), str(fm_index2))
+        self.assertEqual(fm_index.bwt.f, fm_index2.bwt.f)
+        self.assertEqual(fm_index.bwt.tally, fm_index2.bwt.tally)
+        self.assertEqual(fm_index.bwt.next_chars._data, fm_index2.bwt.next_chars._data)
