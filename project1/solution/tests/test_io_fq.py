@@ -26,3 +26,12 @@ class TestFastqReader(unittest.TestCase):
                 self.assertEqual(reference.name, candidate.name)
                 self.assertEqual(reference.letter_annotations["phred_quality"], candidate.phred)
                 # self.assertEqual(reference.description, candidate.desc)
+
+    def test_on_data_large(self):
+        data_root = Path(__file__).parent / "data_for_tests"
+        source_path = data_root / "data"
+
+        files = source_path.glob("*.fq*")
+        for file in files:
+            n = len(list(from_fastq(file)))
+            print(F"File {file} has {n} reads.")
