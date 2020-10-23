@@ -10,13 +10,8 @@ from humdum.utils import assert_exists
 def get_args():
     parser = ArgumentParser(description="Align reads to a reference genome.")
 
-    parser.add_argument(
-        "fasta", type=str, nargs=1, help="Reference genome as FASTA file."
-    )
-
-    parser.add_argument(
-        "fastq", type=str, nargs=2, help="Two FASTQ files."
-    )
+    parser.add_argument("fasta", type=str, nargs=1, help="Reference genome as FASTA file.")
+    parser.add_argument("fastq", type=str, nargs=2, help="Two FASTQ files.")
 
     args = parser.parse_args()
 
@@ -28,14 +23,12 @@ def get_args():
 
 
 def main():
-    files = get_args()
+    sam = AllTheKingsHorses.from_files(**get_args())
 
-    try:
-        print(AllTheKingsHorses.header())
-    except NotImplementedError:
-        print("@HEADER")
+    for header in sam.headers:
+        print(header)
 
-    for alignment in AllTheKingsHorses.from_files(**files):
+    for alignment in sam.alignments:
         print(alignment)
 
 
