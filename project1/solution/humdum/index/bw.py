@@ -54,7 +54,7 @@ class BurrowsWheeler:
     """
 
     def __init__(self, reference_genome: str, strategy: str = 'KaerkkaeinenSanders',
-                 compression_occ: int = 8, compression_sa: int = 8):
+                 compression_occ: int = 16, compression_sa: int = 8):
 
         if strategy not in ['KaerkkaeinenSanders', 'ManberMyers', 'Simple']:
             raise ValueError('strategy needs to be KaerkkaeinenSanders, ManberMyers or Simple ')

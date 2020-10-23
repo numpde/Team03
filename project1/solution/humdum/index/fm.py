@@ -375,3 +375,5 @@ if __name__ == "__main__":
                                        "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
     end = time.perf_counter_ns()
     print("time: ", ns*(end - start))
+
+    print(getsizeof(index.bwt))

@@ -38,7 +38,7 @@ class TestFm(TestCase):
         print("length", len(genome))
 
         print("init")
-        index = GenomeIndex(genome, compression_sa=1)
+        index = GenomeIndex(genome, compression_occ=16, compression_sa=1)
 
         print("write")
         index.write("data_for_tests/index_data/index.data")
