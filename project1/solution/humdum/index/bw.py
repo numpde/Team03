@@ -500,7 +500,6 @@ class BurrowsWheeler:
             rank = 0
             counter = 0
             while self.bitvector[next_row] != 1:
-                print("while")
                 rank = self.get_occ(next_char, next_row)
 
                 skip = self.f[next_char]
