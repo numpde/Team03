@@ -54,7 +54,7 @@ class FmIndex:
             raise ValueError("The string contains unexpected characters.")
 
         if not string:
-            raise ValueError("The string may not be empty.")
+            raise ValueError("The string must not be empty.")
 
     def __init__(self, reference_genome: str, compression_occ: int = 8, compression_sa: int = 1):
 
