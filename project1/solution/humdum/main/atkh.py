@@ -6,6 +6,7 @@ The decision nexus.
 
 from humdum.io import from_fasta
 from humdum.io import AlignedSegment
+from humdum.io import Sequence as FastaGenome
 from humdum.io import assert_order_consistency, from_fastq, Read
 
 from humdum.index import FmIndex as GenomeIndex
@@ -14,9 +15,7 @@ from humdum.align import Alignment
 from humdum.align import SmithWaterman as SequenceAligner
 
 from humdum.map import random_kmers, propose_window
-from humdum.utils import unlist1, at_most_n, first, relpath
-
-from pathlib import Path
+from humdum.utils import unlist1, first
 
 import typing
 import numpy
@@ -35,10 +34,13 @@ class AllTheKingsHorses:
         kmers_per_read = 5
         seed_kmer_size = 26
 
-    def __init__(self, genome_index: GenomeIndex, sequence_aligner: SequenceAligner, ref_genome=None):
+    def __init__(self, genome_index: GenomeIndex, sequence_aligner: SequenceAligner, ref_genome: FastaGenome):
+        assert isinstance(ref_genome, FastaGenome)
+
         self.index = genome_index
         self.align = sequence_aligner
-        self.ref_genome = ref_genome or str(genome_index)
+        self.ref_genome = ref_genome
+
         self.unmapped_readpairs = None
 
     def map_one(self, read, decide=True) -> typing.Dict[Read, typing.List]:
@@ -52,7 +54,8 @@ class AllTheKingsHorses:
         proposals = {
             r: [
                 (loc_in_read, None, qual, loc_in_ref)
-                for (loc_in_read, kmer, qual) in random_kmers(r, k=self.Settings.seed_kmer_size, maxn=self.Settings.kmers_per_read)
+                for (loc_in_read, kmer, qual) in
+                random_kmers(r, k=self.Settings.seed_kmer_size, maxn=self.Settings.kmers_per_read)
                 for loc_in_ref in list(self.index.query(kmer))
             ]
             for r in [read, read.reversed]
@@ -64,7 +67,8 @@ class AllTheKingsHorses:
         else:
             return proposals
 
-    def select_option(self, options):
+    @staticmethod
+    def select_option(options):
         options: typing.List[typing.Tuple[int, str, float, int]]
         in_ref = [j for (_, _, _, j) in options]
         j = int(numpy.percentile(in_ref, 50, interpolation='nearest'))
@@ -80,7 +84,7 @@ class AllTheKingsHorses:
         if (not options1) or (not options2):
             raise UnmappedReadpair
 
-        ref_length = len(self.ref_genome)
+        ref_length = len(self.ref_genome.seq)
 
         read2seg = {}
 
@@ -89,7 +93,7 @@ class AllTheKingsHorses:
 
             w = propose_window(read_length=len(read), read_loc=i, ref_length=ref_length, ref_loc=j)
 
-            w_segment = self.ref_genome[w[0]:w[1]]
+            w_segment = self.ref_genome.seq[w[0]:w[1]]
 
             alignment: Alignment
             alignment = first(self.align(ref=w_segment, query=read.seq, alignment_type='semi-local'))
@@ -114,6 +118,10 @@ class AllTheKingsHorses:
         read2seg[read1].pnext = read2seg[read2].pos
         read2seg[read2].pnext = read2seg[read1].pos
 
+        # Get fragment length
+        # TODO: set tlen
+        # https://www.biostars.org/p/356811/
+
         for read in [read1, read2]:
             yield read2seg[read]
 
@@ -134,10 +142,11 @@ class AllTheKingsHorses:
             except UnmappedReadpair:
                 self.unmapped_readpairs += 1
 
-    @classmethod
-    def header(self):
-        # TODO
-        raise NotImplementedError
+    def headers(self) -> typing.Iterable[str]:
+        # https://samtools.github.io/hts-specs/SAMv1.pdf
+        yield '\t'.join(["@HD", "VN:1.1", "SO:unsorted"])
+        yield '\t'.join(["@SQ", F"SN: {self.ref_genome.desc}", F"LN: {len(self.ref_genome.seq)}"])
+        yield '\t'.join(["@PG", "ID:humdum"])
 
     @classmethod
     def from_files(cls, *, fa, fq1, fq2):
@@ -149,7 +158,7 @@ class AllTheKingsHorses:
         yields from its map_paired(...) member function.
         """
 
-        ref_genome = unlist1(from_fasta(fa)).seq
+        ref_genome = unlist1(from_fasta(fa))
 
         index = GenomeIndex.read_or_make(path_to_genome=fa)
 
@@ -157,5 +166,8 @@ class AllTheKingsHorses:
 
         atkh = AllTheKingsHorses(genome_index=index, sequence_aligner=aligner, ref_genome=ref_genome)
 
-        for alignment in atkh.map_paired(fq1, fq2):
-            yield alignment
+        class _:
+            headers = atkh.headers()
+            alignments = atkh.map_paired(fq1, fq2)
+
+        return _
