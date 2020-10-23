@@ -25,6 +25,9 @@ def open_maybe_gz(file, *, mode='r'):
         yield file
         return
 
+    from pathlib import Path
+    assert Path(file).is_file()
+
     file = str(file)
 
     if file.endswith(".gz"):
