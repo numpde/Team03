@@ -6,6 +6,8 @@
 # Big files:
 **/input/data/*
 **/index.data
+**/*.index
+**/output/data
 **/data_for_tests/data/**
 **/cache/download
 
