@@ -16,7 +16,6 @@ from typing import List
 import bz2
 import pickle
 
-
 """
 Paolo Ferragina and Giovanni Manzini
 An experimental study of a compressed index_data
@@ -158,7 +157,6 @@ class FmIndex:
         else:
             return [self.bwt.get_sa(i) for i in range(sp + 1, ep + 1)]
 
-
     def query(self, sample: str) -> List[int]:
         """
         Query index_data for a given sample.
@@ -173,14 +171,14 @@ class FmIndex:
             )
 
         half_compression = 0.5 * self.compression_occ
-        n =  len(self.bwt.code)- 1
+        n = len(self.bwt.code) - 1
 
         i = len(sample) - 1
         c = sample[i]
         sp = self.bwt.f[c] - 1
         ep = self.bwt.f[self.bwt.next_chars[c]] - 1
 
-        div = 1./self.compression_occ
+        div = 1. / self.compression_occ
 
         while ep > sp and i >= 1:
             c = sample[i - 1]
@@ -231,26 +229,49 @@ class FmIndex:
         else:
             return [self.bwt.get_sa(i) for i in range(sp + 1, ep + 1)]
 
-    def write(self, path_to_file: str = "index.data") -> None:
+    def write(self, path_to_file):
         """
-        writing index_data to disk (index.data)
+        Write index to file.
+
+        Returns self.
         """
 
-        file = bz2.BZ2File(path_to_file, 'w')
-        pickle.dump(self, file)
-        file.close()
+        with bz2.BZ2File(str(path_to_file), mode='w') as fd:
+            pickle.dump(self, fd)
+
+        return self
 
     @classmethod
-    def read(cls, path_to_file: str = "index.data") -> 'FmIndex':
+    def read(cls, path_to_file) -> 'FmIndex':
         """
-        returns index that is stored in path
+        Recover the index from file.
         """
 
-        file = bz2.BZ2File(path_to_file, 'r')
-        index = pickle.load(file)
-        file.close()
+        with bz2.BZ2File(str(path_to_file), 'r') as fd:
+            index = pickle.load(fd)
+            assert isinstance(index, FmIndex)
+            return index
 
-        return index
+    @classmethod
+    def read_or_make(cls, *, path_to_genome, path_to_index=None):
+        """
+        Create an index for the genome and write to file.
+        Attempt to read from file intead if it already exists.
+        Default `path_to_index` appends the suffix ".index".
+        Returns the index.
+        """
+
+        from pathlib import Path
+        DEFAULT_SUFFIX = ".index"
+        path_to_genome = Path(path_to_genome)
+        path_to_index = Path(path_to_index or (str(path_to_genome) + DEFAULT_SUFFIX))
+
+        assert path_to_genome.is_file()
+
+        if path_to_index.is_file():
+            return cls.read(path_to_index)
+        else:
+            return cls(ref_genome).write(path_to_index)
 
 
 if __name__ == "__main__":
@@ -307,7 +328,6 @@ if __name__ == "__main__":
     match = index_compressed2.query(sample)
     print(match)
 
-
     index_compressed2.query(sample)
 
     print("TEST")
@@ -317,63 +337,62 @@ if __name__ == "__main__":
     end = time.perf_counter_ns()
 
     print("read")
-    index = FmIndex.read("../../tests/data_for_tests/index_data/index.data")
+    index = FmIndex.read("../../tests/data_for_tests/data/genome.chr22.fa.gz.index")
 
     # The following strings are copied from the original genome
 
-
-    ns = 10**-9
-
-    print(len("AAAAGAATGCA"))
-    start = time.perf_counter_ns()
-    index.query("AAAAGAATGCA")
-    end = time.perf_counter_ns()
-    print("time: ", ns*(end - start))
-
-    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
-    start = time.perf_counter_ns()
-    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
-    end = time.perf_counter_ns()
-    print("time: ", ns*(end - start))
-
-    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
-    start = time.perf_counter_ns()
-    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
-    end = time.perf_counter_ns()
-    print("time: ", ns*(end - start))
-
-    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
-              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
-    start = time.perf_counter_ns()
-    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
-                                       "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
-    end = time.perf_counter_ns()
-    print("time: ", ns*(end - start))
+    ns = 10 ** -9
 
     print(len("AAAAGAATGCA"))
     start = time.perf_counter_ns()
     index.query("AAAAGAATGCA")
     end = time.perf_counter_ns()
-    print("time: ", ns*(end - start))
+    print("time: ", ns * (end - start))
 
     print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
     start = time.perf_counter_ns()
     index.query("CGACACCACCAAGGCCACCCACCTGCCT")
     end = time.perf_counter_ns()
-    print("time: ", ns*(end - start))
+    print("time: ", ns * (end - start))
 
     print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
     start = time.perf_counter_ns()
     index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
     end = time.perf_counter_ns()
-    print("time: ", ns*(end - start))
+    print("time: ", ns * (end - start))
 
     print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
               "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
     start = time.perf_counter_ns()
     index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
-                                       "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
     end = time.perf_counter_ns()
-    print("time: ", ns*(end - start))
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+    start = time.perf_counter_ns()
+    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+    start = time.perf_counter_ns()
+    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
 
     print(getsizeof(index.bwt))
