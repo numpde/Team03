@@ -98,8 +98,8 @@ class TestIndex(TestCase):
 
         fm_index = GenomeIndex(ref)
 
-        fm_index.write("data_for_tests/index_data/")
-        fm_index2 = GenomeIndex.read("data_for_tests/index_data/")
+        fm_index.write("data_for_tests/index_data/index_small.data")
+        fm_index2 = GenomeIndex.read("data_for_tests/index_data/index_small.data")
 
         self.assertIsInstance(fm_index2, GenomeIndex)
 

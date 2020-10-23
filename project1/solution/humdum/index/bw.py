@@ -77,6 +77,7 @@ class BurrowsWheeler:
         # get Burrows Wheeler transformation and corresponding offsets in the suffix array
         self.sa, self.bitvector, self.code = self.suffix_array(reference_genome, strategy, compression_sa)
 
+
         # compressed first column of Burrows Wheeler matrix (e.g. cumulative frequencies of characters)
         self.f = self._shifts_f(reference_genome)
 
@@ -166,7 +167,11 @@ class BurrowsWheeler:
             suffix_array = self.suffix_array_kaerkkaeinensanders(reference_genome, len(reference_genome), 6)
 
         code = self.get_bwt(reference_genome, suffix_array)
-        return ([num for num in suffix_array if num % compression == 0],
+
+        if self.compression_sa == 1:
+            return (suffix_array, None, code)
+        else:
+            return ([num for num in suffix_array if num % compression == 0],
                 BitVector(bitlist=[1 if num % compression == 0 else 0 for num in suffix_array]), code)
 
     def suffix_array_kaerkkaeinensanders(self, reference_genome, n: int, k: int) -> List[int]:
@@ -480,7 +485,8 @@ class BurrowsWheeler:
         """
         Return entry in Suffix Array at position index
         """
-
+        if self.compression_sa == 1:
+            return self.sa[index]
         if self.bitvector[index] == 1:
             return self.sa[self.bitvector.rank_of_bit_set_at_index(index) - 1]
         else:
@@ -494,6 +500,7 @@ class BurrowsWheeler:
             rank = 0
             counter = 0
             while self.bitvector[next_row] != 1:
+                print("while")
                 rank = self.get_occ(next_char, next_row)
 
                 skip = self.f[next_char]
@@ -501,6 +508,7 @@ class BurrowsWheeler:
                 next_char = self.code[next_row]
 
                 counter += 1
+
 
             return self.sa[self.bitvector.rank_of_bit_set_at_index(next_row) - 1] + counter
 

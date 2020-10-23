@@ -1,5 +1,5 @@
 # RA, LB
-
+import time
 from unittest import TestCase
 from pathlib import Path
 
@@ -38,29 +38,69 @@ class TestFm(TestCase):
         print("length", len(genome))
 
         print("init")
-        index = GenomeIndex(genome)
+        index = GenomeIndex(genome, compression_sa=1)
 
         print("write")
-        index.write("data_for_tests/index_data/")
+        index.write("data_for_tests/index_data/index.data")
+
 
     def test_read_query(self):
 
-        index = GenomeIndex.read("data_for_tests/index_data/")
+        print("read")
+        index = GenomeIndex.read("data_for_tests/index_data/index.data")
 
         # The following strings are copied from the original genome
 
+        ns = 10**(-9)
+
         print(len("AAAAGAATGCA"))
+        start = time.perf_counter_ns()
         self.assertGreater(len(index.query("AAAAGAATGCA")), 0)
+        end = time.perf_counter_ns()
+        print("time: ", end - start)
 
         print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+        start = time.perf_counter_ns()
         self.assertGreater(len(index.query("CGACACCACCAAGGCCACCCACCTGCCT")), 0)
+        end = time.perf_counter_ns()
+        print("time: ", ns*(end - start))
 
         print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+        start = time.perf_counter_ns()
         self.assertGreater(len(index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")), 0)
+        end = time.perf_counter_ns()
+        print("time: ", ns*(end - start))
 
         print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
                   "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+        start = time.perf_counter_ns()
         self.assertGreater(len(index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
                   "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")), 0)
+        end = time.perf_counter_ns()
+        print("time: ", ns*(end - start))
 
+        print(len("AAAAGAATGCA"))
+        start = time.perf_counter_ns()
+        self.assertGreater(len(index.query("AAAAGAATGCA")), 0)
+        end = time.perf_counter_ns()
+        print("time: ", ns*(end - start))
 
+        print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+        start = time.perf_counter_ns()
+        self.assertGreater(len(index.query("CGACACCACCAAGGCCACCCACCTGCCT")), 0)
+        end = time.perf_counter_ns()
+        print("time: ", ns*(end - start))
+
+        print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+        start = time.perf_counter_ns()
+        self.assertGreater(len(index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")), 0)
+        end = time.perf_counter_ns()
+        print("time: ", ns*(end - start))
+
+        print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                  "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+        start = time.perf_counter_ns()
+        self.assertGreater(len(index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                  "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")), 0)
+        end = time.perf_counter_ns()
+        print("time: ", ns*(end - start))
