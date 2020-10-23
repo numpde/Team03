@@ -14,7 +14,9 @@ from humdum.align import Alignment
 from humdum.align import SmithWaterman as SequenceAligner
 
 from humdum.map import random_kmers, propose_window
-from humdum.utils import unlist1, at_most_n, first
+from humdum.utils import unlist1, at_most_n, first, relpath
+
+from pathlib import Path
 
 import typing
 import numpy
@@ -29,8 +31,7 @@ class AllTheKingsHorses:
     Attempts to undo shotgunning.
     """
 
-    class _:
-        # Settings
+    class Settings:
         kmers_per_read = 5
         seed_kmer_size = 26
 
@@ -51,7 +52,7 @@ class AllTheKingsHorses:
         proposals = {
             r: [
                 (loc_in_read, None, qual, loc_in_ref)
-                for (loc_in_read, kmer, qual) in random_kmers(r, k=self._.seed_kmer_size, maxn=self._.kmers_per_read)
+                for (loc_in_read, kmer, qual) in random_kmers(r, k=self.Settings.seed_kmer_size, maxn=self.Settings.kmers_per_read)
                 for loc_in_ref in list(self.index.query(kmer))
             ]
             for r in [read, read.reversed]
@@ -101,6 +102,7 @@ class AllTheKingsHorses:
             # is_reversed, is_secondary_alignment
             seg.flag.is_minus_strand = not read.is_forward
             seg.flag.is_secondary_alignment = False
+            seg.mapq = alignment.score  # TODO: is this OK
             seg.cigar = alignment.cigar
             seg.pos = loc_in_ref + 1
             seg.seq = read.seq
@@ -149,7 +151,8 @@ class AllTheKingsHorses:
 
         ref_genome = unlist1(from_fasta(fa)).seq
 
-        index = GenomeIndex(ref_genome)
+        index = GenomeIndex.read_or_make(path_to_genome=fa)
+
         aligner = SequenceAligner()
 
         atkh = AllTheKingsHorses(genome_index=index, sequence_aligner=aligner, ref_genome=ref_genome)
