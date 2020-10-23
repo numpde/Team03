@@ -20,11 +20,11 @@ class TestATKH(TestCase):
         (read_file1, read_file2) = sorted(source_path.glob("*.fq"))
         genome_file = unlist1(source_path.glob("genome*.fa"))
 
-        aligned_segments = AllTheKingsHorses.from_files(fa=genome_file, fq1=read_file1, fq2=read_file2)
+        sam = AllTheKingsHorses.from_files(fa=genome_file, fq1=read_file1, fq2=read_file2)
 
         mine: AlignedSegment
         theirs: AlignedSegment
-        for ((mine, theirs), n) in zip(zip(aligned_segments, from_sam(unlist1(source_path.glob("*.sam")))), count()):
+        for ((mine, theirs), n) in zip(zip(sam.alignments, from_sam(unlist1(source_path.glob("*.sam")))), count()):
             # See io/sam.py for the explanations
             self.assertEqual(mine.flag.is_minus_strand, bool(theirs.flag.value & 16))
             self.assertEqual(mine.flag.is_secondary_alignment, bool(theirs.flag.value & 256))
@@ -41,5 +41,3 @@ class TestATKH(TestCase):
                 print(F"Read:  ", mine.seq)
                 # print(F"Neighborhood:  ", aligned_segments.ref_genome[(mine.pos - 10):(mine.pos + 10 + len(mine.seq))])
 
-    def test_header(self):
-        AllTheKingsHorses.header()
