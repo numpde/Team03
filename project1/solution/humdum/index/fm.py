@@ -9,9 +9,8 @@
 # -suffix compressed (additional bitvector)
 # -occurrence matrix compressed (store every kth row)
 import time
-from sys import getsizeof
-
 from humdum.index import BurrowsWheeler
+from humdum.index.wt import WaveletTree
 from typing import List
 import bz2
 import pickle
@@ -55,7 +54,7 @@ class FmIndex:
         if not string:
             raise ValueError("The string must not be empty.")
 
-    def __init__(self, reference_genome: str, compression_occ: int = 8, compression_sa: int = 1):
+    def __init__(self, reference_genome: str, compression_occ: int = 16, compression_sa: int = 16, wavelet=False):
 
         if compression_occ < 1 or compression_sa < 1:
             raise ValueError("compression coefficients need to be strictly positive >=0")
@@ -64,12 +63,18 @@ class FmIndex:
 
         self.compression_occ = compression_occ
 
+        self.n = len(reference_genome)
+
         reference_genome += "$"
 
         # contains the Suffix Array of the reference genome
         # can create the Burrows Wheeler Transformation on demand
         # size: len(ref_genome) * sizeof(int)
-        self.bwt = BurrowsWheeler(reference_genome, compression_occ=compression_occ, compression_sa=compression_sa)
+
+        if wavelet:
+            self.bwt = WaveletTree(reference_genome, compression_sa=compression_sa)
+        else:
+            self.bwt = BurrowsWheeler(reference_genome, compression_occ=compression_occ, compression_sa=compression_sa)
 
     def __len__(self):
         """
@@ -91,13 +96,12 @@ class FmIndex:
 
         self.__string_checks(sample)
 
-        if len(sample) >= len(self.bwt.code):
+        if len(sample) > self.n:
             raise ValueError(
                 F"Sample length may not exceed that of the reference genome ({len(self)})."
             )
 
-        half_compression = 0.5 * self.compression_occ
-        n = len(self.bwt.code) - 1
+        n = self.n
 
         i = len(sample) - 1
         c = sample[i]
@@ -109,45 +113,12 @@ class FmIndex:
         while ep > sp and i >= 1:
             c = sample[i - 1]
 
-            if sp % self.compression_occ == 0:
-                rank_sp = self.bwt.tally[c][int(sp * div)]
-
-            elif sp % self.compression_occ < half_compression or sp > int(n * div) * self.compression_occ:
-                count = 0
-                for up in range(sp, sp - (sp % self.compression_occ), -1):
-                    if self.bwt.code[up] == c:
-                        count += 1
-
-                rank_sp = self.bwt.tally[c][int(sp * div)] + count
-
-            else:
-                count = 0
-                for down in range(sp + 1, sp + (self.compression_occ - (sp % self.compression_occ)) + 1):
-                    if self.bwt.code[down] == c:
-                        count += 1
-
-                rank_sp = self.bwt.tally[c][int(sp * div + 1)] - count
-
-            if ep % self.compression_occ == 0:
-                rank_ep = self.bwt.tally[c][int(ep * div)]
-
-            elif ep % self.compression_occ < half_compression or ep > int(n * div) * self.compression_occ:
-                count = 0
-                for up in range(ep, ep - (ep % self.compression_occ), -1):
-                    if self.bwt.code[up] == c:
-                        count += 1
-
-                rank_ep = self.bwt.tally[c][int(ep * div)] + count
-
-            else:
-                count = 0
-                for down in range(ep + 1, ep + (self.compression_occ - (ep % self.compression_occ)) + 1):
-                    if self.bwt.code[down] == c:
-                        count += 1
-                rank_ep = self.bwt.tally[c][int(ep * div + 1)] - count
+            rank_sp = self.bwt.rank(c, sp)
+            rank_ep = self.bwt.rank(c, ep)
 
             sp = self.bwt.f[c] + rank_sp - 1
             ep = self.bwt.f[c] + rank_ep - 1
+
             i = i - 1
 
         if sp >= ep:
@@ -360,7 +331,7 @@ if __name__ == "__main__":
     end = time.perf_counter_ns()
     print("time: ", ns * (end - start))
 
-    print(getsizeof(index.bwt))
+    # print(getsizeof(index.bwt))
 
     hist1 = []
     hist2 = []
@@ -384,3 +355,318 @@ if __name__ == "__main__":
     plot_hist(hist2)
     plot_hist(hist3)
     plot_hist(hist4)
+
+    hist_test = []
+    for i in range(10000):
+        hist_test = index.query_hist("AAAAGAATGCA", hist_test)
+        hist_test = index.query_hist("CGACACCACCAAGGCCACCCACCTGCCT", hist_test)
+        hist_test = index.query_hist("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG", hist_test)
+        hist_test = index.query_hist("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                                     "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA", hist_test)
+
+    plot_hist((hist_test))
+
+    print("read")
+    index = FmIndex.read("../../tests/data_for_tests/data/genome.chr22.fa.gz.sa16_index")
+
+    # The following strings are copied from the original genome
+
+    ns = 10 ** -9
+
+    print(len("AAAAGAATGCA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+    start = time.perf_counter_ns()
+    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+    start = time.perf_counter_ns()
+    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+    start = time.perf_counter_ns()
+    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+    start = time.perf_counter_ns()
+    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    # print(getsizeof(index.bwt))
+
+    print("read")
+    index = FmIndex.read("../../tests/data_for_tests/data/genome.chr22.fa.gz.sa16_index")
+
+    # The following strings are copied from the original genome
+
+    ns = 10 ** -9
+
+    print(len("AAAAGAATGCA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+    start = time.perf_counter_ns()
+    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+    start = time.perf_counter_ns()
+    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+    start = time.perf_counter_ns()
+    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+    start = time.perf_counter_ns()
+    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    # print(getsizeof(index.bwt))
+
+    print("read")
+    index = FmIndex.read("../../tests/data_for_tests/data/genome.chr22.fa.gz.wavelet8_index")
+
+    # The following strings are copied from the original genome
+
+    ns = 10 ** -9
+
+    print(len("AAAAGAATGCA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+    start = time.perf_counter_ns()
+    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+    start = time.perf_counter_ns()
+    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+    start = time.perf_counter_ns()
+    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+    start = time.perf_counter_ns()
+    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    # print(getsizeof(index.bwt))
+
+    print("read")
+    index = FmIndex.read("../../tests/data_for_tests/data/genome.chr22.fa.gz.wavelet16_index")
+
+    # The following strings are copied from the original genome
+
+    ns = 10 ** -9
+
+    print(len("AAAAGAATGCA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+    start = time.perf_counter_ns()
+    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+    start = time.perf_counter_ns()
+    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+    start = time.perf_counter_ns()
+    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+    start = time.perf_counter_ns()
+    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    # print(getsizeof(index.bwt))
+
+    print("read")
+    index = FmIndex.read("../../tests/data_for_tests/data/genome.chr22.fa.gz.wavelet32_index")
+
+    # The following strings are copied from the original genome
+
+    ns = 10 ** -9
+
+    print(len("AAAAGAATGCA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+    start = time.perf_counter_ns()
+    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+    start = time.perf_counter_ns()
+    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+    start = time.perf_counter_ns()
+    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+    start = time.perf_counter_ns()
+    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    # print(getsizeof(index.bwt))

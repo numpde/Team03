@@ -20,9 +20,6 @@ class TestIndexBW(TestCase):
             WaveletTree("A", strategy="fun")
 
         with self.assertRaises(ValueError):
-            WaveletTree("A", compression_occ=-1)
-
-        with self.assertRaises(ValueError):
             WaveletTree("A", compression_sa=-1)
 
         WaveletTree("CACGTACGTGTGCTAACACGTGTGTTTTTGAC")
@@ -49,8 +46,8 @@ class TestIndexBW(TestCase):
         for ref in refs:
             for comp in range(1, 50):
                 for i in range(1, len(ref)):
-                    bw_uncompressed = BurrowsWheeler(ref, compression_occ=1, compression_sa=1)
-                    bw = WaveletTree(ref, compression_occ=1, compression_sa=comp)
+                    bw_uncompressed = BurrowsWheeler(ref, compression_sa=1)
+                    bw = WaveletTree(ref, compression_sa=comp)
                     self.assertEqual(bw_uncompressed.sa[i], bw.get_sa(i))
 
     def test_algorithms(self):

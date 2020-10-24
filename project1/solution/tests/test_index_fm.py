@@ -102,7 +102,7 @@ class TestIndex(TestCase):
         fm_index = GenomeIndex(ref)
 
         fm_index.write(data_root / "index_data/index_small.data")
-        fm_index2 = GenomeIndex.read(data_root/ "index_data/index_small.data")
+        fm_index2 = GenomeIndex.read(data_root / "index_data/index_small.data")
 
         self.assertIsInstance(fm_index2, GenomeIndex)
 
@@ -111,3 +111,14 @@ class TestIndex(TestCase):
         self.assertEqual(fm_index.bwt.f, fm_index2.bwt.f)
         self.assertEqual(fm_index.bwt.tally, fm_index2.bwt.tally)
         self.assertEqual(fm_index.bwt.next_chars._data, fm_index2.bwt.next_chars._data)
+
+    def test_wavelet(self):
+
+        ref = "TAGANNGAGATCNGNNNATTNTTTNTCTNNNTGANCTGNACTGACTCAAAAAGN"
+
+        for query in ["ACT", "T", "TTT", "TTTT", "GNACT", "AAAA"]:
+            fm_index = GenomeIndex(ref)
+            wavelet = GenomeIndex(ref, wavelet=True)
+            fm_hits = fm_index.query(query)
+            wavelet_hits = wavelet.query(query)
+            self.assertEqual(fm_hits, wavelet_hits)

@@ -15,13 +15,11 @@
 # https://www.cs.helsinki.fi/u/tpkarkka/publications/icalp03.pdf
 import sys
 from typing import List, Tuple
-from BitVector import BitVector
-
+from bitarray import bitarray
+import numpy as np
 from humdum.utils import minidict
-
-from objsize import get_deep_size
-
 import time
+
 
 class BurrowsWheeler:
     """
@@ -54,7 +52,7 @@ class BurrowsWheeler:
     """
 
     def __init__(self, reference_genome: str, strategy: str = 'KaerkkaeinenSanders',
-                 compression_occ: int = 16, compression_sa: int = 8):
+                 compression_occ: int = 32, compression_sa: int = 32):
 
         if strategy not in ['KaerkkaeinenSanders', 'ManberMyers', 'Simple']:
             raise ValueError('strategy needs to be KaerkkaeinenSanders, ManberMyers or Simple ')
@@ -68,23 +66,27 @@ class BurrowsWheeler:
         if reference_genome[-1] != '$':
             reference_genome = reference_genome + '$'
 
+        # level of compression for occurrence matrix and suffix array
         self.compression_occ = compression_occ
         self.compression_sa = compression_sa
 
         # helper dictionary to determine the next character (used in query method)
         self.next_chars = minidict({'$': 'A', 'A': 'C', 'C': 'G', 'G': 'N', 'N': 'T', 'T': None})
 
-        # get Burrows Wheeler transformation and corresponding offsets in the suffix array
-        self.sa, self.bitvector, self.code = self.suffix_array(reference_genome, strategy, compression_sa)
+        # step size for the storage of the ranks of the bitvector used by the compressed suffix array
+        self.bucket_step = int(len(reference_genome) / np.log2(len(reference_genome)))
 
+        # get a compressed suffix array, bitvector indicating the stored indeces of the compressed suffix array
+        # and the burrows wheeler transformation
+        self.sa, self.bitvector, self.bucket, self.code = self.suffix_array(reference_genome, strategy, compression_sa)
 
         # compressed first column of Burrows Wheeler matrix (e.g. cumulative frequencies of characters)
         self.f = self._shifts_f(reference_genome)
 
         # occurrence matrix
-        # Structure: $ | A | C | G | N | T
-        # size: 6 * len(ref_genome) / compression * sizeof(int)
-        self.tally = self._build_tally(self.code)
+        # '$' will occur only once, therefore only the index needs to be stored
+        # Structure:  A | C | G | N | T
+        self.tally, self.index_s = self._build_tally(self.code)
 
     def _shifts_f(self, reference_genome: str) -> dict:
         """
@@ -114,19 +116,17 @@ class BurrowsWheeler:
 
         return shifts
 
-    def _build_tally(self, bw_transform: str) -> dict:
+    def _build_tally(self, bw_transform: str) -> Tuple[dict, int]:
         """
         Returns tallies, i.e. ranks/occurrence of characters.
         """
-
-        s = [int(bw_transform[0] == '$')]
+        index_s = int(bw_transform[0] == '$')
         a = [int(bw_transform[0] == 'A')]
         c = [int(bw_transform[0] == 'C')]
         g = [int(bw_transform[0] == 'G')]
         n = [int(bw_transform[0] == 'N')]
         t = [int(bw_transform[0] == 'T')]
 
-        count_s = s[0]
         count_a = a[0]
         count_c = c[0]
         count_g = g[0]
@@ -134,7 +134,7 @@ class BurrowsWheeler:
         count_t = t[0]
 
         for (count, item) in enumerate(bw_transform[1:], start=1):
-            count_s = count_s + (item == '$')
+            index_s += (item == '$') * count
             count_a = count_a + (item == 'A')
             count_c = count_c + (item == 'C')
             count_g = count_g + (item == 'G')
@@ -142,20 +142,19 @@ class BurrowsWheeler:
             count_t = count_t + (item == 'T')
 
             if not (count % self.compression_occ):
-                s.append(count_s)
                 a.append(count_a)
                 c.append(count_c)
                 g.append(count_g)
                 n.append(count_n)
                 t.append(count_t)
 
-        return {'$': s, 'A': a, 'C': c, 'G': g, 'N': n, 'T': t}
+        return {'A': a, 'C': c, 'G': g, 'N': n, 'T': t}, index_s
 
     def suffix_array(self, reference_genome: str, strategy: str,
-                     compression: int = 1) -> Tuple[List[int], BitVector, str]:
+                     compression: int = 1) -> Tuple[List[int], bitarray, List[int], str]:
         """
-        Returns the Burrows-Wheeler Transform (suffix, offset)
-        constructed by the suffix array of the reference_genome
+        Returns compressed suffix array, bitarray indicating stored indices of suffix array
+        and the burrows wheeler transformation
         """
 
         suffix_array = []
@@ -169,13 +168,29 @@ class BurrowsWheeler:
         code = self.get_bwt(reference_genome, suffix_array)
 
         if self.compression_sa == 1:
-            return (suffix_array, None, code)
+            return suffix_array, None, None, code
         else:
-            return ([num for num in suffix_array if num % compression == 0],
-                BitVector(bitlist=[1 if num % compression == 0 else 0 for num in suffix_array]), code)
+            suffix_compressed = []
+            bucket = [suffix_array[0] % compression == 0]
+            bits = []
+            rank = 0
+            for index, num in enumerate(suffix_array):
+                if num % compression == 0:
+                    bits.append(1)
+                    rank += 1
+                    suffix_compressed.append(num)
+                else:
+                    bits.append(0)
+
+                if index > 0 and index % self.bucket_step == 0:
+                    bucket.append(rank)
+
+            return (suffix_compressed, bitarray(bits), bucket, code)
 
     def suffix_array_kaerkkaeinensanders(self, reference_genome, n: int, k: int) -> List[int]:
-
+        """
+        Returns the suffix array created by the algorithm of Käerkkäeinen & Sanders
+        """
         def to_int(string: str) -> List[int]:
             str_to_int = {'$': 1, 'A': 2, 'C': 3, 'G': 4, 'N': 5, 'T': 6}
             return [str_to_int[char] for char in string]
@@ -290,7 +305,9 @@ class BurrowsWheeler:
         return sa
 
     def suffix_array_manbermyers(self, reference_genome: str) -> List[int]:
-
+        """
+        Returns the suffix array created by the algorithm of Manber & Myers
+        """
         def sort_chars(reference_genome: str) -> List[int]:
             n = len(reference_genome)
             order = [0] * n
@@ -371,8 +388,7 @@ class BurrowsWheeler:
 
     def suffix_array_simple(self, reference_genome):
         """
-        Returns the offsets of the sorted suffixes in reference genome
-        Given a reference_genome
+        Returns the suffix array
         """
 
         n = len(reference_genome)
@@ -384,7 +400,9 @@ class BurrowsWheeler:
         return offsets
 
     def get_bwt(self, reference_genome: str, suffix_array: List[int] = None) -> str:
-
+        """
+        Returns the burrows wheeler transformation given the corresponding suffix array
+        """
         suffix_array = suffix_array or self.sa
 
         bw_transform = []
@@ -398,11 +416,14 @@ class BurrowsWheeler:
         return ''.join(bw_transform)
 
     def __len__(self):
+        """
+        Returns the length of the burrows wheeler transformation
+        """
         return len(self.code) - 1
 
     def __str__(self):
         """
-        return original string
+        Returns original string
         """
         half_compression = self.compression_occ * 0.5
         n = len(self.code) - 1
@@ -414,7 +435,7 @@ class BurrowsWheeler:
         rank = 0
 
         for i in range(n - 1):
-            rank = self.get_occ(next_char, next_row)
+            rank = self.rank(next_char, next_row)
 
             skip = self.f[next_char]
             next_row = rank + skip - 1
@@ -425,27 +446,49 @@ class BurrowsWheeler:
         return original
 
     def __sizeof__(self):
+        """
+        Returns the size of the object in bytes
+        """
+        try:
+            from objsize import get_deep_size
+            print("sizes:")
+            print("compression_occ:\t ", get_deep_size(self.compression_occ))
+            print("compression_sa:\t\t ", get_deep_size(self.compression_sa))
+            print("bucket_step:\t\t ", get_deep_size(self.bucket_step))
+            print("next_chars\t\t\t ", get_deep_size(self.next_chars))
+            print("SA:\t\t\t\t\t ", get_deep_size(self.sa))
+            print("F:\t\t\t\t\t ", get_deep_size(self.f))
+            print("Occ:\t\t\t\t ", get_deep_size(self.tally))
+            print("bitvec:\t\t\t\t ", get_deep_size(self.bitvector))
+            print("code:\t\t\t\t ", get_deep_size(self.code))
+            print("bucket:\t\t\t\t ", get_deep_size(self.bucket))
 
-        print("sizes:")
-        print("compression_occ:\t ", get_deep_size(self.compression_occ))
-        print("compression_sa:\t\t ", get_deep_size(self.compression_sa))
-        print("next_chars\t\t\t ", get_deep_size(self.next_chars))
-        print("SA:\t\t\t\t\t ", get_deep_size(self.sa))
-        print("F:\t\t\t\t\t ", get_deep_size(self.f))
-        print("Occ:\t\t\t\t ", get_deep_size(self.tally))
-        print("bitvec:\t\t\t\t ", get_deep_size(self.bitvector))
-        print("code:\t\t\t\t ", get_deep_size(self.code))
-
-        total = get_deep_size(self.compression_occ) + get_deep_size(self.compression_sa) + \
-                get_deep_size(self.next_chars) + get_deep_size(self.sa) + \
+            total = get_deep_size(self.compression_occ) + get_deep_size(self.compression_sa) + \
+                get_deep_size(self.bucket_step) + get_deep_size(self.next_chars) + get_deep_size(self.sa) + \
                 get_deep_size(self.f) + get_deep_size(self.tally) + get_deep_size(self.bitvector) + \
-                get_deep_size(self.code)
+                get_deep_size(self.code) + get_deep_size(self.bucket)
 
-        print("Total:\t\t\t\t ", total)
+            print("Total:\t\t\t\t ", total)
 
-        return total
+            return total
+        except ImportError:
+            return 0
 
-    def get_occ(self, char: str, index: int) -> int:
+    def rank_bit(self, index: int) -> int:
+        """
+        Returns the rank of the bit @ index: index
+        """
+        if self.compression_sa == 0:
+            return index + 1
+
+        rank = 0
+        bucket_index = int(index / self.bucket_step)
+        for i in range(bucket_index * self.bucket_step + 1, index + 1):
+            rank += self.bitvector[i]
+
+        return self.bucket[bucket_index] + rank
+
+    def rank(self, char: str, index: int) -> int:
         """
         Return rank of character at position index
         """
@@ -457,6 +500,9 @@ class BurrowsWheeler:
         next_row = index
 
         rank = 0
+
+        if char == '$':
+            return int(index >= self.index_s)
 
         # Find rank of char
         if next_row % self.compression_occ == 0:
@@ -480,7 +526,6 @@ class BurrowsWheeler:
 
             return self.tally[next_char][int(next_row / self.compression_occ + 1)] - count
 
-
     def get_sa(self, index: int) -> int:
         """
         Return entry in Suffix Array at position index
@@ -488,7 +533,7 @@ class BurrowsWheeler:
         if self.compression_sa == 1:
             return self.sa[index]
         if self.bitvector[index] == 1:
-            return self.sa[self.bitvector.rank_of_bit_set_at_index(index) - 1]
+            return self.sa[self.rank_bit(index) - 1]
         else:
 
             half_compression = self.compression_occ * 0.5
@@ -500,7 +545,7 @@ class BurrowsWheeler:
             rank = 0
             counter = 0
             while self.bitvector[next_row] != 1:
-                rank = self.get_occ(next_char, next_row)
+                rank = self.rank(next_char, next_row)
 
                 skip = self.f[next_char]
                 next_row = rank + skip - 1
@@ -508,13 +553,12 @@ class BurrowsWheeler:
 
                 counter += 1
 
-
-            return self.sa[self.bitvector.rank_of_bit_set_at_index(next_row) - 1] + counter
+            return self.sa[self.rank_bit(next_row) - 1] + counter
 
 
 if __name__ == "__main__":
 
-    ref_genome = 'AGCTA'
+    ref_genome = 'TAGAATCGTTTTTTTTTTATCGACTACNACTACAAAAAAAAATGATCNTACNGTAA'
     # ref_genome = 'A'
     sample = 'CTCAGN'
 
@@ -538,7 +582,7 @@ if __name__ == "__main__":
 
     sys.getsizeof(bwt)
 
-    bwt = BurrowsWheeler(ref_genome, strategy='KaerkkaeinenSanders', compression_occ=10,compression_sa=10)
+    bwt = BurrowsWheeler(ref_genome, strategy='KaerkkaeinenSanders', compression_occ=10, compression_sa=2)
 
     print(bwt.sa)
     print(bwt.get_bwt(ref_genome))
@@ -554,6 +598,31 @@ if __name__ == "__main__":
 
     for i in range(len(ref_genome)):
         start = time.perf_counter_ns()
-        print(bwt.get_occ("A", i),time.perf_counter_ns() - start)
+        print(bwt.rank("A", i), time.perf_counter_ns() - start)
 
     print(str(bwt))
+
+
+    bwt = BurrowsWheeler(ref_genome, compression_occ=1, compression_sa=1)
+    bwt_comp = BurrowsWheeler(ref_genome, compression_occ=1, compression_sa=2)
+
+    print(len(ref_genome))
+    print(bwt.sa)
+    print(bwt.bitvector)
+    print(bwt.bucket)
+    print(bwt.bucket_step)
+    print(bwt.sa[0])
+    print("sa", bwt.sa[4])
+
+    print(bwt_comp.bitvector)
+    print(bwt_comp.bucket)
+    print(bwt_comp.bucket_step)
+    print(bwt_comp.sa[0])
+
+    print("sa", bwt_comp.get_sa(4))
+
+    bwt = BurrowsWheeler('AGCTA', compression_occ=10, compression_sa=10)
+
+    for i in range(len('AGCTA')):
+        start = time.perf_counter_ns()
+        print(bwt.rank("A", i), time.perf_counter_ns() - start)

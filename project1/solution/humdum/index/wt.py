@@ -1,7 +1,8 @@
 import sys
 import time
 from typing import List, Tuple
-from BitVector import BitVector
+from bitarray import bitarray
+import numpy as np
 from humdum.utils import minidict
 
 from objsize import get_deep_size
@@ -55,15 +56,17 @@ class WaveletTree:
         # helper dictionary to determine the next character (used in query method)
         self.next_chars = minidict({'$': 'A', 'A': 'C', 'C': 'G', 'G': 'N', 'N': 'T', 'T': None})
 
+        self.bucket_step_sa = int(len(reference_genome) / np.log2(len(reference_genome)))
+
         # get Burrows Wheeler transformation and corresponding offsets in the suffix array
-        self.sa, self.bitvector, bwt = self.suffix_array(reference_genome, strategy, compression_sa)
+        self.sa, self.bitvector, self.bucket_sa, bwt = self.suffix_array(reference_genome, strategy, compression_sa)
 
         # compressed first column of Burrows Wheeler matrix (e.g. cumulative frequencies of characters)
         self.f = self._shifts_f(reference_genome)
 
         # Bitvector of nodes; size = 2.5 * len(bwt)
 
-        self.bits = self.create_bit_vecs(bwt)
+        self.bits, self.bucket_bits, self.bucket_step_bits = self.create_bit_vecs(bwt)
 
         # Structure [Parent, Me, Left_child, Right_Child]
         self.meta = [[None, 0, 1, 2], [0, 1, 'N', 'A'], [0, 2, 3, 4], [2, 3, 'C', 'G'], [2, 4, 'T', '$'],
@@ -105,7 +108,7 @@ class WaveletTree:
         return shifts
 
     def suffix_array(self, reference_genome: str, strategy: str,
-                     compression: int = 1) -> Tuple[List[int], BitVector, str]:
+                     compression: int = 1) -> Tuple[List[int], bitarray, List[int], str]:
         """
         Returns the Burrows-Wheeler Transform (suffix, offset)
         constructed by the suffix array of the reference_genome
@@ -120,8 +123,25 @@ class WaveletTree:
             suffix_array = self.suffix_array_kaerkkaeinensanders(reference_genome, len(reference_genome), 6)
 
         code = self.get_bwt(reference_genome, suffix_array)
-        return ([num for num in suffix_array if num % compression == 0],
-                BitVector(bitlist=[1 if num % compression == 0 else 0 for num in suffix_array]), code)
+        if self.compression_sa == 1:
+            return suffix_array, None, None, code
+        else:
+            suffix_compressed = []
+            bucket = [suffix_array[0]%compression==0]
+            bits = []
+            rank = 0
+            for index, num in enumerate(suffix_array):
+                if num % compression == 0:
+                    bits.append(1)
+                    rank += 1
+                    suffix_compressed.append(num)
+                else:
+                    bits.append(0)
+
+                if index > 0 and index % self.bucket_step_sa == 0:
+                    bucket.append(rank)
+
+            return (suffix_compressed, bitarray(bits), bucket, code)
 
     def suffix_array_kaerkkaeinensanders(self, reference_genome, n: int, k: int) -> List[int]:
 
@@ -375,34 +395,55 @@ class WaveletTree:
 
     def __sizeof__(self):
 
+
         print("sizes:")
         print("compression_occ:\t ", get_deep_size(self.compression_occ))
         print("compression_sa:\t\t ", get_deep_size(self.compression_sa))
+        print("bucket_step_sa:\t\t ", get_deep_size(self.bucket_step_sa))
         print("next_chars\t\t\t ", get_deep_size(self.next_chars))
         print("SA:\t\t\t\t\t ", get_deep_size(self.sa))
+        print("bucket_sa:\t\t\t\t ", get_deep_size(self.bucket_sa))
         print("F:\t\t\t\t\t ", get_deep_size(self.f))
         print("bitvec:\t\t\t\t ", get_deep_size(self.bitvector))
         print("bits:\t\t\t\t ", get_deep_size(self.bits))
         print("meta:\t\t\t\t ", get_deep_size(self.meta))
         print("codes:\t\t\t\t ", get_deep_size(self.codes))
         print("n:\t\t\t\t\t ", get_deep_size(self.n))
+        print("bucket_bits:\t\t\t\t\t ", get_deep_size(self.bucket_bits))
+        print("bucket_step_bits:\t\t\t ", get_deep_size(self.bucket_step_bits))
 
         total = get_deep_size(self.compression_occ) + get_deep_size(self.compression_sa) + \
             get_deep_size(self.next_chars) + get_deep_size(self.sa) + \
             get_deep_size(self.f) + get_deep_size(self.bitvector) + get_deep_size(self.bits) + \
-            get_deep_size(self.meta) + get_deep_size(self.codes) + get_deep_size(self.n)
+            get_deep_size(self.meta) + get_deep_size(self.codes) + get_deep_size(self.n) + \
+            get_deep_size(self.bucket_step_sa) + get_deep_size(self.bucket_sa) + \
+            get_deep_size(self.bucket_bits) + get_deep_size(self.bucket_step_bits)
+
 
         print("Total:\t\t\t\t ", total)
 
         return total
 
+    def rank_bit(self, index: int) -> int:
+        if self.compression_sa == 0:
+            return index + 1
+
+        rank = 0
+        bucket_index = int(index / self.bucket_step_sa)
+        for i in range(bucket_index * self.bucket_step_sa + 1, index + 1):
+            rank +=  self.bitvector[i]
+
+        return self.bucket_sa[bucket_index] + rank
+
+
     def get_sa(self, index: int) -> int:
         """
         Return entry in Suffix Array at position index
         """
-
+        if self.compression_sa == 1:
+            return self.sa[index]
         if self.bitvector[index] == 1:
-            return self.sa[self.bitvector.rank_of_bit_set_at_index(index) - 1]
+            return self.sa[self.rank_bit(index) - 1]
         else:
 
             half_compression = self.compression_occ * 0.5
@@ -422,25 +463,81 @@ class WaveletTree:
 
                 counter += 1
 
-            return self.sa[self.bitvector.rank_of_bit_set_at_index(next_row) - 1] + counter
+            return self.sa[self.rank_bit(next_row) - 1] + counter
 
-    def create_bit_vecs(self, lbwt: str) -> List[BitVector]:
+    def create_bit_vecs(self, lbwt: str) -> Tuple[List[bitarray], List[List[int]], list]:
 
-        bit_vec0 = BitVector(bitlist=[0 if char == 'N' or char == 'A' else 1 for char in lbwt])
+        bit_vec0 = bitarray([0 if char == 'N' or char == 'A' else 1 for char in lbwt])
+
+        bucket0_step = int(len(bit_vec0) / np.log2(len(bit_vec0)))
+        bucket0 = [bit_vec0[0]]
+        rank = 0
+        for index, num in enumerate(bit_vec0):
+            rank += num
+            if index > 0 and index % bucket0_step == 0:
+                bucket0.append(rank)
 
         rbwt = [char for char in lbwt if char != 'N' and char != 'A']
         lbwt = [char for char in lbwt if char == 'N' or char == 'A']
 
-        bit_vec1 = BitVector(bitlist=[0 if char == 'N' else 1 for char in lbwt])
-        bit_vec2 = BitVector(bitlist=[0 if char == 'C' or char == 'G' else 1 for char in rbwt])
+        bit_vec1 = bitarray([0 if char == 'N' else 1 for char in lbwt])
+        bit_vec2 = bitarray([0 if char == 'C' or char == 'G' else 1 for char in rbwt])
+
+        bucket1_step = 0
+        bucket1 = []
+        if(len(bit_vec1)>0):
+            bucket1_step = int(len(bit_vec1) / max(np.log2(len(bit_vec1)), 1))
+            bucket1 = [bit_vec1[0]]
+            rank = 0
+            for index, num in enumerate(bit_vec1):
+                rank += num
+                if index > 0 and index % bucket1_step == 0:
+                    bucket1.append(rank)
+
+        bucket2_step = 0
+        bucket2 = []
+        if(len(bit_vec2)>0):
+            bucket2_step = int(len(bit_vec2) / max(np.log2(len(bit_vec2)), 1))
+            bucket2 = [bit_vec2[0]]
+            rank = 0
+            for index, num in enumerate(bit_vec2):
+                rank += num
+                if index > 0 and index % bucket2_step == 0:
+                    bucket2.append(rank)
 
         lbwt = [char for char in rbwt if char == 'C' or char == 'G']
         rbwt = [char for char in rbwt if char == 'T' or char == '$']
 
-        bit_vec3 = BitVector(bitlist=[0 if char == 'C' else 1 for char in lbwt])
-        bit_vec4 = BitVector(bitlist=[0 if char == 'T' else 1 for char in rbwt])
+        bit_vec3 = bitarray([0 if char == 'C' else 1 for char in lbwt])
+        bit_vec4 = bitarray([0 if char == 'T' else 1 for char in rbwt])
 
-        return [bit_vec0, bit_vec1, bit_vec2, bit_vec3, bit_vec4]
+        bucket3_step = 0
+        bucket3 = []
+
+        if(len(bit_vec3) > 0):
+            bucket3_step = int(len(bit_vec3) / max(np.log2(len(bit_vec3)), 1))
+            bucket3 = [bit_vec3[0]]
+            rank = 0
+            for index, num in enumerate(bit_vec3):
+                rank += num
+                if index > 0 and index % bucket3_step == 0:
+                    bucket3.append(rank)
+
+        bucket4_step = 0
+        bucket4 = []
+
+        if(len(bit_vec4)):
+            bucket4_step = int(len(bit_vec4) / max(np.log2(len(bit_vec4)), 1))
+            bucket4 = [bit_vec4[0]]
+            rank = 0
+            for index, num in enumerate(bit_vec4):
+                rank += num
+                if index > 0 and index % bucket4_step == 0:
+                    bucket4.append(rank)
+
+        return [bit_vec0, bit_vec1, bit_vec2, bit_vec3, bit_vec4] , [bucket0, bucket1, bucket2, bucket3, bucket4], \
+               [bucket0_step,bucket1_step, bucket2_step, bucket3_step, bucket4_step]
+
 
     def get_root(self) -> int:
         return 0
@@ -463,7 +560,7 @@ class WaveletTree:
 
         for code in codes:
 
-            rank = self.rank_bit(curr_index, curr_node)
+            rank = self.rank_bit_node(curr_index, curr_node)
 
             if self.bits[curr_node][curr_index] != code:
                 rank = curr_index - rank + 1
@@ -477,22 +574,20 @@ class WaveletTree:
 
         return rank
 
-    def rank_bit(self, index: int, node: int = 0) -> int:
+    def rank_bit_node(self, index: int, node: int = 0) -> int:
+        rank = 0
+        bucket_index = int(index / self.bucket_step_bits[node])
+        for i in range(bucket_index * self.bucket_step_bits[node] + 1, index + 1):
+            rank += self.bits[node][i] #self.bitvector[i]
+
+        rank += self.bucket_bits[node][bucket_index]
+
+
         if self.bits[node][index] == 1:
-            return self.bits[node].rank_of_bit_set_at_index(index)
+            return rank
         else:
-            next_set_index = self.bits[node].next_set_bit(index)
-            if next_set_index == -1:
-                i = index
-                while self.bits[node][i] != 1 and i >= 0:
-                    i -= 1
-                if i >= 0:
-                    return i + 1 - self.bits[node].rank_of_bit_set_at_index(i) + (index - i)
-                else:
-                    return index + 1
-            else:
-                rank0 = next_set_index + 1 - self.bits[node].rank_of_bit_set_at_index(next_set_index)
-            return rank0 - (next_set_index - index - 1)
+            return index + 1 - rank
+
 
     def access(self, index: int, node: int = 0) -> str:
 
@@ -515,7 +610,7 @@ class WaveletTree:
 
             curr_node = self.meta[curr_node][2 + bit]
 
-            curr_index = self.rank_bit(curr_index, par_node) - 1
+            curr_index = self.rank_bit_node(curr_index, par_node) - 1
             bit = self.bits[curr_node][curr_index]
 
         return self.meta[curr_node][2+bit]
@@ -530,29 +625,18 @@ if __name__ == "__main__":
     print("Reference genome: ", ref_genome)
     print("Sample: ", sample, "\n")
 
-    bwt = WaveletTree(ref_genome, strategy='Simple')
-
-    print(bwt.sa)
-
-    print(bwt.get_bwt(ref_genome))
-
-    bwt = WaveletTree(ref_genome, strategy='ManberMyers', compression_sa=1)
-
-    print(str(bwt))
-
-    print(bwt.get_sa(1))
-
-    print(bwt.sa)
-    print(bwt.get_bwt(ref_genome))
-
-    sys.getsizeof(bwt)
-
     bwt = WaveletTree(ref_genome, strategy='KaerkkaeinenSanders', compression_occ=10, compression_sa=10)
 
     print(bwt.sa)
     print(bwt.get_bwt(ref_genome))
 
     print(str(bwt.bitvector))
+
+    print(bwt.bits)
+
+    print(bwt.bucket_step_bits)
+    print(bwt.bucket_bits)
+
     for i in range(len(ref_genome)):
         start = time.perf_counter_ns()
         print(bwt.rank("A", i), time.perf_counter_ns() - start)
