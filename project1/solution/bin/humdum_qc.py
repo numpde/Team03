@@ -20,17 +20,8 @@ def report_this_file(file):
 def get_args():
     parser = ArgumentParser(description="Inspect SAM file for quality metrics.")
 
-    # parser.add_argument(
-    #     "fasta", type=str, nargs=1, help="Reference genome as FASTA file."
-    # )
-
-    parser.add_argument(
-        "sam_file", type=str, nargs=1, help="SAM file.",
-    )
-
-    parser.add_argument(
-        "output_path", type=str, nargs=1, help="Output path.",
-    )
+    parser.add_argument("sam_file", type=str, nargs=1, help="SAM file.")
+    parser.add_argument("output_path", type=str, nargs=1, help="Output path.")
 
     parsed_args = parser.parse_args()
 
