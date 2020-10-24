@@ -27,7 +27,7 @@ class TestFastaReader(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 list(from_fasta(fn.name))
 
-    def test_on_data_small(self):
+    def test_data_small_vs_biopython(self):
         source_path = data_root / "data_small"
         files = list(source_path.glob("*.fa"))
         assert files
