@@ -11,7 +11,7 @@ def map_pair(self, read1, read2) -> Iterable[AlignedSegment]:
 
     for (read, options) in zip([read1, read2], [options1, options2]):
         (i, _, _, j) = self.select_option(options)
-        (a, b) = propose_window(read_length=len(read), read_loc=i, ref_loc=j, ...)
+        (a, b) = propose_window(read_length=len(read), read_loc=i, ref_loc=j, **etc)
         genome_segment = self.ref_genome.seq[a:b]
         alignment = first(self.align(ref=genome_segment, query=read.seq))  # ALIGN!
         loc_in_ref = (alignment.loc_in_ref + a)
