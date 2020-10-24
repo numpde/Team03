@@ -5,6 +5,3 @@ generated with the
 with the default parameters.
 
 See the bash script [run_bwa.sh](./run_bwa.sh).
-
-
-
