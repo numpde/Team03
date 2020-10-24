@@ -145,7 +145,7 @@ class AllTheKingsHorses:
     def headers(self) -> typing.Iterable[str]:
         # https://samtools.github.io/hts-specs/SAMv1.pdf
         yield '\t'.join(["@HD", "VN:1.1", "SO:unsorted"])
-        yield '\t'.join(["@SQ", F"SN: {self.ref_genome.desc}", F"LN: {len(self.ref_genome.seq)}"])
+        yield '\t'.join(["@SQ", "SN:{}".format(self.ref_genome.desc), "LN:{}".format(len(self.ref_genome.seq))])
         yield '\t'.join(["@PG", "ID:humdum"])
 
     @classmethod
