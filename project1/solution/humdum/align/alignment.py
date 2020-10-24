@@ -18,6 +18,13 @@ class Alignment:
         self._end_pair = None
 
     @property
+    def tlen(self):
+        """
+        Length of the aligned portion of the reference.
+        """
+        return self._end_pair[0] - self._start_pair[0] + 1
+
+    @property
     def loc_in_query(self):
         """
         0-based.
@@ -141,4 +148,3 @@ class Alignment:
                 compressed += str(counter) + cigar_list[idx]
                 counter = 1
         self.cigar = compressed
-
