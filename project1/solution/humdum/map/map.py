@@ -3,7 +3,6 @@
 import humdum.io
 import collections
 import typing
-import inclusive
 import numpy
 
 _random_state = numpy.random.RandomState(0)
@@ -14,7 +13,7 @@ def all_kmers_by_score(read: humdum.io.Read, k: int) -> typing.Dict[float, typin
     Get all kmers arranged by phred score.
     """
     by_score = collections.defaultdict(list)
-    for i in inclusive.range[0, len(read.seq) - k]:
+    for i in range(0, len(read.seq) - k + 1):
         ii = slice(i, i + k)
         by_score[
             numpy.average(read.phred[ii])
