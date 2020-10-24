@@ -4,11 +4,13 @@ import unittest
 from pathlib import Path
 
 from humdum.io import from_fastq, Read
+from humdum.utils import relpath
+
+data_root = Path(__file__).parent / "data_for_tests"
 
 
 class TestFastqReader(unittest.TestCase):
-    def test_on_data_small(self):
-        data_root = Path(__file__).parent / "data_for_tests"
+    def test_data_small_vs_biopython(self):
         source_path = data_root / "data_small"
 
         from Bio import SeqIO
@@ -28,10 +30,9 @@ class TestFastqReader(unittest.TestCase):
                 # self.assertEqual(reference.description, candidate.desc)
 
     def test_on_data_large(self):
-        data_root = Path(__file__).parent / "data_for_tests"
         source_path = data_root / "data"
 
         files = source_path.glob("*.fq*")
         for file in files:
             n = len(list(from_fastq(file)))
-            print(F"File {file} has {n} reads.")
+            print(F"File {relpath(file)} has {n} reads.")
