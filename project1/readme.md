@@ -11,6 +11,17 @@ Our aligner is called Humpy Dumpty (humdum).
     Couldn't put Humpty together again.
 
 
+
+### Installation
+
+The command
+```{shell script}
+cd solution
+conda env create -f environment.yml
+```
+will create a new conda environment `Team03`.
+
+
 ### Usage
 
 #### Creating an index and aligning reads
