@@ -55,7 +55,6 @@ class Read:
 def from_fastq(file) -> typing.Iterable[Read]:
     """
     Yields FASTQ reads from file (filename or descriptor).
-    Note: seek(0) is called.
     """
 
     def phred_as_ints(phred_as_string: str) -> typing.List[int]:
@@ -103,7 +102,3 @@ class Pairwise:
         reads2 = from_fastq(file2)
         raise NotImplementedError
 
-
-def example():
-    for read in from_fastq(filename):
-        print(read)
