@@ -35,10 +35,10 @@ def coverage_pbp(file, reference_length=None) -> np.ndarray:
     counts = zeros(reference_length or 0)
     for read in from_sam(file):
         a = read.pos
-        for (n, A) in re.findall(r"([0-9]+)([XIDS=])", read.cigar):
+        for (n, A) in re.findall(r"([0-9]+)([XIDSM=])", read.cigar):
             b = a + int(n)
             assert (a < b), "Only expect positive numbers in CIGAR."
-            if (A == '='):
+            if (A in '=M'):
                 if (b > len(counts)):
                     counts = np.concatenate([counts, zeros(b - len(counts))])
                 counts[a:b] += 1
