@@ -99,6 +99,11 @@ the output folder.
 Mutatis mutandis for the large dataset. 
 
 
+### License
+
+See [here](solution/license.txt).
+
+
 ## Team members
 
 [RA](https://github.com/numpde/), LB, HK
