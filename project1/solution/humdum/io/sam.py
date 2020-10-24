@@ -1,6 +1,5 @@
 # RA, 2020-10-09
 
-import pysam
 import typing
 import collections
 
@@ -150,11 +149,12 @@ class AlignedSegment:
         ]))
 
 
-def from_sam_pysam(file) -> typing.Iterable[pysam.AlignedSegment]:
+def from_sam_pysam(file) -> typing.Iterable:
     """
     `file` can be file name or file descriptor.
     """
 
+    import pysam
     from humdum.io import open_maybe_gz
 
     with open_maybe_gz(file) as file:
