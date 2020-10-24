@@ -25,7 +25,8 @@ import numpy
 
 
 class UnmappedReadpair(Exception):
-    pass
+    def __init__(self, info):
+        self.info = info
 
 
 class AllTheKingsHorses:
@@ -82,10 +83,10 @@ class AllTheKingsHorses:
         (read2, options2) = self.map_one(read2).popitem()
 
         if (read1.is_forward == read2.is_forward):
-            raise UnmappedReadpair
+            raise UnmappedReadpair({'reads': [read1, read2], 'reason': "Directionality"})
 
         if (not options1) or (not options2):
-            raise UnmappedReadpair
+            raise UnmappedReadpair({'reads': [read1, read2], 'reason': "No mapping options"})
 
         ref_length = len(self.ref_genome.seq)
 
@@ -152,7 +153,7 @@ class AllTheKingsHorses:
         for (read1, read2) in zip(from_fastq(file1), from_fastq(file2)):
             try:
                 yield from self.map_pair(read1, read2)
-            except UnmappedReadpair:
+            except UnmappedReadpair as ex:
                 self.unmapped_readpairs += 1
 
     def headers(self) -> typing.Iterable[str]:
