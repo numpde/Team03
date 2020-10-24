@@ -14,7 +14,7 @@ genome_file = unlist1(data_root.glob("*.fa.gz"))
 
 
 class TestFm(TestCase):
-    def test_open_and_read(self):
+    def test_open_and_read_gz(self):
         with open_maybe_gz(genome_file) as fd:
             fd.readline()
             fd.readline()
@@ -35,19 +35,30 @@ class TestFm(TestCase):
                 line = fd.readline().rstrip()
                 if not line:
                     break
-        print("length", len(genome))
 
-        print("init")
+        # print("length", len(genome))
+
+        print("Indexing the genome")
         index = GenomeIndex(genome, compression_occ=16, compression_sa=1)
 
-        print("write")
-        index.write("data_for_tests/data/genome.chr22.fa.gz.index")
+        print("Writing the index file")
+        index.write(data_root / "genome.chr22.fa.gz.index")
+
+
+    def test_time_to_read(self):
+
+        t = time.perf_counter_ns()
+        GenomeIndex.read(data_root / "genome.chr22.fa.gz.index")
+        t = (time.perf_counter_ns() - t) * 1e-9
+
+        # About 30s
+        self.assertTrue(10 < t < 60)
 
 
     def test_read_query(self):
 
         print("read")
-        index = GenomeIndex.read("data_for_tests/data/genome.chr22.fa.gz.index")
+        index = GenomeIndex.read(data_root / "genome.chr22.fa.gz.index")
 
         # The following strings are copied from the original genome
 
