@@ -93,8 +93,15 @@ PYTHONPATH=. \
     "${O}"/*.sam "${O}"
 ```
 
-This will create diagnostic files in 
-the output folder.
+This will create diagnostic figures in 
+the output folder:
+
+<img src="output/data_small/alignment.sam.coverage.png" width="40%"/>
+<img src="output/data_small/alignment.sam.tlenhist.png" width="40%"/>
+
+![](output/data_small/alignment.sam.coverage.png)
+![](output/data_small/alignment.sam.tlenhist.png)
+
 
 Mutatis mutandis for the large dataset. 
 
