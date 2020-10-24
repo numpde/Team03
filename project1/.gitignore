@@ -8,6 +8,7 @@ data_for_tests
 **/input/data/*
 **/*.index
 **/output/data
+**/output_ref/data
 **/cache/download
 
 # PyCharm:
