@@ -4,11 +4,10 @@
 !**/UV/unversioned
 !**/UV/*_meta.txt
 # Big files:
+data_for_tests
 **/input/data/*
-**/index.data
 **/*.index
 **/output/data
-**/data_for_tests/data/**
 **/cache/download
 
 # PyCharm:
