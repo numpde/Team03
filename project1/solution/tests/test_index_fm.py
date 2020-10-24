@@ -3,6 +3,9 @@
 from humdum.index import FmIndex as GenomeIndex
 
 from unittest import TestCase
+from pathlib import Path
+
+data_root = Path(__file__).parent / "data_for_tests"
 
 
 class TestIndex(TestCase):
@@ -98,8 +101,8 @@ class TestIndex(TestCase):
 
         fm_index = GenomeIndex(ref)
 
-        fm_index.write("data_for_tests/index_data/index_small.data")
-        fm_index2 = GenomeIndex.read("data_for_tests/index_data/index_small.data")
+        fm_index.write(data_root / "index_data/index_small.data")
+        fm_index2 = GenomeIndex.read(data_root/ "index_data/index_small.data")
 
         self.assertIsInstance(fm_index2, GenomeIndex)
 
