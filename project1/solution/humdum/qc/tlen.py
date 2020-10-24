@@ -23,7 +23,7 @@ def tlen_hist(file):
     tlens_counts = numpy.asarray(list(Counter([
         read.tlen
         for read in from_sam(file)
-        if (read.tlen >= 0)
+        if (0 <= read.tlen <= 10000)
     ]).items())).T
 
     class _:
