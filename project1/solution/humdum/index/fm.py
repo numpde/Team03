@@ -183,9 +183,11 @@ class FmIndex:
     def read_or_make(cls, *, path_to_genome, path_to_index=None):
         """
         Create an index for the genome and write to file.
-        Attempt to read from file intead if it already exists.
+        Attempt to read from file instead if it already exists.
         Default `path_to_index` appends the suffix ".index".
         Returns the index.
+
+        RA, 2020-10-23
         """
 
         from pathlib import Path
