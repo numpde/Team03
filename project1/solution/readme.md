@@ -1,7 +1,11 @@
-## This is the readme file for the package humdum
+# Package humdum
 
+This is the readme for the `humdum` package.
 
-## To run the tests:
+Please see the readme one folder up
+for the "solution manual".
+
+## Running the tests
 
 Example:
 ```
@@ -10,5 +14,4 @@ python -m unittest tests/test_index_fm.py
 
 ## Contributors
 
-TODO
-
+[RA](https://github.com/numpde/), LB, HK
