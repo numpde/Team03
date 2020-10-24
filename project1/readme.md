@@ -50,8 +50,8 @@ This will first create an index file
 in the same folder as the reference genome,
 then output the SAM file.
 
-The aligner reports exactly one alignment per read.
-This alignment may be poor.
+The aligner reports at most one alignment per read.
+This alignment may still be poor.
 
 
 Run on the **large dataset** as follows.
