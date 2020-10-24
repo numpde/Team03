@@ -31,6 +31,7 @@ class TestATKH(TestCase):
 
             cigar_match = (mine.cigar == theirs.cigar)
             pos_match = (mine.pos == theirs.pos)
+            tlen_match = (mine.tlen == theirs.tlen)
 
             if cigar_match and pos_match:
                 print(F"Read {mine.qname} looks good.")
@@ -40,4 +41,8 @@ class TestATKH(TestCase):
                 print(F"Theirs:", theirs.cigar, "at", theirs.pos)
                 print(F"Read:  ", mine.seq)
                 # print(F"Neighborhood:  ", aligned_segments.ref_genome[(mine.pos - 10):(mine.pos + 10 + len(mine.seq))])
+
+            if not tlen_match:
+                print(F"tlen mismatch: {mine.tlen} (mine) vs {theirs.tlen} (theirs)")
+
 

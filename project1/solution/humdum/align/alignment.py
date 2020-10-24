@@ -14,7 +14,7 @@ class Alignment:
         self._start_pos = None
         # (i,j) coordinates of start_pos:
         self._start_pair = None
-        # (i,j) coordinates of end_pos
+        # (i,j) coordinates of end_pos (exclusive)
         self._end_pair = None
 
     @property
@@ -22,7 +22,7 @@ class Alignment:
         """
         Length of the aligned portion of the reference.
         """
-        return self._end_pair[0] - self._start_pair[0] + 1
+        return self._end_pair[0] - self._start_pair[0]
 
     @property
     def loc_in_query(self):

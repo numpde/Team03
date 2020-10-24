@@ -91,6 +91,10 @@ class AllTheKingsHorses:
 
         read2seg = {}
 
+        # Transcript beginning & end, inclusive range [ta, tb], 0-based
+        ta = None
+        tb = None
+
         for (read, options) in zip([read1, read2], [options1, options2]):
             (i, _, _, j) = self.select_option(options)
 
@@ -102,6 +106,10 @@ class AllTheKingsHorses:
             alignment = first(self.align(ref=w_segment, query=read.seq, alignment_type='semi-local'))
 
             loc_in_ref = (alignment.loc_in_ref + w[0])
+
+            # Infer transcript extent [ta, tb]
+            ta = min(loc_in_ref, loc_in_ref + alignment.tlen - 1, ta or ref_length)
+            tb = max(loc_in_ref, loc_in_ref + alignment.tlen - 1, tb or 1)
 
             seg = AlignedSegment()
             seg.qname = read.preprocessed.name
@@ -121,10 +129,12 @@ class AllTheKingsHorses:
         read2seg[read1].pnext = read2seg[read2].pos
         read2seg[read2].pnext = read2seg[read1].pos
 
-        # Get fragment length
-        # TODO: set tlen
-        # https://www.biostars.org/p/356811/
+        # Get fragment length (https://www.biostars.org/p/356811/)
+        tlen = tb - ta + 1  # Absolute length
+        for read in [read1, read2]:
+            read2seg[read].tlen = -tlen if read2seg[read].flag.is_minus_strand else tlen
 
+        # Yield in the correct order
         for read in [read1, read2]:
             yield read2seg[read]
 
