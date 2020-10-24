@@ -4,4 +4,4 @@ generated with the
 (v0.7.17-r1188)
 with the default parameters.
 
-See the bash script [run_bwa.sh](./run_bwa.sh).
+See the bash script [run_bwa.sh](run_bwa_small.sh).
