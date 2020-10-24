@@ -46,7 +46,7 @@ def qc1_coverage(sam_file: Path, output_path: Path):
     fig_file = with_suffix(".coverage.png")(output_path / sam_file.name)
 
     with Plox() as px:
-        px.a.plot(counts)
+        px.a.plot(counts, color="darkorange")
         px.a.set_xlabel("Position in genome")
         px.a.set_ylabel("Mapped coverage (counts)")
         px.f.savefig(report_this_file(fig_file))
@@ -61,7 +61,7 @@ def qc2_tlenhist(sam_file: Path, output_path: Path):
     fig_file = with_suffix(".tlenhist.png")(output_path / sam_file.name)
 
     with Plox() as px:
-        px.a.bar(x=hist.length, height=hist.counts, width=1)
+        px.a.bar(x=hist.length, height=hist.counts, width=1, color="darkorange")
         px.a.set_xlabel("Transcript length")
         px.a.set_ylabel("Counts")
         px.f.savefig(report_this_file(fig_file))
@@ -70,8 +70,10 @@ def qc2_tlenhist(sam_file: Path, output_path: Path):
 def main():
     args = get_args()
 
-    qc1_coverage(args.sam_file, args.output_path)
-    qc2_tlenhist(args.sam_file, args.output_path)
+    import matplotlib.pyplot as plt
+    with plt.style.context("dark_background"):
+        qc1_coverage(args.sam_file, args.output_path)
+        qc2_tlenhist(args.sam_file, args.output_path)
 
 
 if __name__ == '__main__':
