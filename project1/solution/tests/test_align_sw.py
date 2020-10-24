@@ -4,15 +4,14 @@
 from unittest import TestCase
 
 import numpy as np
-import pysam
 
 from humdum.align import Alignment
 from humdum.align import SmithWaterman
 
-Read = pysam.AlignedSegment
+from humdum.io import from_sam, from_fasta, AlignedSegment as Read
+from humdum.utils import first, unlist1
 
-from humdum.io import from_sam_pysam
-from humdum.utils import first
+from pathlib import Path
 
 
 class TestAlign(TestCase):
@@ -90,32 +89,31 @@ class TestAlign(TestCase):
         self.assertEqual(matching_segments, true_matching_segments)
 
     def test_sw_on_data_small(self, verbose=0):
-        from pathlib import Path
-        from Bio import SeqIO
+
 
         fa = Path(__file__).parent / "data_for_tests/data_small/genome.chr22.5K.fa"
 
-        reference = str(SeqIO.read(fa, format='fasta').seq)
+        reference = str(unlist1(list(from_fasta(fa))).seq)
 
         in_file = list((Path(__file__).parent / "data_for_tests/data_small/").glob("*.sam")).pop()
         max_reads = 2
-        for (read, __) in zip(from_sam_pysam(in_file), range(max_reads)):
+        for (read, __) in zip(from_sam(in_file), range(max_reads)):
             read: Read
             ref = reference
-            query = read.query_sequence
+            query = read.seq
             aligner = SmithWaterman()
             for alignment in aligner(ref=ref, query=query):
                 if verbose:
-                    print(alignment.cigar, ' vs ', read.cigarstring)
-                    print(read.query_qualities, ' vs ', alignment.score)
+                    print(alignment.cigar, ' vs ', read.cigar)
+                    print(read.mapq, ' vs ', alignment.score)
                     x, y, z = alignment.visualize(ref=ref, query=query)
                     print(x)
                     print(y)
                     print(z)
                     print(alignment.matching_subsegments(), ' vs ', read.cigar)
                 self.assertEqual(
-                    alignment.cigar, read.cigarstring,
-                    f'{alignment.cigar} is not equal to cigar from sam file {read.cigarstring}'
+                    alignment.cigar, read.cigar,
+                    f'{alignment.cigar} is not equal to cigar from sam file {read.cigar}'
                 )
 
     def test_linker_adapter_Ingolia2009(self):
