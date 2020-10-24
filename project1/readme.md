@@ -47,6 +47,8 @@ Run on the **large dataset** as follows.
 It will take some 15min to create the index
 before outputting the alignments.
 Reading an existing index takes about 30sec.
+After that, it will take a couple of weeks
+to align 10M reads.
 
 ```{shell script}
 cd solution
@@ -84,13 +86,6 @@ This will create diagnostic files in
 the output folder.
 
 Mutatis mutandis for the large dataset. 
-
-## Reference aligner
-
-To start developing and compare the quality metrics, 
-we used the [bwa tool](http://bio-bwa.sourceforge.net/)
-on the given data.
-This is in the folder [output_ref](./output_ref). 
 
 
 ## Team members
