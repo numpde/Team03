@@ -20,8 +20,8 @@ class TestATKH(TestCase):
     def test_on_data_large_5xCov(self):
         (read_file1, read_file2) = sorted(source_path.glob("*5xCov*.fq*"))
 
-        aligned_segments = AllTheKingsHorses.from_files(fa=genome_file, fq1=read_file1, fq2=read_file2)
+        sam = AllTheKingsHorses.from_files(fa=genome_file, fq1=read_file1, fq2=read_file2)
 
-        for alignment in at_most_n(aligned_segments, 50):
+        for alignment in at_most_n(sam.alignments, 50):
             print(alignment)
 
