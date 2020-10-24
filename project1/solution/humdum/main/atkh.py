@@ -9,7 +9,10 @@ from humdum.io import AlignedSegment
 from humdum.io import Sequence as FastaGenome
 from humdum.io import assert_order_consistency, from_fastq, Read
 
-from humdum.index import FmIndex as GenomeIndex
+try:
+    from humdum.index import FmIndex as GenomeIndex
+except ImportError:
+    from humdum.index.naive import NaiveIndex as GenomeIndex
 
 from humdum.align import Alignment
 from humdum.align import SmithWaterman as SequenceAligner
