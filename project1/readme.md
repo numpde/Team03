@@ -96,14 +96,15 @@ PYTHONPATH=. \
 This will create diagnostic figures in 
 the output folder:
 
+##### Coverage 
 <img src="output/data_small/alignment.sam.coverage.png" width="40%"/>
+
+##### Mapped transcript length histogram
 <img src="output/data_small/alignment.sam.tlenhist.png" width="40%"/>
 
-![](output/data_small/alignment.sam.coverage.png)
-![](output/data_small/alignment.sam.tlenhist.png)
+##### For the large dataset
 
-
-Mutatis mutandis for the large dataset. 
+Mutatis mutandis, in principle. 
 
 
 ### License
