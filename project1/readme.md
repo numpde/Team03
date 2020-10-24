@@ -46,6 +46,7 @@ This alignment may be poor.
 Run on the **large dataset** as follows.
 It will take some 15min to create the index
 before outputting the alignments.
+Reading an existing index takes about 30sec.
 
 ```{shell script}
 cd solution
@@ -59,7 +60,7 @@ mkdir -p "${O}"
 PYTHONPATH=. \
     python3 bin/humdum_aligner.py \
     "${I}"/genome*.fa.gz \
-    "${I}"/*${Cov}xCov1.fq.gz "${I}"/*${Cov}xCov2.fq.gz \
+    "${I}"/*_${Cov}xCov1.fq.gz "${I}"/*_${Cov}xCov2.fq.gz \
     > "${O}/alignment.sam"
 ```
 
