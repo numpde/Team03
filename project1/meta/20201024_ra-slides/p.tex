@@ -16,6 +16,7 @@ aspectratio = 149,
 \usecolortheme{owl}
 
 
+
 \usepackage{graphicx}
 \graphicspath{{./images/}}
 \AtBeginDocument{\DeclareGraphicsExtensions{.eps, .png, .gif, .pdf, .jpg}}
@@ -106,6 +107,29 @@ aspectratio = 149,
 %% http://tex.stackexchange.com/questions/17611/how-does-one-type-chinese-in-latex
 %\usepackage{CJKutf8}
 %\AtBeginDvi{\input{zhwinfonts}}
+
+
+\usepackage{listings}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+%backgroundcolor=\color{backcolour},
+otherkeywords={self,yield,True,False},
+commentstyle=\color{codegreen},
+keywordstyle=\color{magenta},
+numberstyle=\tiny\color{codegray},
+stringstyle=\color{codepurple},
+basicstyle=\ttfamily\scriptsize,
+breakatwhitespace=false, breaklines=true,
+captionpos=b, keepspaces=true, numbers=none, showspaces=false,
+numbersep=5pt, showstringspaces=false, showtabs=false, tabsize=2,
+}
+
+\lstset{style=mystyle}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -229,6 +253,16 @@ Cell Rep, 2016%
 				\includegraphics[width=0.35\textwidth]{tlenhist_small}
 			\end{itemize}
 			}
+
+			\bigskip
+			
+			\only<4>{
+			FM-Index: Luca
+			\qquad
+			S--W: Hendrik
+			\qquad
+			IO, QC, etc.: Roman
+			}
 		\end{minipage}
 		%
 		\begin{minipage}[t]{0.2\textwidth}
@@ -236,11 +270,26 @@ Cell Rep, 2016%
 			\includegraphics[height=0.85\textheight]{files}
 		\end{minipage}
 	\end{frame}
-
-	\begin{frame}[plain,t]{Humpy Dumpy aligner -- alignment strategy}{}
 	
+	%
+	
+	\begin{frame}[plain,t,fragile]{}{}
+		\only<1>{
+		\lstinputlisting[language=Python]{snippets/main.py}
+		}
+		\only<2>{
+		\lstinputlisting[language=Python]{snippets/map_paired.py}
+		}
+		\only<3>{
+		\lstinputlisting[language=Python]{snippets/map_one.py}
+		}
+		\only<4>{
+		\lstinputlisting[language=Python]{snippets/map_pair.py}
+		}
+		
+		\vspace{-5\baselineskip}
 	\end{frame}
-	
+
 %
 %%
 %
