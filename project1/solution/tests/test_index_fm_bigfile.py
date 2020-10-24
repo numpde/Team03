@@ -41,13 +41,13 @@ class TestFm(TestCase):
         index = GenomeIndex(genome, compression_occ=16, compression_sa=1)
 
         print("write")
-        index.write("data_for_tests/index_data/index.data")
+        index.write("data_for_tests/data/genome.chr22.fa.gz.index")
 
 
     def test_read_query(self):
 
         print("read")
-        index = GenomeIndex.read("data_for_tests/index_data/index.data")
+        index = GenomeIndex.read("data_for_tests/data/genome.chr22.fa.gz.index")
 
         # The following strings are copied from the original genome
 

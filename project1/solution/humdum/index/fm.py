@@ -83,80 +83,6 @@ class FmIndex:
         """
         return str(self.bwt)
 
-    def query_new(self, sample: str) -> List[int]:
-        """
-                Query index_data for a given sample.
-                Returns a list of all positions in the reference genome (0-based).
-                """
-
-        self.__string_checks(sample)
-
-        if len(sample) >= len(self.bwt.code):
-            raise ValueError(
-                F"Sample length may not exceed that of the reference genome ({len(self)})."
-            )
-
-        half_compression = 0.5 * self.compression_occ
-
-        n = len(self.bwt.code) - 1
-
-        i = len(sample) - 1
-        c = sample[i]
-        sp = self.bwt.f[c] - 1
-        ep = self.bwt.f[self.bwt.next_chars[c]] - 1
-
-        div = 1. / self.compression_occ
-
-        while ep > sp and i >= 1:
-            print(i)
-            c = sample[i - 1]
-
-            if sp % self.compression_occ == 0:
-                rank_sp = self.bwt.tally[c][int(sp * div)]
-
-            elif sp % self.compression_occ < half_compression or sp > int(n * div) * self.compression_occ:
-                count = 0
-                for up in range(sp, sp - (sp % self.compression_occ), -1):
-                    if self.bwt.code[up] == c:
-                        count += 1
-
-                rank_sp = self.bwt.tally[c][int(sp * div)] + count
-
-            else:
-                count = 0
-                for down in range(sp + 1, sp + (self.compression_occ - (sp % self.compression_occ)) + 1):
-                    if self.bwt.code[down] == c:
-                        count += 1
-
-                rank_sp = self.bwt.tally[c][int(sp * div + 1)] - count
-
-            if ep % self.compression_occ == 0:
-                rank_ep = self.bwt.tally[c][int(ep * div)]
-
-            elif ep % self.compression_occ < half_compression or ep > int(n * div) * self.compression_occ:
-                count = 0
-                for up in range(ep, ep - (ep % self.compression_occ), -1):
-                    if self.bwt.code[up] == c:
-                        count += 1
-
-                rank_ep = self.bwt.tally[c][int(ep * div)] + count
-
-            else:
-                count = 0
-                for down in range(ep + 1, ep + (self.compression_occ - (ep % self.compression_occ)) + 1):
-                    if self.bwt.code[down] == c:
-                        count += 1
-                rank_ep = self.bwt.tally[c][int(ep * div + 1)] - count
-
-            sp = self.bwt.f[c] + rank_sp - 1
-            ep = self.bwt.f[c] + rank_ep - 1
-            i = i - 1
-
-        if sp >= ep:
-            return []
-        else:
-            return [self.bwt.get_sa(i) for i in range(sp + 1, ep + 1)]
-
     def query(self, sample: str) -> List[int]:
         """
         Query index_data for a given sample.
@@ -249,7 +175,8 @@ class FmIndex:
 
         with bz2.BZ2File(str(path_to_file), 'r') as fd:
             index = pickle.load(fd)
-            assert isinstance(index, FmIndex)
+            import humdum
+            assert isinstance(index, FmIndex) or isinstance(index, humdum.index.FmIndex)
             return index
 
     @classmethod
@@ -272,6 +199,40 @@ class FmIndex:
             return cls.read(path_to_index)
         else:
             return cls(ref_genome).write(path_to_index)
+
+    def query_hist(self, sample: str, hist: List[float]) -> List[float]:
+        """
+        Returns the time it takes to query the sample
+        Result of the sample query is not returned (use method query(str))
+        """
+        start = time.perf_counter_ns()
+        self.query(sample)
+        end = time.perf_counter_ns()
+        hist.append(end - start)
+        return hist
+
+
+def plot_hist(hist: List[float]):
+    """
+    Plots a histogram around the mean +- 2 standard deviations
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    hist = np.array(hist)
+
+    mu, sigma = hist.mean(), hist.var()
+
+    # the histogram of the data
+    n, bins, patches = plt.hist(hist, bins=int(np.sqrt(len(hist))),
+                                range=(mu - 2 * sigma ** 0.5, mu + 2 * sigma ** 0.5), density=True)
+
+    plt.xlabel('Time [ns]')
+    plt.ylabel('Frequency')
+    plt.title(r'$\mathrm{Histogram\ of\ query time:}\ \mu= %1.f \ ns,\ \sigma= %1.f \ ns$' % (mu, sigma))
+    plt.grid(True)
+
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -301,9 +262,9 @@ if __name__ == "__main__":
     print(code)
     print(str(index))
 
-    index.write()
+    index.write("index.data")
 
-    index2 = FmIndex.read()
+    index2 = FmIndex.read("index.data")
 
     print(F'kmer match {sample}')
     match = index2.query(sample)
@@ -396,3 +357,26 @@ if __name__ == "__main__":
     print("time: ", ns * (end - start))
 
     print(getsizeof(index.bwt))
+
+    hist1 = []
+    hist2 = []
+    hist3 = []
+    hist4 = []
+
+    for i in range(10000):
+        hist1 = index.query_hist("AAAAGAATGCA", hist1)
+
+    for i in range(10000):
+        hist2 = index.query_hist("CGACACCACCAAGGCCACCCACCTGCCT", hist2)
+
+    for i in range(10000):
+        hist3 = index.query_hist("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG", hist3)
+
+    for i in range(10000):
+        hist4 = index.query_hist("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                                 "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA", hist4)
+
+    plot_hist(hist1)
+    plot_hist(hist2)
+    plot_hist(hist3)
+    plot_hist(hist4)
