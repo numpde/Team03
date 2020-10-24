@@ -271,7 +271,9 @@ class FmIndex:
         if path_to_index.is_file():
             return cls.read(path_to_index)
         else:
-            return cls(ref_genome).write(path_to_index)
+            from humdum.io import from_fasta
+            from humdum.utils import unlist1
+            return cls(unlist1(list(from_fasta(path_to_genome))).seq).write(path_to_index)
 
 
 if __name__ == "__main__":
