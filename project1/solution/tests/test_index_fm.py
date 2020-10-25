@@ -101,6 +101,8 @@ class TestIndex(TestCase):
 
         fm_index = GenomeIndex(ref)
 
+        Path(data_root / "index_data").mkdir(parents=True, exist_ok=True)
+
         fm_index.write(data_root / "index_data/index_small.data")
         fm_index2 = GenomeIndex.read(data_root / "index_data/index_small.data")
 
@@ -109,7 +111,6 @@ class TestIndex(TestCase):
         self.assertEqual(fm_index.bwt.sa, fm_index2.bwt.sa)
         self.assertEqual(str(fm_index), str(fm_index2))
         self.assertEqual(fm_index.bwt.f, fm_index2.bwt.f)
-        self.assertEqual(fm_index.bwt.tally, fm_index2.bwt.tally)
         self.assertEqual(fm_index.bwt.next_chars._data, fm_index2.bwt.next_chars._data)
 
     def test_wavelet(self):

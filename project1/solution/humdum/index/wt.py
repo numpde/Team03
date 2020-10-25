@@ -4,7 +4,6 @@ from bitarray import frozenbitarray
 import numpy as np
 from humdum.utils import minidict
 
-from objsize import get_deep_size
 
 # How wavelet trees work by Ben Langmead
 # https://www.youtube.com/watch?v=JszVzStky1E&t=21s
