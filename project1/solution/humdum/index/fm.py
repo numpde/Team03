@@ -1,13 +1,5 @@
 # LB, pre- 2020-10-09
 
-
-# TODO:
-# -BWT can be compressed => Wavelet trees (also occurrence matrix could be removed)
-
-# DONE:
-# -First column compressed to a dict of 6 entries
-# -suffix compressed (additional bitvector)
-# -occurrence matrix compressed (store every kth row)
 import time
 from humdum.index import BurrowsWheeler
 from humdum.index.wt import WaveletTree
