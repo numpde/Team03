@@ -34,8 +34,8 @@ run the aligner as follows:
 ```
 cd solution
 
-I="input/data_small"
-O="output/data_small"
+I="../input/data_small"
+O="../output/data_small"
 
 mkdir -p "${O}"
 
