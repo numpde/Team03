@@ -18,7 +18,6 @@ try:
     healthcheck_index(GenomeIndex)
 except Exception as ex:
     print(F"Warning: FmIndex import failed in {__file__} ({ex}).", file=sys.stderr)
-else:
     from humdum.index.naive import NaiveIndex as GenomeIndex
 
 from humdum.align import Alignment
