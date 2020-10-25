@@ -4,6 +4,8 @@
 The decision nexus.
 """
 
+import sys
+
 from humdum.io import from_fasta
 from humdum.io import AlignedSegment
 from humdum.io import Sequence as FastaGenome
@@ -12,6 +14,7 @@ from humdum.io import assert_order_consistency, from_fastq, Read
 try:
     from humdum.index import FmIndex as GenomeIndex
 except ImportError:
+    print(F"Warning: FmIndex import failed in {__file__}.", file=sys.stderr)
     from humdum.index.naive import NaiveIndex as GenomeIndex
 
 from humdum.align import Alignment

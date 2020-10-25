@@ -5,4 +5,5 @@ try:
     from .bw import BurrowsWheeler
     from .fm import FmIndex
 except ModuleNotFoundError:
-    pass
+    import sys
+    print(F"Warning: Import failed in {__file__}.", file=sys.stderr)
