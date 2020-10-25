@@ -17,9 +17,12 @@ from unittest import TestCase
 from humdum.utils import relpath, unlist1
 from contextlib import redirect_stdout
 
-path = Path(__file__).parent.parent
-assert str(path).endswith("solution")
-os.chdir(path)
+basepath = Path(__file__).parent.parent
+assert str(basepath).endswith("solution")
+os.chdir(basepath)
+
+out_path = Path(__file__).parent / "data_for_tests/test_bin/output/data_small"
+out_path.mkdir(exist_ok=True, parents=True)
 
 
 # https://stackoverflow.com/questions/33469246/how-do-i-write-python-unit-tests-for-scripts-in-my-bin-directory
@@ -33,18 +36,17 @@ def import_from_source(name: str, file_path: str) -> types.ModuleType:
     return module
 
 
-mod: types.ModuleType = import_from_source("humdum_aligner", str(path / "bin/humdum_aligner.py"))
-
-
 class TestBin(TestCase):
     def test_humdum_aligner_data_small(self):
+        mod: types.ModuleType = import_from_source("humdum_aligner", str(basepath / "bin/humdum_aligner.py"))
+
         fa = unlist1(list(Path.cwd().glob("../input/data_small/*.fa")))
         (fq1, fq2) = sorted(map(relpath, Path.cwd().glob("../input/data_small/*.fq")))
 
-        out = Path.cwd() / "../output/data_small/alignment.sam"
+        out = out_path / "alignment.sam"
         out.parent.mkdir(exist_ok=True, parents=True)
 
-        sys.argv = ["humdum_aligner.py", str(fa), str(fq1), str(fq2)]
+        sys.argv = ["humdum_aligner.py", str(relpath(fa)), str(relpath(fq1)), str(relpath(fq2))]
 
         with out.open(mode="w") as fd:
             with redirect_stdout(fd):
@@ -57,3 +59,12 @@ class TestBin(TestCase):
             candidate = hashlib.md5(fd.read()).hexdigest()
 
         self.assertEqual(reference, candidate)
+
+    def test_humdum_qc_data_small(self):
+        mod: types.ModuleType = import_from_source("humdum_aligner", str(basepath / "bin/humdum_qc.py"))
+
+        sam = unlist1(list(out_path.glob("*.sam")))
+
+        sys.argv = ["humdum_qc.py", str(relpath(sam)), str(relpath(out_path))]
+
+        mod.main()
