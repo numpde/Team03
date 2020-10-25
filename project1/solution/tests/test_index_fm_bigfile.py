@@ -38,25 +38,25 @@ class TestFm(TestCase):
         print("length", len(genome))
 
         print("init")
-        index = GenomeIndex(genome, compression_occ=32, compression_sa=32,wavelet=True)
+        index = GenomeIndex(genome)
 
         print("write")
-        index.write("data_for_tests/data/genome.chr22.fa.gz.wavelet_index")
+        index.write(data_root / "genome.chr22.fa.gz.sa32_index")
 
 
     def test_time_to_read(self):
 
         t = time.perf_counter_ns()
-        GenomeIndex.read(data_root / "genome.chr22.fa.gz.index")
+        GenomeIndex.read(data_root / "genome.chr22.fa.gz.sa32_index")
         t = (time.perf_counter_ns() - t) * 1e-9
 
         # About 30s
-        #self.assertTrue(10 < t < 60)
+        self.assertTrue(0 <= t < 300)
 
     def test_read_query(self):
 
         print("read")
-        index = GenomeIndex.read("data_for_tests/data/genome.chr22.fa.gz.wavelet_index")
+        index = GenomeIndex.read(data_root / "genome.chr22.fa.gz.sa32_index")
 
         # The following strings are copied from the original genome
 

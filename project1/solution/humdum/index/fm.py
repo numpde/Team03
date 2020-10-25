@@ -54,7 +54,7 @@ class FmIndex:
         if not string:
             raise ValueError("The string must not be empty.")
 
-    def __init__(self, reference_genome: str, compression_occ: int = 16, compression_sa: int = 16, wavelet=False):
+    def __init__(self, reference_genome: str, compression_occ: int = 32, compression_sa: int = 32, wavelet=True):
 
         if compression_occ < 1 or compression_sa < 1:
             raise ValueError("compression coefficients need to be strictly positive >=0")
@@ -107,8 +107,6 @@ class FmIndex:
         c = sample[i]
         sp = self.bwt.f[c] - 1
         ep = self.bwt.f[self.bwt.next_chars[c]] - 1
-
-        div = 1. / self.compression_occ
 
         while ep > sp and i >= 1:
             c = sample[i - 1]
@@ -551,6 +549,189 @@ if __name__ == "__main__":
 
     print("read")
     index = FmIndex.read("../../tests/data_for_tests/data/genome.chr22.fa.gz.wavelet16_index")
+
+    # The following strings are copied from the original genome
+
+    ns = 10 ** -9
+
+    print(len("AAAAGAATGCA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+    start = time.perf_counter_ns()
+    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+    start = time.perf_counter_ns()
+    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+    start = time.perf_counter_ns()
+    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+    start = time.perf_counter_ns()
+    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    # print(getsizeof(index.bwt))
+
+    print("read")
+    index = FmIndex.read("../../tests/data_for_tests/data/genome.chr22.fa.gz.wavelet32_index")
+
+    # The following strings are copied from the original genome
+
+    ns = 10 ** -9
+
+    print(len("AAAAGAATGCA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+    start = time.perf_counter_ns()
+    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+    start = time.perf_counter_ns()
+    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+    start = time.perf_counter_ns()
+    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+    start = time.perf_counter_ns()
+    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    # print(getsizeof(index.bwt))
+
+    print("read")
+    index = FmIndex.read("../../tests/data_for_tests/data/genome.chr22.fa.gz.wavelet8_index")
+
+    # The following strings are copied from the original genome
+
+    ns = 10 ** -9
+
+    print(len("AAAAGAATGCA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+    start = time.perf_counter_ns()
+    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+    start = time.perf_counter_ns()
+    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("CGACACCACCAAGGCCACCCACCTGCCT"))
+    start = time.perf_counter_ns()
+    index.query("CGACACCACCAAGGCCACCCACCTGCCT")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG"))
+    start = time.perf_counter_ns()
+    index.query("GGCATTTACAACTAAAACATTGAATTCAGATTCATTTTCAGGTAATGATATAATCATGTG")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    print(len("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+              "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
+    start = time.perf_counter_ns()
+    index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
+                "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")
+    end = time.perf_counter_ns()
+    print("time: ", ns * (end - start))
+
+    # print(getsizeof(index.bwt))
+
+    print("read wavelet1")
+    index = FmIndex.read("../../tests/data_for_tests/data/genome.chr22.fa.gz.wavelet1_index")
 
     # The following strings are copied from the original genome
 

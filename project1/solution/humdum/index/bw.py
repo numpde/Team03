@@ -15,7 +15,7 @@
 # https://www.cs.helsinki.fi/u/tpkarkka/publications/icalp03.pdf
 import sys
 from typing import List, Tuple
-from bitarray import bitarray
+from bitarray import frozenbitarray
 import numpy as np
 from humdum.utils import minidict
 import time
@@ -74,7 +74,7 @@ class BurrowsWheeler:
         self.next_chars = minidict({'$': 'A', 'A': 'C', 'C': 'G', 'G': 'N', 'N': 'T', 'T': None})
 
         # step size for the storage of the ranks of the bitvector used by the compressed suffix array
-        self.bucket_step = int(len(reference_genome) / np.log2(len(reference_genome)))
+        self.bucket_step = int(np.log2(len(reference_genome)))
 
         # get a compressed suffix array, bitvector indicating the stored indeces of the compressed suffix array
         # and the burrows wheeler transformation
@@ -151,7 +151,7 @@ class BurrowsWheeler:
         return {'A': a, 'C': c, 'G': g, 'N': n, 'T': t}, index_s
 
     def suffix_array(self, reference_genome: str, strategy: str,
-                     compression: int = 1) -> Tuple[List[int], bitarray, List[int], str]:
+                     compression: int = 1) -> Tuple[List[int], frozenbitarray, List[int], str]:
         """
         Returns compressed suffix array, bitarray indicating stored indices of suffix array
         and the burrows wheeler transformation
@@ -185,7 +185,7 @@ class BurrowsWheeler:
                 if index > 0 and index % self.bucket_step == 0:
                     bucket.append(rank)
 
-            return (suffix_compressed, bitarray(bits), bucket, code)
+            return (suffix_compressed, frozenbitarray(bits), bucket, code)
 
     def suffix_array_kaerkkaeinensanders(self, reference_genome, n: int, k: int) -> List[int]:
         """
