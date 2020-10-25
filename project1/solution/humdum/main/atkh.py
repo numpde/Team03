@@ -13,8 +13,12 @@ from humdum.io import assert_order_consistency, from_fastq, Read
 
 try:
     from humdum.index import FmIndex as GenomeIndex
-except ImportError:
-    print(F"Warning: FmIndex import failed in {__file__}.", file=sys.stderr)
+    from humdum.qc import healthcheck_index
+
+    healthcheck_index(GenomeIndex)
+except Exception as ex:
+    print(F"Warning: FmIndex import failed in {__file__} ({ex}).", file=sys.stderr)
+else:
     from humdum.index.naive import NaiveIndex as GenomeIndex
 
 from humdum.align import Alignment
