@@ -27,7 +27,7 @@ from humdum.map import random_kmers, propose_window
 from humdum.utils import unlist1, first
 
 import typing
-import numpy
+from collections import Counter
 
 
 class UnmappedReadpair(Exception):
@@ -79,9 +79,17 @@ class AllTheKingsHorses:
 
     @staticmethod
     def select_option(options):
+        """
+        `options` is a list-like of tuples (i, *, qual, j)
+        where j is the location of a kmer in the reference.
+        Returns one of the options with the most common j.
+        """
         options: typing.List[typing.Tuple[int, str, float, int]]
+        # Locations in the reference
         in_ref = [j for (_, _, _, j) in options]
-        j = int(numpy.percentile(in_ref, 50, interpolation='nearest'))
+        # Find the mode
+        (_, j) = max(Counter(in_ref).items(), key=(lambda x: x[1]))
+        # Select one of the matching options
         return max(options, key=(lambda x: (x[3] == j)))
 
     def map_pair(self, read1, read2) -> typing.Iterable[AlignedSegment]:
@@ -109,8 +117,19 @@ class AllTheKingsHorses:
 
             w_segment = self.ref_genome.seq[w[0]:w[1]]
 
-            alignment: Alignment
-            alignment = first(self.align(ref=w_segment, query=read.seq, alignment_type='semi-local'))
+            # 0-based
+            j_in_window = j - w[0]
+            i_in_query = i
+
+            assert (
+                    read.seq[i_in_query:(i_in_query + self.Settings.seed_kmer_size)]
+                    ==
+                    w_segment[j_in_window:(j_in_window + self.Settings.seed_kmer_size)]
+            )
+
+            alignment: Alignment = first(
+                self.align(ref=w_segment, query=read.seq, alignment_type='semi-local', seed=(j_in_window, i_in_query))
+            )
 
             loc_in_ref = (alignment.loc_in_ref + w[0])
 
@@ -124,7 +143,8 @@ class AllTheKingsHorses:
             # is_reversed, is_secondary_alignment
             seg.flag.is_minus_strand = not read.is_forward
             seg.flag.is_secondary_alignment = False
-            seg.mapq = alignment.score  # TODO: is this OK
+            seg.mapq = alignment.score
+            seg.mapq = max(min(int(seg.mapq), 255), 0)  # should be an integer in [0, 255]
             seg.cigar = alignment.cigar
             seg.pos = loc_in_ref + 1
             seg.seq = read.seq
