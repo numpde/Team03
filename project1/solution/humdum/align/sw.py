@@ -88,7 +88,12 @@ class SmithWaterman:
             alignment.make_alignment_semilocal(query=query, mismatch_cost=self.mismatch_cost)
         yield alignment
 
-    def __call__(self, *, ref: str, query: str, alignment_type: str = 'local') -> typing.Iterator[Alignment]:
+    def __call__(
+            self, *,
+            ref: str, query: str,
+            alignment_type: str = 'local',
+            seed: typing.Tuple[int, int]
+    ) -> typing.Iterator[Alignment]:
         """
         Implements the Smith-Waterman alignment
         with linear gap penalty (same scores for opening and extending a gap)
@@ -109,6 +114,11 @@ class SmithWaterman:
         if alignment_type not in ['local', 'semi-local']:
             raise NotImplementedError(
                 f'alignment type: {alignment_type} is not implemented. Chose between "local" and "semi-local"')
+
+        # A kmer of length ~25 matches at those positions
+        (seed_i, seed_j) = seed
+        assert (ref[seed_i] == query[seed_j])
+
         self.scoring_matrix = self._compute_scoring_matrix(ref=ref, query=query)
         self.score = np.max(self.scoring_matrix)
         self.alignment_type = alignment_type
