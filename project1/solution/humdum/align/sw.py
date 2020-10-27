@@ -92,7 +92,7 @@ class SmithWaterman:
             self, *,
             ref: str, query: str,
             alignment_type: str = 'local',
-            seed: typing.Tuple[int, int]
+            seed: typing.Tuple[int, int] = None
     ) -> typing.Iterator[Alignment]:
         """
         Implements the Smith-Waterman alignment
@@ -115,9 +115,10 @@ class SmithWaterman:
             raise NotImplementedError(
                 f'alignment type: {alignment_type} is not implemented. Chose between "local" and "semi-local"')
 
-        # A kmer of length ~25 matches at those positions
-        (seed_i, seed_j) = seed
-        assert (ref[seed_i] == query[seed_j])
+        if seed is not None:
+            # A kmer of length ~25 matches at those positions
+            (seed_i, seed_j) = seed
+            assert (ref[seed_i] == query[seed_j])
 
         self.scoring_matrix = self._compute_scoring_matrix(ref=ref, query=query)
         self.score = np.max(self.scoring_matrix)
