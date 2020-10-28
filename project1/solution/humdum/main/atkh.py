@@ -143,8 +143,9 @@ class AllTheKingsHorses:
             # is_reversed, is_secondary_alignment
             seg.flag.is_minus_strand = not read.is_forward
             seg.flag.is_secondary_alignment = False
-            seg.mapq = alignment.score
-            seg.mapq = max(min(int(seg.mapq), 255), 0)  # should be an integer in [0, 255]
+            seg.mapq = int(alignment.score)
+            # should be an integer in [0, 255]...
+            # seg.mapq = max(min(int(seg.mapq), 255), 0)
             seg.cigar = alignment.cigar
             seg.pos = loc_in_ref + 1
             seg.seq = read.seq

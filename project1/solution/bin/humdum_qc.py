@@ -5,6 +5,7 @@ from pathlib import Path
 
 from humdum.qc.coverage import coverage_pbp
 from humdum.qc.tlen import tlen_hist
+from humdum.qc.mapq import mapq_hist
 
 from humdum.utils import relpath
 from humdum.utils import Plox
@@ -67,6 +68,21 @@ def qc2_tlenhist(sam_file: Path, output_path: Path):
         px.f.savefig(report_this_file(fig_file))
 
 
+def qc3_mapqhist(sam_file: Path, output_path: Path):
+    assert sam_file.is_file()
+    assert output_path.is_dir()
+
+    hist = mapq_hist(sam_file)
+
+    fig_file = with_suffix(".mapqhist.png")(output_path / sam_file.name)
+
+    with Plox() as px:
+        px.a.bar(x=hist.mapq, height=hist.counts, width=1, color="darkorange")
+        px.a.set_xlabel("Transcript mapping quality")
+        px.a.set_ylabel("Counts")
+        px.f.savefig(report_this_file(fig_file))
+
+
 def main():
     args = get_args()
 
@@ -74,6 +90,7 @@ def main():
     with plt.style.context("dark_background"):
         qc1_coverage(args.sam_file, args.output_path)
         qc2_tlenhist(args.sam_file, args.output_path)
+        qc3_mapqhist(args.sam_file, args.output_path)
 
 
 if __name__ == '__main__':

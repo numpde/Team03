@@ -102,6 +102,13 @@ the output folder:
 ##### Mapped transcript length histogram
 <img src="output/data_small/alignment.sam.tlenhist.png" width="40%"/>
 
+##### Mapped transcript mapping quality histogram
+<img src="output/data_small/alignment.sam.qmaphist.png" width="40%"/>
+
+This is the `mapq` field from the SAM file.
+It is supposed to be in the range `[0, 255]` but
+this is how it comes out of the aligner.
+
 ##### For the large dataset
 
 Mutatis mutandis, in principle. 
