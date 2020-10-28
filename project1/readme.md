@@ -103,7 +103,7 @@ the output folder:
 <img src="output/data_small/alignment.sam.tlenhist.png" width="40%"/>
 
 ##### Mapped transcript mapping quality histogram
-<img src="output/data_small/alignment.sam.qmaphist.png" width="40%"/>
+<img src="output/data_small/alignment.sam.mapqhist.png" width="40%"/>
 
 This is the `mapq` field from the SAM file.
 It is supposed to be in the range `[0, 255]` but
