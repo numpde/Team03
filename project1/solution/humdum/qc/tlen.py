@@ -5,14 +5,14 @@ import numpy
 
 def tlen_hist(file):
     """
-    Return a structure containing the fields
+    Returns a structure containing the fields
         length
         counts
     where
         counts[i] is the number of
         transcripts of length length[i]
 
-    Expectes a SAM file `file`.
+    Expects a SAM file `file`.
 
     Only counts nonnegative tlen.
     """
