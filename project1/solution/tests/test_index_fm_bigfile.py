@@ -1,11 +1,10 @@
-# RA, LB
+
 import time
 from unittest import TestCase
 from pathlib import Path
 
 from humdum.io import open_maybe_gz
-from humdum.io import from_fasta
-from humdum.utils import unlist1, first
+from humdum.utils import unlist1
 from humdum.index import FmIndex as GenomeIndex
 
 
@@ -42,7 +41,6 @@ class TestFm(TestCase):
 
         print("write")
         index.write(data_root / "genome.chr22.fa.gz.sa32_index")
-
 
     def test_time_to_read(self):
 
@@ -84,7 +82,7 @@ class TestFm(TestCase):
                   "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
         start = time.perf_counter_ns()
         self.assertGreater(len(index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
-                  "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")), 0)
+                                           "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")), 0)
         end = time.perf_counter_ns()
         print("time: ", ns*(end - start))
 
@@ -110,6 +108,6 @@ class TestFm(TestCase):
                   "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA"))
         start = time.perf_counter_ns()
         self.assertGreater(len(index.query("AAAAGAATGCATTTCTGTATTTTTTGAAACCTTTTCTTTTGAAAACATAGTAATACATTT"
-                  "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")), 0)
+                                           "CTACTCTAAAATAGAACTTAGCCTAAATACTTTCAAAACCTTTAGAATTTGGAAAAGAAA")), 0)
         end = time.perf_counter_ns()
         print("time: ", ns*(end - start))

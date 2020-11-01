@@ -5,7 +5,6 @@ from unittest import TestCase
 from humdum.index.bw import BurrowsWheeler
 
 
-
 class TestIndexBW(TestCase):
     def test_constructor(self):
         pass
@@ -62,7 +61,5 @@ class TestIndexBW(TestCase):
         manber = BurrowsWheeler(ref, strategy="ManberMyers")
         kaerkkaeinen = BurrowsWheeler(ref, strategy="KaerkkaeinenSanders")
 
-
         self.assertEqual(str(simple), str(manber))
         self.assertEqual(str(simple), str(kaerkkaeinen))
-

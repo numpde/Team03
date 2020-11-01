@@ -1,4 +1,3 @@
-# RA, 2020-10-09
 
 from humdum.index import FmIndex as GenomeIndex
 

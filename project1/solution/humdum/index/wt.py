@@ -1,4 +1,4 @@
-import time
+
 from typing import List, Tuple
 from bitarray import frozenbitarray
 import numpy as np
@@ -16,16 +16,17 @@ class WaveletTree:
     Upon creation of the object:
     - SA is created, compressed and stored
         len(reference_genome) / compression_sa * sizeof(int).
-    - f is created and stored
+    - f is created and stored (cumulative frequencies of characters)
         6 * sizeof(dict(char:int))
     - wavelet tree is created and stored
         2.5 len(reference_genome)
     - helper data structures
         ~ len(reference_genome) * sizeof(int)
     Works for strings over the alphabet {A, C, G, N, T}.
-    The compression for the suffix array (compression_sa) can be select upon creation of the object.
+    The compression of the suffix array (compression_sa >= 1, where =1 indicates no compression)
+    can be select upon creation of the object.
     Different algorithms are provided and can be selected upon creation of the object:
-    - KaerkkaeinenSanders:
+    - KaerkkaeinenSanders (recommended):
         Runtime: O(n)
         Space: O(n)
     - ManberMyers:
@@ -44,8 +45,8 @@ class WaveletTree:
         if len(reference_genome) < 1:
             raise ValueError('please provide a non empty string for the reference genome')
 
-        if 2 < 1 or compression_sa < 1:
-            raise ValueError("compression coefficients need to be strictly positive >=0")
+        if compression_sa < 1:
+            raise ValueError("compression coefficient needs to be >=1")
 
         if reference_genome[-1] != '$':
             reference_genome = reference_genome + '$'
@@ -59,7 +60,7 @@ class WaveletTree:
         # step size for storing of the ranks of the bitarray for the suffix array
         self.bucket_step_sa = int(np.log2(len(reference_genome)))
 
-        # get a compressed suffix array, bitvector indicating the stored indeces of the compressed suffix array,
+        # get a compressed suffix array, bitvector indicating the stored indices of the compressed suffix array,
         # a helper array which stores the ranks of the bitvector and the burrows wheeler transformation
         self.sa, self.bitvector, self.bucket_sa, bwt = self.suffix_array(reference_genome, strategy, compression_sa)
 
@@ -80,7 +81,7 @@ class WaveletTree:
                                 C     G  T      $
         """
 
-        # compressed first column of Burrows Wheeler matrix (e.g. cumulative frequencies of characters)
+        # compressed first column of burrows wheeler matrix (e.g. cumulative frequencies of characters)
         self.f = self._shifts_f(reference_genome)
 
         # Bitvector of nodes, an array which stores the ranks of the bits with corresponding step size
@@ -99,8 +100,8 @@ class WaveletTree:
 
     def _shifts_f(self, reference_genome: str) -> dict:
         """
-        Returns the shifts in the first column of the Burrows Wheeler matrix (compressed).
-        Works only for DNA strings over the alphabet {A,C,G,T}.
+        Returns the shifts in the first column of the Burrows Wheeler matrix (cumulative frequencies of characters)
+        Works only for DNA strings over the alphabet {A,C,G,N,T}.
         """
 
         # `None` key is added later
@@ -129,7 +130,7 @@ class WaveletTree:
                      compression: int = 1) -> Tuple[List[int], frozenbitarray, List[int], str]:
         """
         Returns a compressed suffix array, a bit array which indicates the stored entries of the suffix array,
-        an array which stores the ranks of the bitarray with a given stepsize and the stepsize
+        an array which stores the ranks of the bitarray with a given stepsize and the burrows wheeler transformation
         """
 
         suffix_array = []
@@ -165,6 +166,7 @@ class WaveletTree:
         """
         Returns the suffix array using Käerkkäeinen and Sanders algorithm
         """
+
         def to_int(string: str) -> List[int]:
             str_to_int = {'$': 1, 'A': 2, 'C': 3, 'G': 4, 'N': 5, 'T': 6}
             return [str_to_int[char] for char in string]
@@ -282,6 +284,7 @@ class WaveletTree:
         """
         Returns the suffix array using Manber & Myers algorithm
         """
+
         def sort_chars(reference_genome: str) -> List[int]:
             n = len(reference_genome)
             order = [0] * n
@@ -377,6 +380,7 @@ class WaveletTree:
         """
         Returns the burrows wheeler transformation given a suffix array
         """
+
         suffix_array = suffix_array or self.sa
 
         bw_transform = []
@@ -391,9 +395,10 @@ class WaveletTree:
 
     def create_bit_vecs(self, lbwt: str) -> Tuple[List[frozenbitarray], List[List[int]], list]:
         """
-        Returns the bitvectors of the wavelet tree, a rank array which stores the rank of the positive bit
-        evenly spaced bucket[node_i]_step and the step size
+        Returns the bitvectors of the wavelet tree, the rank arrays which store the ranks of the positive bits
+        of the bitvectors evenly spaced by a step size and the corresponding step size
         """
+
         bit_vec0 = frozenbitarray([0 if char == 'N' or char == 'A' else 1 for char in lbwt])
 
         bucket0_step = int(np.log2(len(bit_vec0)))
@@ -469,6 +474,7 @@ class WaveletTree:
         """
         Returns the length of the original string
         """
+
         return self.n - 1
 
     def __str__(self):
@@ -497,39 +503,45 @@ class WaveletTree:
 
     def __sizeof__(self):
         """
-        Returns the size of the object in bytes
+        Returns the size of the object in bytes (if the module 'objsize' can be used otherwise 0)
         """
 
-        print("sizes:")
-        print("compression_sa:\t\t ", get_deep_size(self.compression_sa))
-        print("bucket_step_sa:\t\t ", get_deep_size(self.bucket_step_sa))
-        print("next_chars\t\t\t ", get_deep_size(self.next_chars))
-        print("SA:\t\t\t\t\t ", get_deep_size(self.sa))
-        print("bucket_sa:\t\t\t\t ", get_deep_size(self.bucket_sa))
-        print("F:\t\t\t\t\t ", get_deep_size(self.f))
-        print("bitvec:\t\t\t\t ", get_deep_size(self.bitvector))
-        print("bits:\t\t\t\t ", get_deep_size(self.bits))
-        print("meta:\t\t\t\t ", get_deep_size(self.meta))
-        print("codes:\t\t\t\t ", get_deep_size(self.codes))
-        print("n:\t\t\t\t\t ", get_deep_size(self.n))
-        print("bucket_bits:\t\t\t\t\t ", get_deep_size(self.bucket_bits))
-        print("bucket_step_bits:\t\t\t ", get_deep_size(self.bucket_step_bits))
+        try:
+            from objsize import get_deep_size
+            print("sizes:")
+            print("compression_sa:\t\t ", get_deep_size(self.compression_sa))
+            print("bucket_step_sa:\t\t ", get_deep_size(self.bucket_step_sa))
+            print("next_chars\t\t\t ", get_deep_size(self.next_chars))
+            print("SA:\t\t\t\t\t ", get_deep_size(self.sa))
+            print("bucket_sa:\t\t\t\t ", get_deep_size(self.bucket_sa))
+            print("F:\t\t\t\t\t ", get_deep_size(self.f))
+            print("bitvec:\t\t\t\t ", get_deep_size(self.bitvector))
+            print("bits:\t\t\t\t ", get_deep_size(self.bits))
+            print("meta:\t\t\t\t ", get_deep_size(self.meta))
+            print("codes:\t\t\t\t ", get_deep_size(self.codes))
+            print("n:\t\t\t\t\t ", get_deep_size(self.n))
+            print("bucket_bits:\t\t\t\t\t ", get_deep_size(self.bucket_bits))
+            print("bucket_step_bits:\t\t\t ", get_deep_size(self.bucket_step_bits))
 
-        total = get_deep_size(self.compression_sa) + \
-            get_deep_size(self.next_chars) + get_deep_size(self.sa) + \
-            get_deep_size(self.f) + get_deep_size(self.bitvector) + get_deep_size(self.bits) + \
-            get_deep_size(self.meta) + get_deep_size(self.codes) + get_deep_size(self.n) + \
-            get_deep_size(self.bucket_step_sa) + get_deep_size(self.bucket_sa) + \
-            get_deep_size(self.bucket_bits) + get_deep_size(self.bucket_step_bits)
+            total = get_deep_size(self.compression_sa) + \
+                    get_deep_size(self.next_chars) + get_deep_size(self.sa) + \
+                    get_deep_size(self.f) + get_deep_size(self.bitvector) + get_deep_size(self.bits) + \
+                    get_deep_size(self.meta) + get_deep_size(self.codes) + get_deep_size(self.n) + \
+                    get_deep_size(self.bucket_step_sa) + get_deep_size(self.bucket_sa) + \
+                    get_deep_size(self.bucket_bits) + get_deep_size(self.bucket_step_bits)
 
-        print("Total:\t\t\t\t ", total)
+            print("Total:\t\t\t\t ", total)
 
-        return total
+            return total
+
+        except ImportError:
+            return 0
 
     def rank_bit(self, index: int) -> int:
         """
         Returns the rank of the bit up to the index [0,index]
         """
+
         if self.compression_sa == 0:
             return index + 1
 
@@ -542,8 +554,9 @@ class WaveletTree:
 
     def get_sa(self, index: int) -> int:
         """
-        Return entry in Suffix Array at position index
+        Returns the entry in the suffix array at position 'index'
         """
+
         if self.compression_sa == 1:
             return self.sa[index]
         if self.bitvector[index] == 1:
@@ -572,6 +585,7 @@ class WaveletTree:
         """
         Returns the rank of the char up to the index [0,index]
         """
+
         codes = self.codes[char]
         curr_node = 0
         curr_index = index
@@ -595,8 +609,9 @@ class WaveletTree:
 
     def rank_bit_node(self, index: int, node: int = 0) -> int:
         """
-        Returns the rank of the bit up to the index [0,index] at the node
+        Returns the rank of the bit up to the index [0,index] at the given node
         """
+
         rank = 0
         bucket_index = int(index / self.bucket_step_bits[node])
         for i in range(bucket_index * self.bucket_step_bits[node] + 1, index + 1):
@@ -613,6 +628,7 @@ class WaveletTree:
         """
         Returns the character of the burrows wheeler transformation at the given index
         """
+
         curr_node = node
 
         # leaf node
@@ -636,31 +652,3 @@ class WaveletTree:
             bit = self.bits[curr_node][curr_index]
 
         return self.meta[curr_node][2+bit]
-
-
-if __name__ == "__main__":
-
-    ref_genome = 'AGCTA'
-
-    sample = 'CTCAGN'
-
-    print("Reference genome: ", ref_genome)
-    print("Sample: ", sample, "\n")
-
-    bwt = WaveletTree(ref_genome, strategy='KaerkkaeinenSanders', compression_sa=10)
-
-    print(bwt.sa)
-    print(bwt.get_bwt(ref_genome))
-
-    print(str(bwt.bitvector))
-
-    print(bwt.bits)
-
-    print(bwt.bucket_step_bits)
-    print(bwt.bucket_bits)
-
-    for i in range(len(ref_genome)):
-        start = time.perf_counter_ns()
-        print(bwt.rank("A", i), time.perf_counter_ns() - start)
-
-    print(str(bwt))

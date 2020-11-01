@@ -1,4 +1,3 @@
-# RA, 2020-10-10
 
 from humdum.io import from_fasta
 from humdum.utils import unlist1

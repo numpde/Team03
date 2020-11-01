@@ -5,6 +5,7 @@ from unittest import TestCase
 from humdum.index.wt import WaveletTree
 from humdum.index.bw import BurrowsWheeler
 
+
 class TestIndexBW(TestCase):
     def test_constructor(self):
         pass
@@ -60,4 +61,3 @@ class TestIndexBW(TestCase):
 
         self.assertEqual(str(simple), str(manber))
         self.assertEqual(str(simple), str(kaerkkaeinen))
-
