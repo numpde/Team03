@@ -1,0 +1,15 @@
+# RA, 2020-11-05
+
+
+[https://www.anaconda.com/blog/using-pip-in-a-conda-environment]
+name: test-env
+dependencies:
+  - python>=3.5
+  - anaconda
+  - pip
+  - pip:
+    - -r file:requirements.txt
+
+
+[https://stackoverflow.com/questions/35245401/combining-conda-environment-yml-with-pip-requirements-txt]
+

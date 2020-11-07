@@ -1,0 +1,22 @@
+
+VCF spec
+https://samtools.github.io/hts-specs/VCFv4.1.pdf
+
+
+https://gatk.broadinstitute.org/hc/en-us/articles/360035531692-VCF-Variant-Call-Format
+
+
+Readers
+
+https://pyvcf.readthedocs.io/en/latest/
+
+https://vcfpy.readthedocs.io/en/stable/
+
+http://scikit-allel.readthedocs.io/en/latest/
+http://alimanfoo.github.io/2017/06/14/read-vcf.html
+conda install -c conda-forge scikit-allel
+pip install scikit-allel
+pip install scikit-allel[full]
+
+
+https://github.com/moonso/vcf_parser
