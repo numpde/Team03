@@ -48,7 +48,7 @@ class TestClinVar(TestCase):
 
             from idiva.io.vcf import RawDataline
             datalines: typing.List[RawDataline]
-            datalines = list(at_most_n(vcf.datalines, len(reference)))
+            datalines = list(at_most_n(vcf.datalines, n=len(reference)))
 
             self.assertIsInstance(datalines[0], RawDataline)
 
