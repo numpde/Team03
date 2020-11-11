@@ -45,3 +45,9 @@ class minidict:
 
     def keys(self):
         return self._data.keys()
+
+    def items(self):
+        return zip(self._data.keys(), map(self.__getitem__, self._data.keys()))
+
+    def __contains__(self, item):
+        return (item in self._data)
