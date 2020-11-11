@@ -19,20 +19,28 @@ class RawDataline:
         self.id = dot_is_none(line[2])
         self.ref = str(line[3])
         self.alt = dot_is_none(line[4])
-        self.qual = float(line[5])
+        self.qual = (None if (line[5] == ".") else float(line[5]))
         self.filter = str(line[6])
         self.info = str(line[7])
-        self.format = (str(line[8]) if (len(line) >= 8) else None)
+        self.format = (str(line[8]) if (len(line) >= 9) else None)
         self.samples = line[9:] or None
 
     def __str__(self):
         fields = [
             self.chrom, self.pos, self.id, self.ref, self.alt,
-            (F"{self.qual:f}").rstrip('0').rstrip('.'),
+            (
+                (F"{self.qual:f}").rstrip('0').rstrip('.')  # This is not the VCF dot
+                if (self.qual is not None)
+                else "."  # This is the VCF dot
+            ),
             self.filter, self.info,
             self.format
         ]
-        return "\t".join(map(str, fields + self.samples))
+        if self.samples:
+            fields += self.samples
+        while fields[-1] is None:
+            fields.pop()
+        return "\t".join(map(str, fields))
 
 
 def proxy(fd: typing.TextIO):
@@ -110,19 +118,18 @@ class ReadVCF:
 
         # Parse the header line
 
-        header = str(proxy.header)
-
         default_header = "CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO".split(SEP)
-        (*mandatory, extra) = header.split(SEP, maxsplit=len(default_header))
-        assert (mandatory == default_header)
+        header = str(proxy.header).split(SEP)
+        (mandatory, extra) = (header[0:len(default_header)], header[len(default_header):])
+        assert (mandatory == default_header), F"Unexpected header: {mandatory} vs {default_header}"
 
-        extra = extra.split(SEP)
-        assert (extra[0] == "FORMAT")
+        if extra:
+            assert (extra[0] == "FORMAT")
 
-        # https://www.internationalgenome.org/wiki/Analysis/vcf4.0/
-        # [..] followed by a FORMAT column header,
-        # then an arbitrary number of sample IDs.
-        self.sample_ids = extra[1:]
+            # https://www.internationalgenome.org/wiki/Analysis/vcf4.0/
+            # [..] followed by a FORMAT column header,
+            # then an arbitrary number of sample IDs.
+            self.sample_ids = extra[1:]
 
         # Datalines forwarding
 
@@ -130,4 +137,3 @@ class ReadVCF:
 
     def __iter__(self):
         return iter(self.datalines)
-
