@@ -1,5 +1,4 @@
 import warnings
-from itertools import product
 from pathlib import Path
 from unittest import TestCase
 
@@ -13,6 +12,7 @@ from idiva.db import clinvar_open
 from idiva.io import ReadVCF
 from idiva.io.vcf import RawDataline
 from idiva.utils import at_most_n
+from idiva.utils.clf_related import create_df, NucEncoder
 
 BASE = (Path(__file__).parent) / "data_for_tests/large_head"
 
@@ -20,68 +20,6 @@ PATHS = {
     'ctrl': BASE / "control.vcf",
     'case': BASE / "case_processed.vcf",
 }
-
-
-class NucEncoder:
-    """
-    Contains two dictionaries. Nuc-to-index (n2i) contains the information to encode the nucleobase,
-    and index-to-Nuc contains the information to decode the index into the nucleobase.
-    A,C,G,T are the bases and "-" indicates an indel
-    """
-
-    def __init__(self):
-        self.n2i = {}
-        self.i2n = {}
-        for idx, key in enumerate(['A', 'C', 'G', 'T', '-']):
-            self.n2i[key] = idx
-            self.i2n[idx] = key
-
-    def encode(self, bases: str) -> int:
-        """
-        Encodes nucleobases into an integer
-        """
-        # todo this encoding makes no sense for longer bases
-        if not bases:
-            bases = '-'
-        output = []
-        for base in bases:
-            output.append(str(self.n2i[base]))
-
-        return int(''.join(output))
-
-
-def create_df(which_vcf: str) -> pd.DataFrame:
-    """
-    Creates a dataframe from a vcf file, containing the information of the POS, REF, ALT and SAMPLEs columns.
-    The label is 1 for variants from the case vcf and 0 for variants from the control vcf.
-    The nucleobase information from REF and ALT is transformed into and index.
-    For each variant, the information of the SAMPLE column is included by inserting the number of
-    occurrences of values into the corresponding column. e.g. if the SAMPLES column contains [0|0, 1|0, 0|0],
-    a 2 will be added to the "0|0" column of the dataframe and a 1 to the "1|0" column.
-
-    Example:
-            pos  ref  alt  label    0|0  0|1  0|2  1|0  1|1  1|2  2|0  2|1  2|2
-        0  52.0  1.0  0.0    0.0  500.0  NaN  NaN  NaN  NaN  NaN  NaN  NaN  NaN
-        1  56.0  1.0  3.0    0.0  498.0  1.0  NaN  1.0  NaN  NaN  NaN  NaN  NaN
-        2  78.0  2.0  1.0    0.0  499.0  NaN  NaN  1.0  NaN  NaN  NaN  NaN  NaN
-        3  80.0  2.0  0.0    0.0  497.0  1.0  NaN  2.0  NaN  NaN  NaN  NaN  NaN
-        4  92.0  2.0  3.0    0.0  500.0  NaN  NaN  NaN  NaN  NaN  NaN  NaN  NaN
-    """
-    df = pd.DataFrame(
-        columns=['pos', 'ref', 'alt', 'label', *[f'{x}|{y}' for x, y in product(range(3), range(3))]], dtype='int32')
-    nuc_encoder = NucEncoder()
-    with PATHS[which_vcf].open(mode='r') as fd:
-        for elem in ReadVCF(fd):
-            line = {
-                'pos': elem.pos,
-                'ref': nuc_encoder.n2i[elem.ref],
-                'alt': nuc_encoder.n2i[elem.alt],
-                'label': 1 * (which_vcf == 'case'),
-            }
-            for sample, count in zip(*np.unique(elem.samples, return_counts=True)):
-                line[sample] = int(count)
-            df = df.append(line, ignore_index=True)
-    return df
 
 
 def get_label_from_clinvar(clinvar_line: RawDataline):
@@ -137,8 +75,8 @@ def create_df_clinvar():
 
 
 def get_datasets():
-    df_ctrl = create_df('ctrl')
-    df_case = create_df('case')
+    df_ctrl = create_df(PATHS['ctrl'], create_label=True, control=True)
+    df_case = create_df(PATHS['case'], create_label=True)
     df = df_ctrl.append(df_case, ignore_index=True).fillna(0).astype('int')
     df_train, df_eval = train_test_split(df, test_size=0.2, shuffle=True)
     train_data = df_train.loc[:, df_train.columns != 'label'].to_numpy()
@@ -164,8 +102,8 @@ class TestClf(TestCase):
         self.assertIsNotNone(score)
 
     def test_create_df(self):
-        df_ctrl = create_df('ctrl')
-        df_case = create_df('case')
+        df_ctrl = create_df(PATHS['ctrl'], create_label=True, control=True)
+        df_case = create_df(PATHS['case'], create_label=True)
         df = df_ctrl.append(df_case, ignore_index=True).fillna(0).astype('int')
         self.assertTrue(len(df))
 
