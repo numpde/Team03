@@ -33,7 +33,7 @@ def create_df(which_vcf: str) -> pd.DataFrame:
     The label is 1 for variants from the case vcf and 0 for variants from the control vcf.
     The nucleobase information from REF and ALT is transformed into and index.
     For each variant, the information of the SAMPLE column is included by inserting the number of
-    occurences of values into the corresponding column. e.g. if the SAMPLES column contains [0|0, 1|0, 0|0],
+    occurrences of values into the corresponding column. e.g. if the SAMPLES column contains [0|0, 1|0, 0|0],
     a 2 will be added to the "0|0" column of the dataframe and a 1 to the "1|0" column.
 
     Example:
