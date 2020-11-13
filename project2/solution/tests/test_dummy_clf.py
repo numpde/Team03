@@ -12,7 +12,7 @@ from idiva.db import clinvar_open
 from idiva.io import ReadVCF
 from idiva.io.vcf import RawDataline
 from idiva.utils import at_most_n
-from idiva.utils.clf_related import create_df, NucEncoder
+from idiva.clf.utils import create_df, NucEncoder
 
 BASE = (Path(__file__).parent) / "data_for_tests/large_head"
 

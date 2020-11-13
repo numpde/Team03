@@ -1,13 +1,9 @@
 import argparse
 
-# TODO: `utils` are things that are useful cross-project; refactor to `helpers` or better to `clf`
-from idiva.utils.clf_related import create_df, get_clf
+from idiva.clf.utils import create_df, get_clf
 
 from pathlib import Path
 
-
-# TODO: refact to `bin` folder, cf. project1
-# TODO: rename to `classify_patients`
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -24,7 +20,7 @@ def parse_args():
     return dict(vcf=flags.vcf_file, classifier=flags.classifier)
 
 
-def predict(vcf: Path, classifier=None):
+def predict(vcf: Path, classifier: str = None):
     """
     Reads a given vcf file, transforms it into a dataframe and uses a pretrained classifier to classify each variant in
     the vcf with 0 for control and 1 for "sick". It then adds the label to the input vcf and returns it (or saves it).

@@ -2,13 +2,13 @@ from itertools import product
 
 import numpy as np
 import pandas as pd
-from joblib import load
+from sklearn.dummy import DummyClassifier
+from pathlib import Path
 
 from idiva.io import ReadVCF
-from sklearn.dummy import DummyClassifier
 
 
-def create_df(vcf_path: str, create_label=False, control: bool = False) -> pd.DataFrame:
+def create_df(vcf_path: Path, create_label=False, control: bool = False) -> pd.DataFrame:
     """
     Creates a dataframe from a vcf file, containing the information of the POS, REF, ALT and SAMPLEs columns.
     The nucleobase information from REF and ALT is transformed into and index.
@@ -53,6 +53,7 @@ def get_clf(args):
         y = np.ones((1, 1))
         clf.fit(x, y)
         # This is how you would load it otherwise:
+        # from joblib import load
         # clf = load('tests/data_for_tests/classifiers/dummy_clf.joblib')
     else:
         raise NotImplementedError
