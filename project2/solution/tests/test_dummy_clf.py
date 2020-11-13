@@ -1,3 +1,4 @@
+import warnings
 from itertools import product
 from pathlib import Path
 from unittest import TestCase
@@ -8,7 +9,10 @@ from sklearn.dummy import DummyClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 
-from idiva.io.vcf import ReadVCF
+from idiva.db import clinvar_open
+from idiva.io import ReadVCF
+from idiva.io.vcf import RawDataline
+from idiva.utils import at_most_n
 
 BASE = (Path(__file__).parent) / "data_for_tests/large_head"
 
@@ -19,12 +23,31 @@ PATHS = {
 
 
 class NucEncoder:
+    """
+    Contains two dictionaries. Nuc-to-index (n2i) contains the information to encode the nucleobase,
+    and index-to-Nuc contains the information to decode the index into the nucleobase.
+    A,C,G,T are the bases and "-" indicates an indel
+    """
+
     def __init__(self):
         self.n2i = {}
         self.i2n = {}
-        for idx, key in enumerate(['A', 'C', 'G', 'T']):
+        for idx, key in enumerate(['A', 'C', 'G', 'T', '-']):
             self.n2i[key] = idx
             self.i2n[idx] = key
+
+    def encode(self, bases: str) -> int:
+        """
+        Encodes nucleobases into an integer
+        """
+        # todo this encoding makes no sense for longer bases
+        if not bases:
+            bases = '-'
+        output = []
+        for base in bases:
+            output.append(str(self.n2i[base]))
+
+        return int(''.join(output))
 
 
 def create_df(which_vcf: str) -> pd.DataFrame:
@@ -61,6 +84,58 @@ def create_df(which_vcf: str) -> pd.DataFrame:
     return df
 
 
+def get_label_from_clinvar(clinvar_line: RawDataline):
+    """
+    Creates a label [0;1] from a clinvar vcf line. 1 indicates a sickness, 0 indicates no sickness.
+    """
+    temp_dict = {}
+    for elem in clinvar_line.info.split(';'):
+        k, v = elem.split('=')
+        temp_dict[k] = v
+
+    if 'CLNDN' not in temp_dict.keys():
+        warnings.warn('CLNDN not specified', UserWarning)
+        label = None
+    else:
+        if temp_dict['CLNDN'] == 'not_provided':
+            label = 0
+        else:
+            label = 1
+    return label
+
+
+def create_df_clinvar():
+    """
+    Creates a dataframe from a clinvar vcf similar to "create_df".
+    Example:
+                pos ref alt  label
+        0  865568.0   2   0    0.0
+        1  865583.0   1   3    0.0
+        2  865628.0   2   0    0.0
+        3  865655.0   3   2    0.0
+        4  865716.0   2   0    0.0
+    """
+    df = pd.DataFrame(
+        columns=['pos', 'ref', 'alt', 'label'], dtype='int32')
+    nuc_encoder = NucEncoder()
+    with clinvar_open(which='vcf_37') as fd:
+        vcf = ReadVCF(fd)
+        for line in at_most_n(vcf.datalines, 5000):
+            line = {
+                'pos': line.pos,
+                'ref': nuc_encoder.encode(line.ref),
+                'alt': nuc_encoder.encode(line.alt),
+                'label': get_label_from_clinvar(line),
+            }
+            # if "CLNDN" is not specified, label is none and current line is not added to the df
+            if line['label']:
+                try:
+                    df = df.append(line, ignore_index=True)
+                except Exception as e:
+                    warnings.warn(f'{e}', UserWarning)
+    return df
+
+
 def get_datasets():
     df_ctrl = create_df('ctrl')
     df_case = create_df('case')
@@ -87,3 +162,13 @@ class TestClf(TestCase):
         clf = LogisticRegression(random_state=0).fit(train_data, train_labels)
         score = clf.score(eval_data, eval_labels)
         self.assertIsNotNone(score)
+
+    def test_create_df(self):
+        df_ctrl = create_df('ctrl')
+        df_case = create_df('case')
+        df = df_ctrl.append(df_case, ignore_index=True).fillna(0).astype('int')
+        self.assertTrue(len(df))
+
+    def test_create_df_clinvar(self):
+        df = create_df_clinvar()
+        self.assertTrue(len(df))
