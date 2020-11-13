@@ -29,7 +29,7 @@ class NucEncoder:
 
 def create_df(which_vcf: str) -> pd.DataFrame:
     """
-    Creates a dataframe from a vcf file, contaiing the information of the POS, REF, ALT and SAMPLEs columns.
+    Creates a dataframe from a vcf file, containing the information of the POS, REF, ALT and SAMPLEs columns.
     The label is 1 for variants from the case vcf and 0 for variants from the control vcf.
     The nucleobase information from REF and ALT is transformed into and index.
     For each variant, the information of the SAMPLE column is included by inserting the number of
