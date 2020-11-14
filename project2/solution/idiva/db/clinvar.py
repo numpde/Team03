@@ -27,10 +27,17 @@ def clinvar_meta(which='vcf_37') -> idiva.utils.minidict:
     return idiva.utils.minidict(data.meta)
 
 
+def clinvar_rs_ids(which='vcf_37'):
+    from idiva.io.vcf import ReadVCF
+    with clinvar_open(which) as fd:
+        for dataline in ReadVCF(fd):
+            pass
+
+
 if __name__ == '__main__':
     from idiva.io.vcf import ReadVCF
     from idiva.utils import at_most_n
 
     with clinvar_open('vcf_37') as fd:
         reader = ReadVCF(fd)
-        print(*at_most_n(reader.datalines, 10), sep='\n')
+        print(*at_most_n(reader.datalines, n=10), sep='\n')
