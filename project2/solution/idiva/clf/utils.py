@@ -46,8 +46,8 @@ def create_df(vcf_path: Path, create_label=False, control: bool = False) -> pd.D
     return df
 
 
-def get_clf(args):
-    if args.which_clf == 'dummy':
+def get_clf(which_clf: str):
+    if which_clf == 'dummy':
         clf = DummyClassifier()
         x = np.ones((1, 12))
         y = np.ones((1, 1))
