@@ -1,18 +1,27 @@
 # RA, 2020-11-05
 
-
 import re
 import typing
 
 SEP = '\t'
 
+TCGA = {"T", "C", "G", "A"}
 
-def dot_is_none(s: str) -> str:
-    return (None if (s == ".") else str(s))
+
+def parse_gt(gt: str) -> typing.Tuple[int, int]:
+    (a, b) = gt.split("|")
+    return (int(a), int(b))
+
+
+def is_genomic_string(s: str):
+    return set(s).issubset(TCGA)
 
 
 class RawDataline:
     def __init__(self, line: str):
+        def dot_is_none(s: str) -> str:
+            return (None if (s == ".") else str(s))
+
         line = line.split(SEP)
         self.chrom = str(line[0])
         self.pos = int(line[1])
@@ -82,9 +91,15 @@ def proxy(fd: typing.TextIO):
 
 
 class ReadVCF:
-    def __init__(self, fd: typing.TextIO):
+    default_header = "CHROM,POS,ID,REF,ALT,QUAL,FILTER,INFO".split(',')
+    fd_tracer = set()
+
+    def __init__(self, fd: typing.TextIO, rewind=True):
+        assert (fd.tell() == 0) or (not rewind), "Specify rewind=False for a used file descriptor."
+
         self.meta = {}
-        self.datalines = None
+        self.header: list = None
+        self.datalines: typing.Iterable[RawDataline] = None
 
         self._parse_proxy(proxy(fd))
 
@@ -118,10 +133,10 @@ class ReadVCF:
 
         # Parse the header line
 
-        default_header = "CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO".split(SEP)
-        header = str(proxy.header).split(SEP)
-        (mandatory, extra) = (header[0:len(default_header)], header[len(default_header):])
-        assert (mandatory == default_header), F"Unexpected header: {mandatory} vs {default_header}"
+        self.header = str(proxy.header).split(SEP)
+        ndefault = len(self.default_header)
+        (mandatory, extra) = (self.header[0:ndefault], self.header[ndefault:])
+        assert (mandatory == self.default_header), F"Unexpected header: {mandatory} vs {self.default_header}"
 
         if extra:
             assert (extra[0] == "FORMAT")
@@ -135,5 +150,27 @@ class ReadVCF:
 
         self.datalines = proxy.datalines
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Iterator[RawDataline]:
         return iter(self.datalines)
+
+
+class AlignVCF:
+    def __init__(self, vcf1: ReadVCF, vcf2: ReadVCF):
+        self.vcf1 = vcf1
+        self.vcf2 = vcf2
+
+    def __iter__(self) -> typing.Iterator[typing.Tuple[RawDataline, RawDataline]]:
+        self.i1 = iter(self.vcf1)
+        self.i2 = iter(self.vcf2)
+        return self
+
+    def __next__(self) -> typing.Tuple[RawDataline, RawDataline]:
+        self.i1: typing.Iterable[RawDataline]
+        self.i2: typing.Iterable[RawDataline]
+        d1 = next(self.i1)
+        d2 = next(self.i2)
+        while d1.pos < d2.pos:
+            d1 = next(self.i1)
+        while d2.pos < d1.pos:
+            d2 = next(self.i2)
+        return (d1, d2)
