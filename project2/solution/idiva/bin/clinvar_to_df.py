@@ -7,10 +7,9 @@ Script that reads a clinvar vcf file and saves it as structured data in a csv fi
 """
 
 BASE = Path(__file__).parent.parent.parent / "data"
-output_path = BASE / "clinvar.csv"
+output_path = BASE / "clinvar.gzip"
 
 if not os.path.exists(BASE):
     os.mkdir(BASE)
 
-df = clinvar_to_df()
-df.to_csv(output_path)
+clinvar_to_df(output_path, make_checkpoints=True)
