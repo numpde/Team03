@@ -32,7 +32,7 @@ class Oneliner:
                 else:
                     line = self.fd.readline()
                     if line:
-                        self._line_stack = [line]
+                        self._line_stack = [str.strip(line)]
             if not self._line_stack:
                 raise StopIteration
             self.line = self._line_stack.pop()
