@@ -2,10 +2,11 @@
 
 import re
 import typing
+import pandas
 
 SEP = '\t'
-
 TCGA = {"T", "C", "G", "A"}
+KEY_COLS = ["CHROM", "POS", "ID"]
 
 
 def parse_gt(gt: str) -> typing.Tuple[int, int]:
@@ -60,34 +61,39 @@ def proxy(fd: typing.TextIO):
         meta, a list of meta-info lines
         header, the header as string
         datalines, an iterable over the remaining lines
+        dataline_start_pos, start location in the stream
 
     The file must be open while using `datalines`.
     """
 
     from idiva.io import Oneliner
 
-    class _:
+    class VCFProxy:
         meta: typing.List[str] = []
         header: str = None
         datalines: typing.Iterable[RawDataline] = None
+        dataline_start_pos: int = None
 
-    oneliner = Oneliner(fd)
+    oneliner = Oneliner(fd, buffered=False)
 
     # First read in the comments
     for line in oneliner:
         if line.startswith("##"):
-            _.meta.append(line[2:].strip())
+            VCFProxy.meta.append(line[2:].strip())
         else:
             break
 
     # Assume now comes the header
     assert oneliner.last.startswith("#")
-    _.header = oneliner.last[1:]
+    VCFProxy.header = oneliner.last[1:]
+
+    VCFProxy.dataline_start_pos = oneliner.fd.tell()
+    oneliner.buffered = True  # Ok after `tell`
 
     # The remainder are datalines that can be iterated
-    _.datalines = map(RawDataline, oneliner)
+    VCFProxy.datalines = map(RawDataline, oneliner)
 
-    return _
+    return VCFProxy
 
 
 class ReadVCF:
@@ -97,11 +103,17 @@ class ReadVCF:
     def __init__(self, fd: typing.TextIO, rewind=True):
         assert (fd.tell() == 0) or (not rewind), "Specify rewind=False for a used file descriptor."
 
+        self._fd = fd
         self.meta = {}
-        self.header: list = None
-        self.datalines: typing.Iterable[RawDataline] = None
+        self.header: list = []
+        self.datalines: typing.Iterable[RawDataline] = []
+        self.dataline_start_pos: int = None
 
         self._parse_proxy(proxy(fd))
+
+    @property
+    def fd(self) -> typing.TextIO:
+        return self._fd
 
     def _parse_proxy(self, proxy):
         # Parse the meta lines
@@ -149,28 +161,31 @@ class ReadVCF:
         # Datalines forwarding
 
         self.datalines = proxy.datalines
+        self.dataline_start_pos = proxy.dataline_start_pos
 
     def __iter__(self) -> typing.Iterator[RawDataline]:
         return iter(self.datalines)
 
 
-class AlignVCF:
-    def __init__(self, vcf1: ReadVCF, vcf2: ReadVCF):
-        self.vcf1 = vcf1
-        self.vcf2 = vcf2
+def align(*, case: ReadVCF, ctrl: ReadVCF):
+    from idiva.utils import seek_then_rewind
 
-    def __iter__(self) -> typing.Iterator[typing.Tuple[RawDataline, RawDataline]]:
-        self.i1 = iter(self.vcf1)
-        self.i2 = iter(self.vcf2)
-        return self
+    dfs = {}
+    for (k, vcf) in zip(['case', 'ctrl'], [case, ctrl]):
+        with seek_then_rewind(vcf.fd, seek=vcf.dataline_start_pos) as fd:
+            # 5971
+            dfs[k] = pandas.read_csv(fd, sep=SEP, usecols=range(len(KEY_COLS)), header=None, names=KEY_COLS,
+                                     nrows=15971)
+            dfs[k].index = dfs[k].index.rename(name="rowid")
+            dfs[k] = dfs[k].reset_index().astype({'rowid': 'Int64'})
 
-    def __next__(self) -> typing.Tuple[RawDataline, RawDataline]:
-        self.i1: typing.Iterable[RawDataline]
-        self.i2: typing.Iterable[RawDataline]
-        d1 = next(self.i1)
-        d2 = next(self.i2)
-        while d1.pos < d2.pos:
-            d1 = next(self.i1)
-        while d2.pos < d1.pos:
-            d2 = next(self.i2)
-        return (d1, d2)
+    from idiva.clf.df import join
+    df = join(case=dfs['case'], ctrl=dfs['ctrl'])
+
+    # df.to_csv("sort_me.txt", sep=SEP)
+
+    # !
+    assert df['rowid_case'].dropna().is_monotonic_increasing
+    assert df['rowid_ctrl'].dropna().is_monotonic_increasing
+
+    return df
