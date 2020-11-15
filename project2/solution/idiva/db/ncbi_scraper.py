@@ -13,6 +13,10 @@ CLINVAR_SELECTORS = {
     'GRCh37_p13': '#kis-variation > div.shadowbox > div > div > div > div:nth-child(2) > ul > li:nth-child(4)'
 }
 
+SNP_SELECTORS = {
+    'functional_consequence': '#maincontent > div > div:nth-child(5) > div > div.rslt > div.supp > dl > dd:nth-child(12)'
+}
+
 
 def get_content_from_soup(content):
     if len(content) == 1:
@@ -36,3 +40,19 @@ def get_ncbi_info(rs_id: str) -> dict:
         k, v = get_content_from_soup(soup.select(selector_v))
         ncbi_info[k] = v
     return ncbi_info
+
+
+def get_functional_consequence_from_SNP(rs_id: str) -> str:
+    page = requests.get(f'https://www.ncbi.nlm.nih.gov/snp/?term={rs_id}')
+    soup = BeautifulSoup(page.content)
+    selection = soup.select(SNP_SELECTORS['functional_consequence'])
+    functional_consequence = None
+    for elem in selection:
+        functional_consequence = elem.text
+
+    return functional_consequence
+
+
+if __name__ == '__main__':
+    rs_id = 'rs369122589'
+    get_functional_consequence_from_SNP(rs_id)
