@@ -5,12 +5,7 @@ import io
 
 from unittest import TestCase
 from pathlib import Path
-from tcga.utils import download
 from idiva.utils import unlist1, at_most_n, first
-
-# download_cache = (Path(__file__).parent.parent.parent / "input/download_cache")
-# assert download_cache.is_dir()
-# download = download.to(abs_path=download_cache)
 
 BASE = (Path(__file__).parent) / "data_for_tests/large_head"
 
