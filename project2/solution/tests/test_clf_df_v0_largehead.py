@@ -20,13 +20,13 @@ class TestDf(TestCase):
     def test_makes_df(self):
         from idiva.clf.df import v0_df
         from idiva.io import ReadVCF
-        from idiva.utils import seek0
+        from idiva.utils import seek_then_rewind
 
         for k in PATHS:
             with PATHS[k].open(mode='r') as fd:
-                with seek0(fd):
+                with seek_then_rewind(fd):
                     datalines = list(ReadVCF(fd))
-                with seek0(fd):
+                with seek_then_rewind(fd):
                     df = v0_df(ReadVCF(fd))
                 self.assertEqual(len(datalines), len(df))
 
@@ -56,3 +56,17 @@ class TestDf(TestCase):
         )
 
         self.assertTrue(reference.equals(candidate))
+
+    def test_combine_and_show(self):
+        from idiva.io import ReadVCF
+        from idiva.clf.df import v0_df, join
+
+        dfs = {}
+
+        for k in PATHS:
+            with PATHS[k].open(mode='r') as fd:
+                dfs[k] = v0_df(ReadVCF(fd))
+
+        df = join(case=dfs['case'], ctrl=dfs['ctrl'])
+
+        print(df)
