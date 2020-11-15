@@ -85,16 +85,16 @@ class bag_of_assumptions:
 
 
 def check_all(fd: typing.TextIO):
-    from idiva.utils import seek0
+    from idiva.utils import seek_then_rewind
 
-    with seek0(fd):
+    with seek_then_rewind(fd):
         bag_of_assumptions.samples_column(fd)
 
-    with seek0(fd):
+    with seek_then_rewind(fd):
         bag_of_assumptions.ref_column(fd)
 
-    with seek0(fd):
+    with seek_then_rewind(fd):
         bag_of_assumptions.alt_column(fd)
 
-    with seek0(fd):
+    with seek_then_rewind(fd):
         bag_of_assumptions.format_is_gt(fd)
