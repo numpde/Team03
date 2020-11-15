@@ -5,8 +5,8 @@ import contextlib
 
 
 @contextlib.contextmanager
-def seek0(fd: typing.IO):
+def seek_then_rewind(fd: typing.IO, seek=0) -> typing.IO:
     pos = fd.tell()
-    fd.seek(0)
+    fd.seek(seek)
     yield fd
     fd.seek(pos)
