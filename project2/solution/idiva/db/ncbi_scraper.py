@@ -1,5 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
+import warnings
 
 CLINVAR_SELECTORS = {
     'clin_significance': '#kis-variation > div.shadowbox > div > div > div > div:nth-child(1) > ul > li:nth-child(1)',
@@ -14,10 +15,13 @@ CLINVAR_SELECTORS = {
 
 
 def get_content_from_soup(content):
-    assert len(content) == 1
-    for elem in content:
-        kv = elem.text.replace('\n', '').split(':')
-    return kv[0], ':'.join(kv[1:])
+    if len(content) == 1:
+        for elem in content:
+            kv = elem.text.replace('\n', '').split(':')
+        return kv[0], ':'.join(kv[1:])
+    else:
+        warnings.warn(f'soup has not length 1: {content}')
+        return None, None
 
 
 def get_ncbi_info(rs_id: str) -> dict:
