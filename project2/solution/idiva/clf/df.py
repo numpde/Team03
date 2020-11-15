@@ -10,11 +10,12 @@ dtype_v0 = {'CHROM': str, 'POS': int, 'ID': str, 'ALT0': float, 'ALT1': float, '
 
 def join(*, case: pandas.DataFrame, ctrl: pandas.DataFrame) -> pandas.DataFrame:
     """
-    Outer-join two dataframes on their index and the columns CHROM, POS, ID.
+    Outer-join two dataframes on the columns CHROM, POS, ID.
     Use the suffixes _case and _ctrl for the other ambiguous columns.
+    Uses sort=False in pandas.merge_ordered.
     """
 
-    df = pandas.merge(
+    df = pandas.merge_ordered(
         left=case, right=ctrl,
         suffixes=['_case', '_ctrl'],
         on=['CHROM', 'POS', 'ID'],
