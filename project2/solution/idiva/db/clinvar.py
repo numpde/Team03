@@ -11,6 +11,7 @@ import idiva.utils
 from idiva.io.vcf import ReadVCF
 from idiva.utils import at_most_n
 from tqdm import tqdm
+import os
 
 URL = {
     'vcf_37': "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh37/clinvar.vcf.gz",
@@ -41,21 +42,44 @@ def get_info_dict(info) -> dict:
     return info_dict
 
 
-def clinvar_to_df(output_path, which='vcf_37', make_checkpoints=False) -> pd.DataFrame:
+def clinvar_to_df(output_path, which='vcf_37', make_checkpoints=False, resume_checkpoint='') -> pd.DataFrame:
     """
     Creates a dataframe from the clinvar file. Adds all the INFO fields as additional columns.
     """
+    if resume_checkpoint:
+        df = pd.read_csv(resume_checkpoint, compression='gzip')
+        resume_idx = len(df) - 5
+        print(f'resuming at index {resume_idx}')
+    else:
+        resume_idx = 0
+
+    chckpt_idx = 1
     df = pd.DataFrame()
     with clinvar_open(which=which) as fd:
         vcf = ReadVCF(fd)
         for idx, line in tqdm(enumerate(vcf.datalines), postfix='reading clinvar file'):
-            info_dict = get_info_dict(line.info)
-            line_dict = line.__dict__
-            del line_dict['info']
-            line_dict = dict(line_dict, **info_dict)
-            df = df.append(line_dict, ignore_index=True)
-            if idx % 500 == 0 and make_checkpoints:
-                df.to_csv(output_path, compression='gzip', index=False)
+            if idx > resume_idx:
+                info_dict = get_info_dict(line.info)
+                line_dict = line.__dict__
+                del line_dict['info']
+                line_dict = dict(line_dict, **info_dict)
+                df = df.append(line_dict, ignore_index=True)
+                if idx % 5000 == 0 and make_checkpoints:
+                    path, ext = tuple(str(output_path).split('.'))
+                    checkpoint_path = path + f'_chckpt{chckpt_idx}.' + ext
+                    chckpt_idx += 1
+                    df.to_csv(checkpoint_path, compression='gzip', index=False)
+                    df = pd.DataFrame()
+
+    df = pd.DataFrame()
+    out_dir = '/'.join(str(output_path).split('/')[:-1])
+    idx = 0
+    while os.path.exists(os.path.join(out_dir, f'clinvar_chckpt{idx}.gzip')):
+        print(f'reading clinvar_chckpt{idx}.gzip')
+        chckpt_df = pd.read_csv(os.path.join(out_dir, f'clinvar_chckpt{idx}.gzip'), compression='gzip')
+        df = df.append(chckpt_df)
+        os.remove(os.path.join(out_dir, f'clinvar_chckpt{idx}.gzip'))
+        idx += 1
     df.to_csv(output_path, compression='gzip', index=False)
     return df
 
