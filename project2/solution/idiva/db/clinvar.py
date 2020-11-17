@@ -18,6 +18,15 @@ URL = {
     'vcf_38': "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz",
 }
 
+# pandas cannot represent nan as integers.
+dtype_clinvar_df = {'chrom': str, 'pos': pd.Int64Dtype(), 'id': pd.Int64Dtype(), 'ref': str, 'alt': str, 'qual': str,
+                    'filter': str,
+                    'format': str, 'samples': str, 'ALLELEID': pd.Int64Dtype(), 'CLNDISDB': str, 'CLNDN': str,
+                    'CLNHGVS': str,
+                    'CLNREVSTAT': str, 'CLNSIG': str, 'CLNVC': str, 'CLNVCSO': str, 'GENEINFO': str,
+                    'MC': str, 'ORIGIN': pd.Int64Dtype(), 'AF_ESP': float, 'AF_EXAC': float, 'AF_TGP': float,
+                    'RS': pd.Int64Dtype()}
+
 
 @contextlib.contextmanager
 def clinvar_open(which='vcf_37') -> typing.Iterable[typing.TextIO]:
@@ -39,49 +48,29 @@ def get_info_dict(info) -> dict:
     for elem in info.split(';'):
         k, v = elem.split('=')
         info_dict[k] = v
-    return info_dict
+    if 'RS' in info_dict.keys():
+        for rs_id in info_dict['RS'].split('|'):
+            info_dict['RS'] = 'rs' + str(int(rs_id))
+            yield info_dict
+    else:
+        yield info_dict
 
 
-def clinvar_to_df(output_path, which='vcf_37', make_checkpoints=False, resume_checkpoint='') -> pd.DataFrame:
+def clinvar_datalines(vcf: idiva.io.ReadVCF):
+    for idx, line in tqdm(enumerate(vcf.datalines), postfix='reading clinvar file'):
+        for info_dict in get_info_dict(line.info):
+            line_dict = {k: line.__dict__[k] for k in line.__dict__.keys() if not k == 'info'}
+            line_dict = dict(line_dict, **info_dict)
+
+            yield line_dict
+
+
+def clinvar_to_df(vcf: idiva.io.ReadVCF) -> pd.DataFrame:
     """
     Creates a dataframe from the clinvar file. Adds all the INFO fields as additional columns.
     """
-    if resume_checkpoint:
-        df = pd.read_csv(resume_checkpoint, compression='gzip')
-        resume_idx = len(df) - 5
-        print(f'resuming at index {resume_idx}')
-    else:
-        resume_idx = 0
 
-    chckpt_idx = 1
-    df = pd.DataFrame()
-    with clinvar_open(which=which) as fd:
-        vcf = ReadVCF(fd)
-        for idx, line in tqdm(enumerate(vcf.datalines), postfix='reading clinvar file'):
-            if idx > resume_idx:
-                info_dict = get_info_dict(line.info)
-                line_dict = line.__dict__
-                del line_dict['info']
-                line_dict = dict(line_dict, **info_dict)
-                df = df.append(line_dict, ignore_index=True)
-                if idx % 5000 == 0 and make_checkpoints:
-                    path, ext = tuple(str(output_path).split('.'))
-                    checkpoint_path = path + f'_chckpt{chckpt_idx}.' + ext
-                    chckpt_idx += 1
-                    df.to_csv(checkpoint_path, compression='gzip', index=False)
-                    df = pd.DataFrame()
-
-    df = pd.DataFrame()
-    out_dir = '/'.join(str(output_path).split('/')[:-1])
-    idx = 0
-    while os.path.exists(os.path.join(out_dir, f'clinvar_chckpt{idx}.gzip')):
-        print(f'reading clinvar_chckpt{idx}.gzip')
-        chckpt_df = pd.read_csv(os.path.join(out_dir, f'clinvar_chckpt{idx}.gzip'), compression='gzip')
-        df = df.append(chckpt_df)
-        os.remove(os.path.join(out_dir, f'clinvar_chckpt{idx}.gzip'))
-        idx += 1
-    df.to_csv(output_path, compression='gzip', index=False)
-    return df
+    return pd.DataFrame(data=clinvar_datalines(vcf))
 
 
 def clinvar_rs_ids(which='vcf_37'):
