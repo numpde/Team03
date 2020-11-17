@@ -6,6 +6,8 @@ import typing
 from unittest import TestCase
 from idiva.utils import at_most_n
 
+REF_LENGTHS = {'clinvar_csv': 777888, 'clinvar_df': 777916}
+
 
 class TestClinVar(TestCase):
     def test_howto(self):
@@ -72,3 +74,22 @@ class TestClinVar(TestCase):
             self.assertEqual(datalines[0].ref, 'G')
             self.assertEqual(datalines[1].ref, 'C')
             self.assertEqual(datalines[2].ref, 'G')
+
+    def test_length_clinvar(self):
+        from idiva.db import clinvar_open
+        from idiva.io import ReadVCF
+        from tqdm import tqdm
+        with clinvar_open(which='vcf_37') as fd:
+            vcf = ReadVCF(fd)
+            for idx, line in tqdm(enumerate(vcf.datalines), postfix='reading clinvar file'):
+                pass
+
+        self.assertEqual(idx, REF_LENGTHS['clinvar_csv'])
+
+    def test_length_clinvar_df(self):
+        from idiva.db import clinvar_open
+        from idiva.io import ReadVCF
+        from idiva.db.clinvar import clinvar_to_df
+        with clinvar_open(which='vcf_37') as fd:
+            df = clinvar_to_df(ReadVCF(fd))
+        self.assertEqual(len(df), REF_LENGTHS['clinvar_df'])
