@@ -174,8 +174,7 @@ def align(*, case: ReadVCF, ctrl: ReadVCF):
     for (k, vcf) in zip(['case', 'ctrl'], [case, ctrl]):
         with seek_then_rewind(vcf.fd, seek=vcf.dataline_start_pos) as fd:
             # 5971
-            dfs[k] = pandas.read_csv(fd, sep=SEP, usecols=range(len(KEY_COLS)), header=None, names=KEY_COLS,
-                                     nrows=15971)
+            dfs[k] = pandas.read_csv(fd, sep=SEP, usecols=range(len(KEY_COLS)), header=None, names=KEY_COLS)
             dfs[k].index = dfs[k].index.rename(name="rowid")
             dfs[k] = dfs[k].reset_index().astype({'rowid': 'Int64'})
 
