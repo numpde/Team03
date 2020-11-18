@@ -15,8 +15,8 @@ from tcga.utils import download
 BASE = (Path(__file__).parent) / "data_for_tests/large_head"
 
 PATHS = {
-    'ctrl': BASE / "control.vcf",
-    'case': BASE / "case_processed.vcf",
+    'ctrl': BASE / "control_v2.vcf",
+    'case': BASE / "case_processed_v2.vcf",
 }
 
 # LARGE DATA
@@ -26,8 +26,8 @@ assert download_cache.is_dir()
 download = download.to(abs_path=download_cache)
 
 URLS = {
-    'ctrl': "https://public.bmi.inf.ethz.ch/eth_intern/teaching/cbm_2020/cbm_2020_project2/control.vcf",
-    'case': "https://public.bmi.inf.ethz.ch/eth_intern/teaching/cbm_2020/cbm_2020_project2/case_processed.vcf",
+    'ctrl': "https://public.bmi.inf.ethz.ch/eth_intern/teaching/cbm_2020/cbm_2020_project2/control_v2.vcf.gz",
+    'case': "https://public.bmi.inf.ethz.ch/eth_intern/teaching/cbm_2020/cbm_2020_project2/case_processed_v2.vcf.gz",
 }
 
 

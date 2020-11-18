@@ -17,8 +17,8 @@ from idiva.clf.utils import create_df, NucEncoder
 BASE = (Path(__file__).parent) / "data_for_tests/large_head"
 
 PATHS = {
-    'ctrl': BASE / "control.vcf",
-    'case': BASE / "case_processed.vcf",
+    'ctrl': BASE / "control_v2.vcf",
+    'case': BASE / "case_processed_v2.vcf",
 }
 
 

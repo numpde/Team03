@@ -11,8 +11,8 @@ MY_SPACE = BASE / F"my_space/{Path(__file__).stem}"
 MY_SPACE.mkdir(exist_ok=True)
 
 PATHS = {
-    'ctrl': BASE / "large_head/control.vcf",
-    'case': BASE / "large_head/case_processed.vcf",
+    'ctrl': BASE / "large_head/control_v2.vcf",
+    'case': BASE / "large_head/case_processed_v2.vcf",
 }
 
 

@@ -10,8 +10,8 @@ from idiva.utils import unlist1, at_most_n, first
 BASE = (Path(__file__).parent) / "data_for_tests/large_head"
 
 PATHS = {
-    'ctrl': BASE / "control.vcf",
-    'case': BASE / "case_processed.vcf",
+    'ctrl': BASE / "control_v2.vcf",
+    'case': BASE / "case_processed_v2.vcf",
 }
 
 
