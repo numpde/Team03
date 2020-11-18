@@ -8,5 +8,7 @@ import contextlib
 def seek_then_rewind(fd: typing.IO, seek=0) -> typing.IO:
     pos = fd.tell()
     fd.seek(seek)
-    yield fd
-    fd.seek(pos)
+    try:
+        yield fd
+    finally:
+        fd.seek(pos)
