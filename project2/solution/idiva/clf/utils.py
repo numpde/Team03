@@ -1,49 +1,8 @@
-from itertools import product
+from typing import Optional
 
 import numpy as np
-import pandas as pd
 from sklearn.dummy import DummyClassifier
-from pathlib import Path
-
-from idiva.io import ReadVCF
-
-
-def create_df(vcf_path: Path, create_label=False, control: bool = False) -> pd.DataFrame:
-    """
-    Creates a dataframe from a vcf file, containing the information of the POS, REF, ALT and SAMPLEs columns.
-    The nucleobase information from REF and ALT is transformed into and index.
-    For each variant, the information of the SAMPLE column is included by inserting the number of
-    occurrences of values into the corresponding column. e.g. if the SAMPLES column contains [0|0, 1|0, 0|0],
-    a 2 will be added to the "0|0" column of the dataframe and a 1 to the "1|0" column.
-    create_label (bool): indicates whether a label column is to be added to the dataframe.
-        The label is 1 for variants from the case vcf and 0 for variants from the control vcf.
-    control (bool): indicates if the vcf is from the control cohort
-
-
-    Example:
-            pos  ref  alt  label    0|0  0|1  0|2  1|0  1|1  1|2  2|0  2|1  2|2
-        0  52.0  1.0  0.0    0.0  500.0  NaN  NaN  NaN  NaN  NaN  NaN  NaN  NaN
-        1  56.0  1.0  3.0    0.0  498.0  1.0  NaN  1.0  NaN  NaN  NaN  NaN  NaN
-        2  78.0  2.0  1.0    0.0  499.0  NaN  NaN  1.0  NaN  NaN  NaN  NaN  NaN
-        3  80.0  2.0  0.0    0.0  497.0  1.0  NaN  2.0  NaN  NaN  NaN  NaN  NaN
-        4  92.0  2.0  3.0    0.0  500.0  NaN  NaN  NaN  NaN  NaN  NaN  NaN  NaN
-    """
-    df = pd.DataFrame(
-        columns=['pos', 'ref', 'alt', 'label', *[f'{x}|{y}' for x, y in product(range(3), range(3))]], dtype='int32')
-    nuc_encoder = NucEncoder()
-    with open(vcf_path, mode='r') as fd:
-        for elem in ReadVCF(fd):
-            line = {
-                'pos': elem.pos,
-                'ref': nuc_encoder.n2i[elem.ref],
-                'alt': nuc_encoder.n2i[elem.alt],
-            }
-            if create_label:
-                line['label'] = 1 * (not control)
-            for sample, count in zip(*np.unique(elem.samples, return_counts=True)):
-                line[sample] = int(count)
-            df = df.append(line, ignore_index=True)
-    return df
+from sklearn.model_selection import train_test_split
 
 
 def get_clf(which_clf: str):
@@ -70,19 +29,27 @@ class NucEncoder:
     def __init__(self):
         self.n2i = {}
         self.i2n = {}
-        for idx, key in enumerate(['A', 'C', 'G', 'T', '-']):
+        for idx, key in enumerate(['A', 'C', 'G', 'T', '-', 'N']):
             self.n2i[key] = idx
             self.i2n[idx] = key
 
-    def encode(self, bases: str) -> int:
+    def encode(self, bases: Optional[str]) -> int:
         """
         Encodes nucleobases into an integer
         """
         # todo this encoding makes no sense for longer bases
         if not bases:
             bases = '-'
-        output = []
-        for base in bases:
-            output.append(str(self.n2i[base]))
-
+        output = [str(self.n2i[base]) for base in bases]
         return int(''.join(output))
+
+
+def get_train_test(data):
+    df_train, df_eval = train_test_split(data, test_size=0.2, shuffle=True)
+
+    train_data = df_train.loc[:, df_train.columns != 'label'].to_numpy()
+    train_labels = df_train['label'].to_numpy()
+    eval_data = df_eval.loc[:, df_eval.columns != 'label'].to_numpy()
+    eval_labels = df_eval['label'].to_numpy()
+
+    return train_data, train_labels, eval_data, eval_labels

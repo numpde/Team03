@@ -4,14 +4,15 @@ import contextlib
 import gzip
 import io
 import typing
+from itertools import product
 
 import pandas as pd
+from tqdm import tqdm
 
 import idiva.utils
+from idiva.clf.utils import NucEncoder
 from idiva.io.vcf import ReadVCF
 from idiva.utils import at_most_n
-from tqdm import tqdm
-import os
 
 URL = {
     'vcf_37': "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh37/clinvar.vcf.gz",
@@ -43,17 +44,47 @@ def clinvar_meta(which='vcf_37') -> idiva.utils.minidict:
     return idiva.utils.minidict(data.meta)
 
 
-def get_info_dict(info) -> dict:
+def get_info_dict(info: str) -> dict:
+    """
+    Yields info dict for every RS id.
+    The info field can contain several RS ids and several OMIM ids. This function yields a dict for any
+    combination of them.
+    """
+    import re
+    OMIM_ids = [None]
+    RS_ids = [None]
     info_dict = {}
+    # go through info which is semicolon separated
     for elem in info.split(';'):
+        # spit into key, value
         k, v = elem.split('=')
+        if k == 'CLNDISDB':
+            OMIM_ids = re.findall('OMIM:\d+', v)
         info_dict[k] = v
-    if 'RS' in info_dict.keys():
-        for rs_id in info_dict['RS'].split('|'):
-            info_dict['RS'] = 'rs' + str(int(rs_id))
-            yield info_dict
-    else:
+        if k == 'RS':
+            for rs_id in v.split('|'):
+                RS_ids.append('rs' + str(int(rs_id)))
+
+    for OMIM_id, RS_id in product(OMIM_ids, RS_ids):
+        info_dict['OMIM_id'] = OMIM_id
+        info_dict['RS'] = RS_id
         yield info_dict
+
+
+def clf_datalines(df_clinvar: pd.DataFrame, nuc_encoder: NucEncoder):
+    for idx, row in tqdm(df_clinvar.iterrows(), total=len(df_clinvar), postfix='iterating df_clinvar'):
+        line = {
+            'pos': row['pos'],
+            'ref': nuc_encoder.encode(None) if str(row['alt']) == 'nan' else nuc_encoder.encode(row['ref']),
+            'alt': nuc_encoder.encode(None) if str(row['alt']) == 'nan' else nuc_encoder.encode(row['alt']),
+            'label': 1 if row['CLNSIG'] == 'Pathogenic' else 0
+        }
+        yield line
+
+
+def df_clinvar_to_clf_data(df_clinvar: pd.DataFrame):
+    nuc_encoder = NucEncoder()
+    return pd.DataFrame(data=clf_datalines(df_clinvar, nuc_encoder))
 
 
 def clinvar_datalines(vcf: idiva.io.ReadVCF):
@@ -70,7 +101,7 @@ def clinvar_to_df(vcf: idiva.io.ReadVCF) -> pd.DataFrame:
     Creates a dataframe from the clinvar file. Adds all the INFO fields as additional columns.
     """
 
-    return pd.DataFrame(data=clinvar_datalines(vcf))
+    return pd.DataFrame(data=clinvar_datalines(vcf)).astype({'ref': str, 'alt': str})
 
 
 def clinvar_rs_ids(which='vcf_37'):

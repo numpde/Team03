@@ -2,8 +2,10 @@
 
 import typing
 import pandas
-
+import pandas as pd
+from pathlib import Path
 import idiva.io
+from idiva.db.clinvar import df_clinvar_to_clf_data
 
 dtype_v0 = {'CHROM': str, 'POS': int, 'ID': str, 'ALT0': float, 'ALT1': float, 'ALT2': float}
 
@@ -23,7 +25,6 @@ def join(*, case: pandas.DataFrame, ctrl: pandas.DataFrame) -> pandas.DataFrame:
     )
 
     return df
-
 
 
 def v0_datalines(vcf: idiva.io.ReadVCF) -> typing.Iterable[dict]:
@@ -67,6 +68,36 @@ def v0_df(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
     """
 
     return pandas.DataFrame(data=v0_datalines(vcf)).astype(dtype_v0)
+
+
+def get_clinvar_clf_data(data_dir: Path) -> pd.DataFrame:
+    """
+    Loads clinvar_clf_data if it exists as csv under data_dir.
+    Otherwise tries to load df_clinvar, and creates clinvar_clf_data from it.
+    """
+    clinvar_csv_path = data_dir / 'clinvar.csv'
+    clinvar_clf_data_path = data_dir / 'clinvar_clf_data.csv'
+
+    if not clinvar_clf_data_path.is_file():
+        if not clinvar_csv_path.is_file():
+            from idiva.db import clinvar_open
+            from idiva.io import ReadVCF
+            from idiva.db.clinvar import clinvar_to_df
+
+            with clinvar_open(which='vcf_37') as fd:
+                df_clinvar = clinvar_to_df(ReadVCF(fd))
+            df_clinvar.to_csv(clinvar_csv_path, index=False)
+        else:
+            df_clinvar = pd.read_csv(clinvar_csv_path)
+
+        df_clinvar = df_clinvar.loc[(df_clinvar['CLNSIG'] == 'Pathogenic') | (df_clinvar['CLNSIG'] == 'Benign')]
+
+        clinvar_clf_data = df_clinvar_to_clf_data(df_clinvar)
+        clinvar_clf_data.to_csv(clinvar_clf_data_path, index=False)
+    else:
+        clinvar_clf_data = pd.read_csv(clinvar_clf_data_path)
+
+    return clinvar_clf_data
 
 
 if __name__ == '__main__':
