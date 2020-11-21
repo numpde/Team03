@@ -81,7 +81,12 @@ class ClfDatalines:
         elif base_string_encoding == 'base_string_length':
             self.get_dataline = self._get_datalines_base_string_length
 
-    def _integer_encoding(self, base_string):
+    def _integer_encoding(self, base_string: str):
+        """
+        Encodes nucleobases into integers. Each nucleobase will be encoded into an integer individually.
+        Example:
+            GATTACA will be encoded to 2033010
+        """
         return self.nuc_encoder.encode(None) if str(base_string) == 'nan' else self.nuc_encoder.encode(base_string)
 
     def _get_dataline_integer_encoding(self, row):
@@ -105,7 +110,7 @@ class ClfDatalines:
             yield from self.get_dataline(row)
 
 
-def df_clinvar_to_clf_data(df_clinvar: pd.DataFrame, base_string_encoding: str = 'integer'):
+def df_clinvar_to_clf_data(df_clinvar: pd.DataFrame, base_string_encoding: str = 'integer') -> pd.DataFrame:
     clf_datalines = ClfDatalines(base_string_encoding=base_string_encoding)
     return pd.DataFrame(data=clf_datalines(df_clinvar))
 
