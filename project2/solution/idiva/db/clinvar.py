@@ -71,26 +71,49 @@ def get_info_dict(info: str) -> dict:
         yield info_dict
 
 
-def clf_datalines(df_clinvar: pd.DataFrame, nuc_encoder: NucEncoder):
-    for idx, row in tqdm(df_clinvar.iterrows(), total=len(df_clinvar), postfix='iterating df_clinvar'):
-        line = {
-            'pos': row['pos'],
-            'ref': nuc_encoder.encode(None) if str(row['alt']) == 'nan' else nuc_encoder.encode(row['ref']),
-            'alt': nuc_encoder.encode(None) if str(row['alt']) == 'nan' else nuc_encoder.encode(row['alt']),
-            'label': 1 if row['CLNSIG'] == 'Pathogenic' else 0
-        }
-        yield line
+class ClfDatalines:
+    def __init__(self, base_string_encoding):
+        if base_string_encoding == 'integer':
+            self.nuc_encoder = NucEncoder()
+            self.base_string_encoder = self._integer_encoding
+            self.get_dataline = self._get_dataline_integer_encoding
+
+        elif base_string_encoding == 'base_string_length':
+            self.get_dataline = self._get_datalines_base_string_length
+
+    def _integer_encoding(self, base_string):
+        return self.nuc_encoder.encode(None) if str(base_string) == 'nan' else self.nuc_encoder.encode(base_string)
+
+    def _get_dataline_integer_encoding(self, row):
+        # todo: this is an arbitrary limit on sequence length because of dumb encoding.
+        #  (if encoding is too long sklearn will complain)
+        if (str(row.ref) != 'nan' and len(row.ref) < 100) and (str(row.alt) != 'nan' and len(row.alt) < 100):
+            line = {
+                'pos': row['pos'],
+                'ref': self.base_string_encoder(row['ref']),
+                'alt': self.base_string_encoder(row['alt']),
+                'label': 1 if row['CLNSIG'] == 'Pathogenic' else 0
+            }
+            yield line
+
+    def _get_datalines_base_string_length(self, row):
+        yield {'pos': row['pos'], 'label': 1 if row['CLNSIG'] == 'Pathogenic' else 0,
+               'length_var': len(row.alt) if str(row.alt) != 'nan' else 0}
+
+    def __call__(self, df_clinvar: pd.DataFrame):
+        for idx, row in tqdm(df_clinvar.iterrows(), total=len(df_clinvar), postfix='iterating df_clinvar'):
+            yield from self.get_dataline(row)
 
 
-def df_clinvar_to_clf_data(df_clinvar: pd.DataFrame):
-    nuc_encoder = NucEncoder()
-    return pd.DataFrame(data=clf_datalines(df_clinvar, nuc_encoder))
+def df_clinvar_to_clf_data(df_clinvar: pd.DataFrame, base_string_encoding: str = 'integer'):
+    clf_datalines = ClfDatalines(base_string_encoding=base_string_encoding)
+    return pd.DataFrame(data=clf_datalines(df_clinvar))
 
 
 def clinvar_datalines(vcf: idiva.io.ReadVCF):
     for idx, line in tqdm(enumerate(vcf.datalines), postfix='reading clinvar file'):
         for info_dict in get_info_dict(line.info):
-            line_dict = {k: line.__dict__[k] for k in line.__dict__.keys() if not k == 'info'}
+            line_dict = {k: line.__dict__[k] for k in line.__dict__.keys() if k != 'info'}
             line_dict = dict(line_dict, **info_dict)
 
             yield line_dict
