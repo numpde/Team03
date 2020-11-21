@@ -1,9 +1,11 @@
 # RA, 2020-11-14
 
 import typing
+from pathlib import Path
+
 import pandas
 import pandas as pd
-from pathlib import Path
+
 import idiva.io
 from idiva.db.clinvar import df_clinvar_to_clf_data
 
@@ -28,7 +30,7 @@ def join(*, case: pandas.DataFrame, ctrl: pandas.DataFrame) -> pandas.DataFrame:
 
 
 def v0_datalines(vcf: idiva.io.ReadVCF) -> typing.Iterable[dict]:
-    from idiva.io.vcf import parse_gt, is_genomic_string
+    from idiva.io.vcf import parse_gt
 
     # special = sorted({F"<{k}>" for k in vcf.meta['ALT'].keys()})
 
@@ -70,13 +72,16 @@ def v0_df(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
     return pandas.DataFrame(data=v0_datalines(vcf)).astype(dtype_v0)
 
 
-def get_clinvar_clf_data(data_dir: Path) -> pd.DataFrame:
+def get_clinvar_clf_data(data_dir: Path, save_df=False, base_string_encoding: str = 'integer') -> pd.DataFrame:
     """
     Loads clinvar_clf_data if it exists as csv under data_dir.
     Otherwise tries to load df_clinvar, and creates clinvar_clf_data from it.
     """
-    clinvar_csv_path = data_dir / 'clinvar.csv'
-    clinvar_clf_data_path = data_dir / 'clinvar_clf_data.csv'
+    # dict to store an index of the base_string_encoding for the file name endings
+    base_string_encoding_idx = {'integer': 1, 'base_string_length': 2}
+
+    clinvar_csv_path = data_dir / 'clinvar.csv.gzip'
+    clinvar_clf_data_path = data_dir / f'clinvar_clf_data_{base_string_encoding_idx[base_string_encoding]}.csv.gzip'
 
     if not clinvar_clf_data_path.is_file():
         if not clinvar_csv_path.is_file():
@@ -86,16 +91,19 @@ def get_clinvar_clf_data(data_dir: Path) -> pd.DataFrame:
 
             with clinvar_open(which='vcf_37') as fd:
                 df_clinvar = clinvar_to_df(ReadVCF(fd))
-            df_clinvar.to_csv(clinvar_csv_path, index=False)
+            if save_df:
+                df_clinvar.to_csv(clinvar_csv_path, index=False, compression='gzip')
         else:
-            df_clinvar = pd.read_csv(clinvar_csv_path)
+            df_clinvar = pd.read_csv(clinvar_csv_path, compression='gzip')
 
         df_clinvar = df_clinvar.loc[(df_clinvar['CLNSIG'] == 'Pathogenic') | (df_clinvar['CLNSIG'] == 'Benign')]
+        # transforming the clinvar dataframe to categorical data for the classifier
+        clinvar_clf_data = df_clinvar_to_clf_data(df_clinvar, base_string_encoding=base_string_encoding)
 
-        clinvar_clf_data = df_clinvar_to_clf_data(df_clinvar)
-        clinvar_clf_data.to_csv(clinvar_clf_data_path, index=False)
+        if save_df:
+            clinvar_clf_data.to_csv(clinvar_clf_data_path, index=False, compression='gzip')
     else:
-        clinvar_clf_data = pd.read_csv(clinvar_clf_data_path)
+        clinvar_clf_data = pd.read_csv(clinvar_clf_data_path, compression='gzip')
 
     return clinvar_clf_data
 
@@ -107,7 +115,6 @@ if __name__ == '__main__':
     }
 
     from tcga.utils import download
-    from idiva.utils import at_most_n
     from pathlib import Path
     from contexttimer import Timer
 
