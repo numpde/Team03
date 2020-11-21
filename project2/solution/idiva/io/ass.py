@@ -10,6 +10,12 @@ from idiva.io.vcf import ReadVCF, RawDataline, is_genomic_string
 
 class bag_of_assumptions:
     @classmethod
+    def id_is_unique(cls, fd):
+        import pandas as pd
+        ids = [dataline.id for dataline in ReadVCF(fd)]
+        assert pd.Series(ids).is_unique
+
+    @classmethod
     def samples_column(cls, fd):
         from idiva.io.vcf import parse_gt
         for dataline in ReadVCF(fd):
@@ -87,14 +93,42 @@ class bag_of_assumptions:
 def check_all(fd: typing.TextIO):
     from idiva.utils import seek_then_rewind
 
-    with seek_then_rewind(fd):
-        bag_of_assumptions.samples_column(fd)
+    try:
+        with seek_then_rewind(fd):
+            bag_of_assumptions.alt_column(fd)
+    except (AssertionError, RuntimeError):
+        yield {'alt_column': False}
+    else:
+        yield {'alt_column': True}
 
-    with seek_then_rewind(fd):
-        bag_of_assumptions.ref_column(fd)
+    try:
+        with seek_then_rewind(fd):
+            bag_of_assumptions.id_is_unique(fd)
+    except (AssertionError, RuntimeError):
+        yield {'The ID column is_unique': False}
+    else:
+        yield {'The ID column is_unique': True}
 
-    with seek_then_rewind(fd):
-        bag_of_assumptions.alt_column(fd)
+    try:
+        with seek_then_rewind(fd):
+            bag_of_assumptions.samples_column(fd)
+    except (AssertionError, RuntimeError):
+        yield {'samples_column': False}
+    else:
+        yield {'samples_column': True}
 
-    with seek_then_rewind(fd):
-        bag_of_assumptions.format_is_gt(fd)
+    try:
+        with seek_then_rewind(fd):
+            bag_of_assumptions.ref_column(fd)
+    except (AssertionError, RuntimeError):
+        yield {'ref_column': False}
+    else:
+        yield {'ref_column': True}
+
+    try:
+        with seek_then_rewind(fd):
+            bag_of_assumptions.format_is_gt(fd)
+    except (AssertionError, RuntimeError):
+        yield {'format_is_gt': False}
+    else:
+        yield {'format_is_gt': True}
