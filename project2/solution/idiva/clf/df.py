@@ -2,8 +2,9 @@
 
 import typing
 import pandas
-
+import numpy
 import idiva.io
+from joblib import Parallel, delayed
 
 dtype_v0 = {'CHROM': str, 'POS': int, 'ID': str, 'ALT0': float, 'ALT1': float, 'ALT2': float}
 
@@ -25,7 +26,6 @@ def join(*, case: pandas.DataFrame, ctrl: pandas.DataFrame) -> pandas.DataFrame:
     return df
 
 
-
 def v0_datalines(vcf: idiva.io.ReadVCF) -> typing.Iterable[dict]:
     from idiva.io.vcf import parse_gt, is_genomic_string
 
@@ -36,15 +36,15 @@ def v0_datalines(vcf: idiva.io.ReadVCF) -> typing.Iterable[dict]:
 
         # SIMPLIFICATION
 
-        samples = [((a != 0) + (b != 0)) for (a, b) in samples]
+        samples = (numpy.array(samples, dtype=int) != 0).sum(axis=1)
 
         line = {
             'CHROM': dataline.chrom,
             'POS': dataline.pos,
             'ID': dataline.id,
-            'ALT0': sum((s == 0) for s in samples),
-            'ALT1': sum((s == 1) for s in samples),
-            'ALT2': sum((s == 2) for s in samples),
+            'ALT0': (samples == 0).sum(),
+            'ALT1': (samples == 1).sum(),
+            'ALT2': (samples == 2).sum(),
         }
 
         yield line
@@ -56,12 +56,13 @@ def v0_df(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
     Only counts the presence of alternative variants.
     Returns a dataframe like
 
-                    CHROM   POS  ALT0  ALT1  ALT2
-        ID
+        ID          CHROM   POS  ALT0  ALT1  ALT2
         rs556541063    17    52   500     0     0
         ...           ...   ...   ...   ...   ...
         rs191439637    17  2833   495     5     0
         rs149757548    17  2837   498     2     0
+
+    ID is not guaranteed to be unique.
 
     Int64 data type is used for the ALT columns.
     """
