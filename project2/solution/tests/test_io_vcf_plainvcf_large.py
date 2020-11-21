@@ -23,14 +23,11 @@ URLS = {
 class TestReadBigFile(TestCase):
     def test_count(self):
         from idiva.io.vcf import ReadVCF, RawDataline
-        reference = {'ctrl': 2329288, 'case': 2360972}
+        # ref_len_v1 = {'ctrl': 2329288, 'case': 2360972}
+        ref_len_v2 = {'ctrl': 2227080, 'case': 2258797}
         for group in URLS:
-            data = download(URLS[group]).now
-
-            with data.open(mode='rb') as fd:
+            with download(URLS[group]).now.open(mode='rb') as fd:
                 with open_maybe_gz(fd, mode='r') as fd:
-                    vcf = ReadVCF(fd)
-                    line: RawDataline
-                    nlines = sum(1 for __ in vcf.datalines)
+                    nlines = sum(1 for __ in ReadVCF(fd))
                     # print(F"Group {group} has {nlines} datalines")
-                    self.assertEqual(reference[group], nlines)
+                    self.assertEqual(nlines, ref_len_v2[group])

@@ -26,9 +26,9 @@ URLS = {
 
 class TestAssumptions(TestCase):
     def test_check_all(self):
-        for group in ['case', 'ctrl']:
-            data = download(URLS[group]).now
-            with data.open(mode='rb') as fd:
+        for group in URLS:
+            with download(URLS[group]).now.open(mode='rb') as fd:
                 with open_maybe_gz(fd) as fd:
                     from idiva.io.ass import check_all
-                    check_all(fd)
+                    for check in check_all(fd):
+                        print(group, check)
