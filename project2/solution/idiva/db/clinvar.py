@@ -1,5 +1,3 @@
-# RA, 2020-11-11
-
 import contextlib
 import gzip
 import io
@@ -31,6 +29,9 @@ dtype_clinvar_df = {'chrom': str, 'pos': pd.Int64Dtype(), 'id': pd.Int64Dtype(),
 
 @contextlib.contextmanager
 def clinvar_open(which='vcf_37') -> typing.Iterable[typing.TextIO]:
+    """
+    RA, 2020-11-11
+    """
     from idiva.download import download
     data = download(URL[which]).now
     with data.open(mode='rb') as gz:
@@ -39,6 +40,9 @@ def clinvar_open(which='vcf_37') -> typing.Iterable[typing.TextIO]:
 
 
 def clinvar_meta(which='vcf_37') -> idiva.utils.minidict:
+    """
+    RA, 2020-11-11
+    """
     from idiva.download import download
     data = download(URL[which]).now
     return idiva.utils.minidict(data.meta)
