@@ -1,5 +1,3 @@
-# RA, 2020-11-14
-
 import typing
 from pathlib import Path
 
@@ -19,6 +17,8 @@ def join(*, case: pandas.DataFrame, ctrl: pandas.DataFrame) -> pandas.DataFrame:
     Outer-join two dataframes on the columns CHROM, POS, ID.
     Use the suffixes _case and _ctrl for the other ambiguous columns.
     Uses sort=False in pandas.merge_ordered.
+
+    RA, 2020-11-14
     """
 
     df = pandas.merge_ordered(
@@ -31,8 +31,10 @@ def join(*, case: pandas.DataFrame, ctrl: pandas.DataFrame) -> pandas.DataFrame:
     return df
 
 
-
 def v0_datalines(vcf: idiva.io.ReadVCF) -> typing.Iterable[dict]:
+    """
+    RA, 2020-11-14
+    """
     from idiva.io.vcf import parse_gt
 
     # special = sorted({F"<{k}>" for k in vcf.meta['ALT'].keys()})
@@ -70,7 +72,9 @@ def v0_df(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
 
     ID is not guaranteed to be unique.
 
-    Int64 data type is used for the ALT columns.
+    Pandas Int64 data type is used for the ALT columns.
+
+    RA, 2020-11-14
     """
 
     return pandas.DataFrame(data=v0_datalines(vcf)).astype(dtype_v0)
@@ -78,38 +82,37 @@ def v0_df(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
 
 def get_clinvar_clf_data(data_dir: Path, save_df=False, base_string_encoding: str = 'integer') -> pd.DataFrame:
     """
-    Loads clinvar_clf_data if it exists as csv under data_dir.
-    Otherwise tries to load df_clinvar, and creates clinvar_clf_data from it.
+    Loads clinvar_clf_data suitable for a classifier.
+
+    HK, 2020-11-22
+    RA, 2020-11-22
     """
-    # dict to store an index of the base_string_encoding for the file name endings
+
+    from idiva.io import cache_df
+
+    which = 'vcf_37'
+
+    def maker_clinvar() -> pd.DataFrame:
+        from idiva.db import clinvar_open
+        from idiva.io import ReadVCF
+        from idiva.db.clinvar import clinvar_to_df
+
+        with clinvar_open(which=which) as fd:
+            return clinvar_to_df(ReadVCF(fd))
+
+    df_clinvar = cache_df(["clinvar", which], maker_clinvar)
+
+    #
+
     base_string_encoding_idx = {'integer': 1, 'base_string_length': 2}
 
-    clinvar_csv_path = data_dir / 'clinvar.csv.gzip'
-    clinvar_clf_data_path = data_dir / f'clinvar_clf_data_{base_string_encoding_idx[base_string_encoding]}.csv.gzip'
+    def maker_clinvar_clf() -> pd.DataFrame:
+        # If you change this function, change the cache key also.
+        # Preparing the clinvar dataframe for categorical classification:
+        df_clinvar_reduced = df_clinvar[df_clinvar['CLNSIG'].isin({'Pathogenic', 'Benign'})]
+        return df_clinvar_to_clf_data(df_clinvar_reduced, base_string_encoding=base_string_encoding)
 
-    if not clinvar_clf_data_path.is_file():
-        if not clinvar_csv_path.is_file():
-            from idiva.db import clinvar_open
-            from idiva.io import ReadVCF
-            from idiva.db.clinvar import clinvar_to_df
-
-            with clinvar_open(which='vcf_37') as fd:
-                df_clinvar = clinvar_to_df(ReadVCF(fd))
-            if save_df:
-                df_clinvar.to_csv(clinvar_csv_path, index=False, compression='gzip')
-        else:
-            df_clinvar = pd.read_csv(clinvar_csv_path, compression='gzip')
-
-        df_clinvar = df_clinvar.loc[(df_clinvar['CLNSIG'] == 'Pathogenic') | (df_clinvar['CLNSIG'] == 'Benign')]
-        # transforming the clinvar dataframe to categorical data for the classifier
-        clinvar_clf_data = df_clinvar_to_clf_data(df_clinvar, base_string_encoding=base_string_encoding)
-
-        if save_df:
-            clinvar_clf_data.to_csv(clinvar_clf_data_path, index=False, compression='gzip')
-    else:
-        clinvar_clf_data = pd.read_csv(clinvar_clf_data_path, compression='gzip')
-
-    return clinvar_clf_data
+    return cache_df(["clinvar_clf_data", base_string_encoding, "v01"], maker_clinvar_clf)
 
 
 if __name__ == '__main__':
