@@ -100,7 +100,7 @@ def get_clinvar_clf_data(data_dir: Path, save_df=False, base_string_encoding: st
         with clinvar_open(which=which) as fd:
             return clinvar_to_df(ReadVCF(fd))
 
-    df_clinvar = cache_df(["clinvar", which], maker_clinvar)
+    df_clinvar = cache_df(name=("clinvar_" + which), key=[], df_maker=maker_clinvar)
 
     #
 
@@ -112,7 +112,7 @@ def get_clinvar_clf_data(data_dir: Path, save_df=False, base_string_encoding: st
         df_clinvar_reduced = df_clinvar[df_clinvar['CLNSIG'].isin({'Pathogenic', 'Benign'})]
         return df_clinvar_to_clf_data(df_clinvar_reduced, base_string_encoding=base_string_encoding)
 
-    return cache_df(["clinvar_clf_data", base_string_encoding, "v01"], maker_clinvar_clf)
+    return cache_df(name="clinvar_clf_data", key=[base_string_encoding, "v01"], df_maker=maker_clinvar_clf)
 
 
 if __name__ == '__main__':

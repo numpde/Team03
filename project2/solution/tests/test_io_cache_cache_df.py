@@ -54,30 +54,33 @@ class TestCacheDf(TestCase):
 
         assert not base.is_dir()
 
-
     def test_first_make(self):
-        key = "test_read_write_01"
         from idiva.io import cache_df
         from idiva.io.cache import BASE
         with no_new_files(BASE, "*.gz"):
             df_reference = maker()
-            df_candidate = cache_df(key, maker)
-
+            df_candidate = cache_df("test1", [], maker)
             self.assertTrue(df_reference.equals(df_candidate))
 
     def test_make_save_read(self):
-        key = "test_read_write_02"
         from idiva.io import cache_df
         from idiva.io.cache import BASE
+
+        name = "test2"
+        key1 = ""
+        key2 = ["v1", "v2"]
+
         with no_new_files(BASE, "*.gz"):
-            df_reference = maker()
+            for key in [key1, key2]:
+                df_reference = maker()
 
-            def phoney_maker():
-                raise RuntimeError
+                def phoney_maker():
+                    raise RuntimeError
 
-            with self.assertRaises(RuntimeError):
-                cache_df(key, phoney_maker)
+                with self.assertRaises(RuntimeError):
+                    cache_df(name, key, phoney_maker)
 
-            self.assertTrue(df_reference.equals(cache_df(key, maker)))
-            self.assertTrue(df_reference.equals(cache_df(key, phoney_maker)))
-            self.assertTrue(df_reference.equals(cache_df(key, phoney_maker)))
+                self.assertTrue(df_reference.equals(cache_df(name, key, maker)))
+
+                self.assertTrue(df_reference.equals(cache_df(name, key, phoney_maker)))
+                self.assertTrue(df_reference.equals(cache_df(name, key, phoney_maker)))
