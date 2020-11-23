@@ -80,7 +80,7 @@ def v0_df(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
     return pandas.DataFrame(data=v0_datalines(vcf)).astype(dtype_v0)
 
 
-def get_clinvar_clf_data(data_dir: Path, save_df=False, base_string_encoding: str = 'integer') -> pd.DataFrame:
+def get_clinvar_clf_data(data_dir: Path, base_string_encoding: str = 'integer') -> pd.DataFrame:
     """
     Loads clinvar_clf_data suitable for a classifier.
 
@@ -101,10 +101,6 @@ def get_clinvar_clf_data(data_dir: Path, save_df=False, base_string_encoding: st
             return clinvar_to_df(ReadVCF(fd))
 
     df_clinvar = cache_df(name=("clinvar_" + which), key=[], df_maker=maker_clinvar)
-
-    #
-
-    base_string_encoding_idx = {'integer': 1, 'base_string_length': 2}
 
     def maker_clinvar_clf() -> pd.DataFrame:
         # If you change this function, change the cache key also.
