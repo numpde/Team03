@@ -56,7 +56,7 @@ class DataHandler:
 
                 line = {
                     'ID': row.id,
-                    'CHROM': row.chrom,
+                    'CHROM': self.translate_chrom(row.chrom),
                     'POS': row['pos'],
                     'VAR': self.mapping[row.ref][row.alt],
                     'label': 1 if row['CLNSIG'] == 'Pathogenic' else 0,
@@ -94,10 +94,10 @@ class DataHandler:
             with clinvar_open(which=clinvar_file) as fd:
                 return clinvar_to_df(ReadVCF(fd))
 
-        df_clinvar = cache_df(name=("clinvar_" + clinvar_file), key=[], df_maker=maker_clinvar)
+        df_clinvar = cache_df(name=("clinvar_" + clinvar_file), key=[clinvar_file], df_maker=maker_clinvar)
         df_clinvar_reduced = df_clinvar[df_clinvar['CLNSIG'].isin({'Pathogenic', 'Benign'})]
 
-        return cache_df(name="clinvar_clf_data", key=["v01"],
+        return cache_df(name="clinvar_clf_data", key=[clinvar_file, "v01"],
                         df_maker=lambda: self.df_clinvar_to_clf_data(df_clinvar_reduced))
 
     def create_training_set(self, clinvar_file: str = 'vcf_37') -> typing.Tuple[pd.DataFrame, pd.DataFrame]:
@@ -253,18 +253,18 @@ class DataHandler:
         # TODO: get cadd score
         return 0, 0.5
 
-    def translate_chrom(self, id) -> int:
+    def translate_chrom(self, chrom: typing.Union[str, int]) -> int:
         """
         translate non integer chromosomes (X,Y & MT) to integers (23, 24 & 25)
         """
-        if id['CHROM'] == 'X':
+        if chrom == 'X':
             return 23
-        elif id['CHROM'] == 'Y':
+        elif chrom == 'Y':
             return 24
-        elif id['CHROM'] == 'MT':
+        elif chrom == 'MT':
             return 25
         else:
-            return int(id["CHROM"])
+            return int(chrom)
 
 
 if __name__ == '__main__':
