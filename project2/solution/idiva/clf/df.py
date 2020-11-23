@@ -80,7 +80,7 @@ def v0_df(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
     return pandas.DataFrame(data=v0_datalines(vcf)).astype(dtype_v0)
 
 
-def get_clinvar_clf_data(data_dir: Path, base_string_encoding: str = 'integer') -> pd.DataFrame:
+def get_clinvar_clf_data(base_string_encoding: str = 'integer') -> pd.DataFrame:
     """
     Loads clinvar_clf_data suitable for a classifier.
 
@@ -92,7 +92,7 @@ def get_clinvar_clf_data(data_dir: Path, base_string_encoding: str = 'integer') 
 
     which = 'vcf_37'
 
-    def maker_clinvar() -> pd.DataFrame:
+    def maker_clinvar(which) -> pd.DataFrame:
         from idiva.db import clinvar_open
         from idiva.io import ReadVCF
         from idiva.db.clinvar import clinvar_to_df

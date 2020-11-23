@@ -2,7 +2,6 @@
 
 import typing
 
-
 import pandas as pd
 import numpy as np
 
@@ -10,6 +9,7 @@ from idiva.db.clinvar import clinvar_to_df, clinvar_datalines, clinvar_open
 from idiva.db.ncbi_scraper import get_functional_consequence_from_SNP
 from idiva.io import ReadVCF
 from idiva.utils import seek_then_rewind
+from tqdm import tqdm
 
 
 class DataHandler:
@@ -45,6 +45,62 @@ class DataHandler:
     CLINVAR_COLS = INIT_COLS
     CLINVAR_COLS_IDX = [0, 1, 2, 3, 4]
 
+    def get_clf_datalines(self, df_clinvar: pd.DataFrame):
+        for idx, row in tqdm(df_clinvar.iterrows(), total=len(df_clinvar), postfix='iterating df_clinvar'):
+            if (str(row.ref) != 'nan') and (str(row.alt) != 'nan'):
+                p_succes, p_score = self.get_polyphen2_score(row.id)
+                s_succes, s_score = self.get_sift_score(row.id)
+                c_succes, c_score = self.get_cadd_score(row.id)
+
+                line = {
+                    'ID': row.id,
+                    'CHROM': row.chrom,
+                    'POS': row['pos'],
+                    'VAR': self.mapping[row.ref][row.alt],
+                    'label': 1 if row['CLNSIG'] == 'Pathogenic' else 0,
+                    'PS': p_score,
+                    'PB': p_succes,
+                    'SS': s_score,
+                    'SB': s_succes,
+                    'CS': c_score,
+                    'CB': c_succes,
+                }
+
+                yield line
+
+    def df_clinvar_to_clf_data(self, df_clinvar: pd.DataFrame) -> pd.DataFrame:
+        """
+        # HK, 2020-11-21
+        """
+
+        return pd.DataFrame(data=self.get_clf_datalines(df_clinvar))
+
+    def get_clinvar_clf_data(self, clinvar_file: str = 'vcf_37') -> pd.DataFrame:
+        """
+        Loads clinvar_clf_data suitable for a classifier.
+
+        HK, 2020-11-22
+        RA, 2020-11-22
+        """
+
+        from idiva.io import cache_df
+
+        which = 'vcf_37'
+
+        def maker_clinvar(which) -> pd.DataFrame:
+            from idiva.db import clinvar_open
+            from idiva.io import ReadVCF
+            from idiva.db.clinvar import clinvar_to_df
+
+            with clinvar_open(which=which) as fd:
+                return clinvar_to_df(ReadVCF(fd))
+
+        df_clinvar = cache_df(name=("clinvar_" + which), key=[], df_maker=maker_clinvar)
+        df_clinvar_reduced = df_clinvar[df_clinvar['CLNSIG'].isin({'Pathogenic', 'Benign'})]
+
+        return cache_df(name="clinvar_clf_data", key=["v01"], df_maker=self.df_clinvar_to_clf_data,
+                        df=df_clinvar_reduced)
+
     def create_training_set(self, clinvar_file: str = 'vcf_37') -> typing.Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Returns training features and corresponding labels given a clinvar vcf file
@@ -53,13 +109,12 @@ class DataHandler:
         # translate a clinvar file to the following structure structure
         # CHROM, POS, ID, REF, ALT
 
-        base_frame = self.translate_clinvar(clinvar_file)
-
+        clinvar_clf_data = self.get_clinvar_clf_data()
         # create training set containg
         # CHROM, POS, VAR, Polyphen2 score & success, sift score & success, cadd score & success
 
-        x_train = self.create_features(base_frame)
-        y_train = self.get_labels(base_frame)
+        x_train = clinvar_clf_data.loc[:, clinvar_clf_data.columns != 'label']
+        y_train = clinvar_clf_data.loc[:, clinvar_clf_data.columns == 'label']
         y_train.set_index(x_train.index)
 
         return x_train, y_train
@@ -154,17 +209,15 @@ class DataHandler:
         with open(str(cache) + "/" + vcf_file) as vcf:
             reader = ReadVCF(vcf)
 
-
             with seek_then_rewind(reader.fd, seek=reader.dataline_start_pos) as fd:
 
-                dataframe = pd.read_csv(fd, sep='\t', usecols= range(len(DataHandler.INIT_COLS)), header=None,
+                dataframe = pd.read_csv(fd, sep='\t', usecols=range(len(DataHandler.INIT_COLS)), header=None,
                                         names=DataHandler.INIT_COLS,
                                         dtype={'CHROM': np.int, 'POS': np.int, 'ID': np.str, 'REF': np.str,
                                                'ALT': np.str})
 
-
                 # Check if ALT contains only one value or several values seperated by ','
-                assert(len([uni for uni in dataframe['ALT'].unique().tolist() if ',' in uni]) == 0)
+                assert (len([uni for uni in dataframe['ALT'].unique().tolist() if ',' in uni]) == 0)
 
                 # store only SNP variants
                 dataframe = dataframe[dataframe['REF'].apply(lambda x: set([x]).issubset({'A', 'C', 'G', 'T'}))]
@@ -234,7 +287,7 @@ class DataHandler:
         print(dataframe)
 
         # Check if ALT contains only one variant or several values seperated by ','
-        assert(len([uni for uni in dataframe['ALT'].unique().tolist() if ',' in uni]) == 0)
+        assert (len([uni for uni in dataframe['ALT'].unique().tolist() if ',' in uni]) == 0)
 
         # store only SNP variants (remove samples with NONE in ALT)
         dataframe = dataframe[dataframe['REF'].apply(lambda x: set([x]).issubset({'A', 'C', 'G', 'T'}))]
@@ -263,8 +316,7 @@ class DataHandler:
         where VAR interprets the SNP variant given REF and ALT
         """
 
-        def map(refalt)-> int:
-
+        def map(refalt) -> int:
             ref = refalt[0]
             alt = refalt[1]
 
@@ -329,4 +381,3 @@ if __name__ == '__main__':
 
     print(trans_vcf)
     print(trans_cvar)
-
