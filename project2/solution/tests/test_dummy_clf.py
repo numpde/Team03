@@ -6,6 +6,7 @@ from sklearn.dummy import DummyClassifier
 
 from idiva.clf.df import get_clinvar_clf_data
 from idiva.clf.utils import get_train_test
+from idiva.clf2.classifier import Classifier
 
 BASE = (Path(__file__).parent) / "data_for_tests/large_head"
 
@@ -31,3 +32,11 @@ class TestClf(TestCase):
         dummy_clf.predict(train_data)
         score = dummy_clf.score(train_data, train_labels)
         self.assertEqual(0.5, np.round(score, 1))
+
+    def test_grid_search(self):
+        cv = Classifier()
+        cv.create_model(n_steps=1, epochs=1)
+        cv.x = cv.x[:10]
+        cv.labels = cv.labels[:10]
+        cv.train(cv.x, cv.labels)
+        print(cv.model.cv_results_)

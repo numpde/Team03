@@ -1,7 +1,7 @@
 # LB 23-11-2020
 
 import pandas as pd
-from imblearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.model_selection import GridSearchCV
@@ -11,6 +11,9 @@ import numpy as np
 from sklearn.svm import SVC
 
 from idiva.dh.datahandler import DataHandler
+from idiva.clf.phenomenet import Phenomenet
+from keras.wrappers.scikit_learn import KerasClassifier
+
 
 class Classifier:
     """
@@ -22,31 +25,27 @@ class Classifier:
 
     def __init__(self, clinvar_train: str = 'vcf_37'):
         self.model = None
-        # Create model to train
-        self.create_model()
-
         self.dataHandler = DataHandler()
 
         # create data for training
         self.x, self.labels = self.dataHandler.create_training_set(clinvar_train)
+        self.phenomenet = Phenomenet(self.x.shape[1])
 
-        # train model on training data
-        self.train(self.x, self.labels)
-
-    def create_model(self):
+    def create_model(self, n_steps: int = 5, epochs: int = 100):
         """
         Returns the machine learning model
         """
 
         # TODO: Find a good model
         # TODO: What accuracy can we expect?
-
+        phenomenet = KerasClassifier(build_fn=self.phenomenet.get_phenomenet, batch_size=1, verbose=2, epochs=epochs)
+        phenomenet._estimator_type = "classifier"
         selector = VarianceThreshold()
         scaler = StandardScaler()
         estimators = [
             ('mlp1', MLPClassifier(max_iter=1000)),
-            ('rfc1', RandomForestClassifier())
-        ]
+            ('rfc1', RandomForestClassifier()),
+            ('phenomenet', phenomenet)]
 
         # classification
         classifier = StackingClassifier(estimators=estimators, final_estimator=SVC())
@@ -56,24 +55,23 @@ class Classifier:
                  ('classification', classifier)]
 
         param_grid = {
-            'classification__mlp1__alpha': np.logspace(start=-1, stop=1, num=5),
+            'classification__mlp1__alpha': np.logspace(start=-1, stop=1, num=n_steps),
 
-            'classification__rfc1__n_estimators': np.linspace(start=100, stop=500, num=5, dtype=np.int),
+            'classification__rfc1__n_estimators': np.linspace(start=100, stop=500, num=n_steps, dtype=np.int),
 
-            'classification__final_estimator__C': np.logspace(start=-1, stop=1, num=5),
+            'classification__final_estimator__C': np.logspace(start=-1, stop=1, num=n_steps),
             'classification__final_estimator__kernel': ['poly']
         }
 
         pipeline = Pipeline(steps=steps)
-
-        self.model = GridSearchCV(pipeline, param_grid, scoring='f1')
+        self.model = GridSearchCV(pipeline, param_grid, scoring='f1', verbose=2, n_jobs=-1)
 
     def train(self, x_train: pd.DataFrame, labels: pd.DataFrame) -> None:
         """
         Fits the model to the given data
         """
 
-        self.model.fit(x_train, labels.values.ravel())
+        self.model.fit(x_train.drop(['ID'], axis=1), labels.values.ravel())
 
     def predict(self, vcf_file_test: str, vcf_file_test2: str = None) -> pd.DataFrame:
         """
@@ -95,3 +93,14 @@ class Classifier:
         df = pd.DataFrame(y_pred)
 
         return df
+
+
+if __name__ == '__main__':
+    cv = Classifier()
+    # Create model to train
+    cv.create_model(n_steps=1)
+    cv.x = cv.x[:10]
+    cv.labels = cv.labels[:10]
+    # train model on training data
+    cv.train(cv.x, cv.labels)
+    print(cv.model.cv_results_)
