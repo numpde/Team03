@@ -2,14 +2,13 @@
 
 import typing
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+from tqdm import tqdm
 
-from idiva.db.clinvar import clinvar_to_df, clinvar_datalines, clinvar_open
 from idiva.db.ncbi_scraper import get_functional_consequence_from_SNP
 from idiva.io import ReadVCF
 from idiva.utils import seek_then_rewind
-from tqdm import tqdm
 
 
 class DataHandler:
@@ -46,6 +45,9 @@ class DataHandler:
     CLINVAR_COLS_IDX = [0, 1, 2, 3, 4]
 
     def get_clf_datalines(self, df_clinvar: pd.DataFrame):
+        """
+        HK, 2020-11-21
+        """
         for idx, row in tqdm(df_clinvar.iterrows(), total=len(df_clinvar), postfix='iterating df_clinvar'):
             if (str(row.ref) in ['A', 'C', 'G', 'T']) and (str(row.alt) in ['A', 'C', 'G', 'T']):
                 p_succes, p_score = self.get_polyphen2_score(row.id)
@@ -70,9 +72,8 @@ class DataHandler:
 
     def df_clinvar_to_clf_data(self, df_clinvar: pd.DataFrame) -> pd.DataFrame:
         """
-        # HK, 2020-11-21
+        HK, 2020-11-21
         """
-
         return pd.DataFrame(data=self.get_clf_datalines(df_clinvar))
 
     def get_clinvar_clf_data(self, clinvar_file: str = 'vcf_37') -> pd.DataFrame:
@@ -106,12 +107,9 @@ class DataHandler:
         Returns training features and corresponding labels given a clinvar vcf file
         """
 
-        # translate a clinvar file to the following structure structure
-        # CHROM, POS, ID, REF, ALT
-
-        clinvar_clf_data = self.get_clinvar_clf_data()
         # create training set containg
         # CHROM, POS, VAR, Polyphen2 score & success, sift score & success, cadd score & success
+        clinvar_clf_data = self.get_clinvar_clf_data()
 
         x_train = clinvar_clf_data.loc[:, clinvar_clf_data.columns != 'label']
         y_train = clinvar_clf_data.loc[:, clinvar_clf_data.columns == 'label']
@@ -131,56 +129,6 @@ class DataHandler:
             frame.drop_duplicates()
 
         return frame
-
-    def create_features(self, x: pd.DataFrame) -> pd.DataFrame:
-        """
-        Returns a dataframe with the following features:
-            - chromosome CHROM [int]
-            - position POS [int]
-            - Variant: VAR  [int]
-                1 = replacement
-                2 = insertion
-                3 = deletion
-            - polyphen 2 score PS [float]
-            - sift score SS [float]
-            - cadd score CS [float]
-            - polyphen 2 query successful PB [boolean]
-            - sift query successful SB [boolean]
-            - cadd query succesful CB [boolean]
-
-        Given:
-            CHROM
-            POS
-            ID
-            VAR
-        """
-
-        ID = x['ID']
-
-        p_success = []
-        p_scores = []
-
-        s_success = []
-        s_scores = []
-
-        c_success = []
-        c_scores = []
-
-        for idx, id in enumerate(ID):
-            p_success[idx], p_scores[idx] = self.get_polyphen2_score(id)
-            s_success[idx], s_scores[idx] = self.get_sift_score(id)
-            c_success[idx], c_scores[idx] = self.get_cadd_score(id)
-
-        x['PS'] = p_scores
-        x['PB'] = p_success
-
-        x['SS'] = s_scores
-        x['SB'] = s_success
-
-        x['CS'] = c_scores
-        x['CB'] = c_success
-
-        return x
 
     def get_labels(self, x: pd.DataFrame) -> pd.DataFrame:
         """
@@ -270,46 +218,6 @@ class DataHandler:
 
         return dataframe
 
-    def translate_clinvar(self, clinvar_file: str = 'vcf_37') -> pd.DataFrame:
-        """
-        Returns a dataframe that contains the following features from a clinvar file
-        CHROM, POS, ID, VAR
-        """
-
-        with clinvar_open(which='vcf_37') as fd:
-            dataframe = clinvar_to_df(ReadVCF(fd))
-
-        dataframe.rename(columns={'chrom': 'CHROM', 'pos': 'POS', 'id': 'clinvarID',
-                                  'ref': 'REF', 'alt': 'ALT', 'RS': 'ID'}, inplace=True)
-
-        dataframe = dataframe[['CHROM', 'POS', 'ID', 'REF', 'ALT']]
-
-        print(dataframe)
-
-        # Check if ALT contains only one variant or several values seperated by ','
-        assert (len([uni for uni in dataframe['ALT'].unique().tolist() if ',' in uni]) == 0)
-
-        # store only SNP variants (remove samples with NONE in ALT)
-        dataframe = dataframe[dataframe['REF'].apply(lambda x: set([x]).issubset({'A', 'C', 'G', 'T'}))]
-        dataframe = dataframe[dataframe['ALT'].apply(lambda x: set([x]).issubset({'A', 'C', 'G', 'T'}))]
-
-        # Check if only SNP
-        for ref in dataframe['REF']:
-            assert (len(ref) == 1)
-
-        for alt in dataframe['ALT']:
-            assert (len(alt) == 1)
-
-        dataframe['CHROM'] = pd.to_numeric(dataframe[['CHROM']].apply(self.translate_chrom, axis=1))
-
-        dataframe = self.encode_ref_alt(dataframe)
-
-        dataframe.drop_duplicates()
-
-        # assert(len(dataframe['ID'].unique().tolist()) == len(dataframe['ID'].tolist()))
-
-        return dataframe
-
     def encode_ref_alt(self, dataframe: pd.DataFrame) -> pd.DataFrame:
         """
         Returns: Dataframe which contains CHROM, POS, ID and VAR
@@ -367,7 +275,6 @@ if __name__ == '__main__':
         'case': "https://public.bmi.inf.ethz.ch/eth_intern/teaching/cbm_2020/cbm_2020_project2/case_processed.vcf",
     }
 
-    from tcga.utils import download
     from pathlib import Path
 
     cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
