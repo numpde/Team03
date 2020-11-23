@@ -6,7 +6,7 @@ import typing
 from unittest import TestCase
 from idiva.utils import at_most_n
 
-REF_LENGTHS = {'clinvar_csv': 777888, 'clinvar_df': 924377}
+REF_LENGTHS = {'clinvar_csv': 777888, 'clinvar_df': 833155}
 
 
 class TestClinVar(TestCase):
@@ -93,4 +93,6 @@ class TestClinVar(TestCase):
         with clinvar_open(which='vcf_37') as fd:
             df = clinvar_to_df(ReadVCF(fd))
         self.assertEqual(len(df), REF_LENGTHS['clinvar_df'])
+        self.assertTrue(all(df.loc[df['CLNVC'] == 'single_nucleotide_variant']))
+        self.assertFalse(df['CLNVC'].isnull().values.any())
         self.assertTrue('OMIM_id' in df.columns)
