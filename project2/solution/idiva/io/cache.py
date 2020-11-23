@@ -15,8 +15,7 @@ SEP = "\t"
 def cache_df(
         name: str,
         key: typing.Union[str, typing.List[str]],
-        df_maker: typing.Callable[[typing.Optional[pandas.DataFrame]], pandas.DataFrame],
-        df: pandas.DataFrame = pandas.DataFrame()
+        df_maker: typing.Callable[[], pandas.DataFrame],
 ) -> pandas.DataFrame:
     """
     Usage:
@@ -47,7 +46,7 @@ def cache_df(
     if file.is_file():
         df = pandas.read_csv(file, sep=SEP, compression="infer", index_col=0)
     else:
-        df = df_maker(df if len(df) else None)
+        df = df_maker()
         df.to_csv(file, sep=SEP, compression="gzip", index=True)
 
     return df
