@@ -6,6 +6,9 @@ from sklearn.model_selection import train_test_split
 
 
 def get_clf(which_clf: str):
+    """
+    HK, 2020-11-21
+    """
     if which_clf == 'dummy':
         clf = DummyClassifier()
         x = np.ones((1, 12))
@@ -24,6 +27,7 @@ class NucEncoder:
     Contains two dictionaries. Nuc-to-index (n2i) contains the information to encode the nucleobase,
     and index-to-Nuc contains the information to decode the index into the nucleobase.
     A,C,G,T are the bases and "-" indicates an indel
+    HK, 2020-11-12
     """
 
     def __init__(self):
@@ -45,6 +49,9 @@ class NucEncoder:
 
 
 def get_train_test(data):
+    """
+    HK, 2020-11-12
+    """
     df_train, df_eval = train_test_split(data, test_size=0.2, shuffle=True)
 
     train_data = df_train.loc[:, df_train.columns != 'label'].to_numpy()
