@@ -92,7 +92,7 @@ def get_clinvar_clf_data(base_string_encoding: str = 'integer') -> pd.DataFrame:
 
     which = 'vcf_37'
 
-    def maker_clinvar(which) -> pd.DataFrame:
+    def maker_clinvar() -> pd.DataFrame:
         from idiva.db import clinvar_open
         from idiva.io import ReadVCF
         from idiva.db.clinvar import clinvar_to_df
