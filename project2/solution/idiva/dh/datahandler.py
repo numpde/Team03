@@ -47,7 +47,7 @@ class DataHandler:
 
     def get_clf_datalines(self, df_clinvar: pd.DataFrame):
         for idx, row in tqdm(df_clinvar.iterrows(), total=len(df_clinvar), postfix='iterating df_clinvar'):
-            if (str(row.ref) != 'nan') and (str(row.alt) != 'nan'):
+            if (str(row.ref) in ['A', 'C', 'G', 'T']) and (str(row.alt) in ['A', 'C', 'G', 'T']):
                 p_succes, p_score = self.get_polyphen2_score(row.id)
                 s_succes, s_score = self.get_sift_score(row.id)
                 c_succes, c_score = self.get_cadd_score(row.id)
