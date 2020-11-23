@@ -122,10 +122,11 @@ def df_clinvar_to_clf_data(df_clinvar: pd.DataFrame, base_string_encoding: str =
 def clinvar_datalines(vcf: idiva.io.ReadVCF):
     for idx, line in tqdm(enumerate(vcf.datalines), postfix='reading clinvar file'):
         for info_dict in get_info_dict(line.info):
-            line_dict = {k: line.__dict__[k] for k in line.__dict__.keys() if k != 'info'}
-            line_dict = dict(line_dict, **info_dict)
+            if info_dict['CLNVC'] == 'single_nucleotide_variant':
+                line_dict = {k: line.__dict__[k] for k in line.__dict__.keys() if k != 'info'}
+                line_dict = dict(line_dict, **info_dict)
 
-            yield line_dict
+                yield line_dict
 
 
 def clinvar_to_df(vcf: idiva.io.ReadVCF) -> pd.DataFrame:
