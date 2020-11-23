@@ -53,6 +53,8 @@ def get_info_dict(info: str) -> dict:
     Yields info dict for every RS id.
     The info field can contain several RS ids and several OMIM ids. This function yields a dict for any
     combination of them.
+
+    HK, 2020-11-12
     """
     import re
     OMIM_ids = [None]
@@ -76,6 +78,9 @@ def get_info_dict(info: str) -> dict:
 
 
 class ClfDatalines:
+    """
+    HK, 2020-11-21
+    """
     def __init__(self, base_string_encoding):
         if base_string_encoding == 'integer':
             self.nuc_encoder = NucEncoder()
@@ -94,9 +99,7 @@ class ClfDatalines:
         return self.nuc_encoder.encode(None) if str(base_string) == 'nan' else self.nuc_encoder.encode(base_string)
 
     def _get_dataline_integer_encoding(self, row):
-        # todo: this is an arbitrary limit on sequence length because of dumb encoding.
-        #  (if encoding is too long sklearn will complain)
-        if (str(row.ref) != 'nan' and len(row.ref) < 100) and (str(row.alt) != 'nan' and len(row.alt) < 100):
+        if (str(row.ref) != 'nan') and (str(row.alt) != 'nan'):
             line = {
                 'pos': row['pos'],
                 'ref': self.base_string_encoder(row['ref']),
@@ -115,11 +118,17 @@ class ClfDatalines:
 
 
 def df_clinvar_to_clf_data(df_clinvar: pd.DataFrame, base_string_encoding: str = 'integer') -> pd.DataFrame:
+    """
+    # HK, 2020-11-21
+    """
     clf_datalines = ClfDatalines(base_string_encoding=base_string_encoding)
     return pd.DataFrame(data=clf_datalines(df_clinvar))
 
 
 def clinvar_datalines(vcf: idiva.io.ReadVCF):
+    """
+    HK, 2020-11-12
+    """
     for idx, line in tqdm(enumerate(vcf.datalines), postfix='reading clinvar file'):
         for info_dict in get_info_dict(line.info):
             if info_dict['CLNVC'] == 'single_nucleotide_variant':
@@ -132,6 +141,7 @@ def clinvar_datalines(vcf: idiva.io.ReadVCF):
 def clinvar_to_df(vcf: idiva.io.ReadVCF) -> pd.DataFrame:
     """
     Creates a dataframe from the clinvar file. Adds all the INFO fields as additional columns.
+    HK, 2020-11-12
     """
 
     return pd.DataFrame(data=clinvar_datalines(vcf)).astype({'ref': str, 'alt': str})
