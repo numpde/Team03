@@ -1,12 +1,12 @@
 # LB 23-11-2020
 
 import typing
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from idiva.db.ncbi_scraper import get_functional_consequence_from_SNP
 from idiva.io import ReadVCF
 from idiva.utils import seek_then_rewind
 
@@ -128,21 +128,6 @@ class DataHandler:
 
         return frame
 
-    def get_labels(self, x: pd.DataFrame) -> pd.DataFrame:
-        """
-        Returns a dataframe containing the true labels for a given vcf file
-        """
-        # get Id
-        ids = x['Id']
-
-        labels = np.zeros(ids.size)
-
-        for id, rs in enumerate(ids):
-            # TODO Interpretation function for functional consequence => benign or pathogenic ?
-            labels[id] = get_functional_consequence_from_SNP(rs)
-
-        return pd.DataFrame(data=labels, columns=['label'])
-
     def translate_vcf(self, vcf_file: str) -> pd.DataFrame:
         """
         Returns a dataframe that contains the following features from a vcf file
@@ -251,7 +236,7 @@ class DataHandler:
         Returns: status of CADD score query and the corresponding CADD score for a given rsID
         """
         # TODO: get cadd score
-        return 0, 0.5
+        return 0, 10.5
 
     def translate_chrom(self, chrom: typing.Union[str, int]) -> int:
         """
@@ -273,16 +258,9 @@ if __name__ == '__main__':
         'case': "https://public.bmi.inf.ethz.ch/eth_intern/teaching/cbm_2020/cbm_2020_project2/case_processed.vcf",
     }
 
-    from pathlib import Path
-
-    cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
-    assert cache.is_dir()
-
     dh = DataHandler()
 
-    trans_vcf = dh.translate_vcf("control_v2.vcf")
+    x,y = dh.create_training_set()
 
-    trans_cvar = dh.translate_clinvar("clinvar.vcf")
-
-    print(trans_vcf)
-    print(trans_cvar)
+    print(x)
+    print(y)
