@@ -32,7 +32,7 @@ class Classifier:
 
         # create data for training
         self.x, self.labels = self.dataHandler.create_training_set(clinvar_train)
-        self.phenomenet = Phenomenet(self.x.shape[1])
+        # self.phenomenet = Phenomenet(self.x.shape[1])
 
     def create_model(self, n_steps: int = 5, epochs: int = 100):
         """
@@ -41,8 +41,8 @@ class Classifier:
 
         # TODO: Find a good model
         # TODO: What accuracy can we expect?
-        phenomenet = KerasClassifier(build_fn=self.phenomenet.get_phenomenet, batch_size=1, verbose=2, epochs=epochs)
-        phenomenet._estimator_type = "classifier"
+        # phenomenet = KerasClassifier(build_fn=self.phenomenet.get_phenomenet, batch_size=1, verbose=2, epochs=epochs)
+        # phenomenet._estimator_type = "classifier"
         selector = VarianceThreshold()
         scaler = StandardScaler()
         estimators = [
@@ -73,8 +73,12 @@ class Classifier:
     def train_phenomenet(self, epochs=100, batch_size=2500) -> keras.callbacks.History:
         clinvar_clf_data = self.dataHandler.get_clinvar_clf_data(self.clinvar_train)
         # split into train and validation sets
-        train_data, train_labels, eval_data, eval_labels = get_train_test(clinvar_clf_data[:100])
-        phenomenet = self.phenomenet.get_phenomenet()
+        train_data, train_labels, eval_data, eval_labels = get_train_test(
+            clinvar_clf_data[['CHROM', 'POS', 'VAR', 'label']],
+            pipeline=Pipeline(steps=[('selector', VarianceThreshold()), ('scaler', StandardScaler())]))
+
+        phenomenet = Phenomenet(train_data.shape[1])
+        phenomenet = phenomenet.get_phenomenet()
         return phenomenet.fit(train_data, train_labels, validation_data=(
             eval_data, eval_labels),
                               batch_size=batch_size, verbose=2,

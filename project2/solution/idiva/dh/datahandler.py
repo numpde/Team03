@@ -84,6 +84,12 @@ class DataHandler:
     def get_clinvar_clf_data(self, clinvar_file: str = 'vcf_37') -> pd.DataFrame:
         """
         Loads clinvar_clf_data suitable for a classifier.
+        Looks for in "_cache" or creates if not found two files:
+            - the "exploded" clinvar file as a dataframe compatible csv (exploded meaning that all information from
+            the INFO column is extracted to its own column)
+
+            - the dataframe compatible csv file containing all extracted and encoded features
+            to train a classifier from the clinvar dataframe
 
         HK, 2020-11-22
         RA, 2020-11-22
