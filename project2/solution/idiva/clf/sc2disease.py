@@ -1,5 +1,7 @@
 # RA, 2020-11-23
 
+from idiva import log
+
 import pandas
 
 URL = "http://easybioai.com/sc2disease/static/allgwas.txt"
@@ -7,6 +9,7 @@ URL = "http://easybioai.com/sc2disease/static/allgwas.txt"
 
 def allgwas() -> pandas.DataFrame:
     from idiva.download import download
+    log.info(F"Downloading {URL}")
     with download(URL).now.open() as fd:
         return pandas.read_csv(fd, sep='\t', names=["gene", "rs", "p", "chrom", "pos", "disease"])
 
