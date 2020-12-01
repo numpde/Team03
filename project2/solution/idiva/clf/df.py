@@ -72,7 +72,7 @@ def v0_df(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
 
     ID is not guaranteed to be unique.
 
-    Pandas Int64 data type is used for the ALT columns.
+    `int` data type is used for the ALT columns (see `dtype_v0`).
 
     RA, 2020-11-14
     """
