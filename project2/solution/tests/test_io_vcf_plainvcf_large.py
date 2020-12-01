@@ -28,6 +28,7 @@ class TestReadBigFile(TestCase):
         for group in URLS:
             with download(URLS[group]).now.open(mode='rb') as fd:
                 with open_maybe_gz(fd, mode='r') as fd:
+                    assert isinstance(fd, io.TextIOBase)
                     nlines = sum(1 for __ in ReadVCF(fd))
                     # print(F"Group {group} has {nlines} datalines")
                     self.assertEqual(nlines, ref_len_v2[group])
