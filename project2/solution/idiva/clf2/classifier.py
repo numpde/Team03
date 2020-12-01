@@ -13,6 +13,8 @@ from sklearn.svm import SVC
 from idiva.dh.datahandler import DataHandler
 from idiva.clf.phenomenet import Phenomenet
 from keras.wrappers.scikit_learn import KerasClassifier
+from idiva.clf.utils import get_train_test
+import keras
 
 
 class Classifier:
@@ -24,12 +26,13 @@ class Classifier:
     """
 
     def __init__(self, clinvar_train: str = 'vcf_37'):
+        self.clinvar_train = clinvar_train
         self.model = None
         self.dataHandler = DataHandler()
 
         # create data for training
         self.x, self.labels = self.dataHandler.create_training_set(clinvar_train)
-        self.phenomenet = Phenomenet(self.x.shape[1])
+        # self.phenomenet = Phenomenet(self.x.shape[1])
 
     def create_model(self, n_steps: int = 5, epochs: int = 100):
         """
@@ -38,14 +41,15 @@ class Classifier:
 
         # TODO: Find a good model
         # TODO: What accuracy can we expect?
-        phenomenet = KerasClassifier(build_fn=self.phenomenet.get_phenomenet, batch_size=1, verbose=2, epochs=epochs)
-        phenomenet._estimator_type = "classifier"
+        # phenomenet = KerasClassifier(build_fn=self.phenomenet.get_phenomenet, batch_size=1, verbose=2, epochs=epochs)
+        # phenomenet._estimator_type = "classifier"
         selector = VarianceThreshold()
         scaler = StandardScaler()
         estimators = [
             ('mlp1', MLPClassifier(max_iter=1000)),
             ('rfc1', RandomForestClassifier()),
-            ('phenomenet', phenomenet)]
+            # ('phenomenet', phenomenet)
+        ]
 
         # classification
         classifier = StackingClassifier(estimators=estimators, final_estimator=SVC())
@@ -65,6 +69,20 @@ class Classifier:
 
         pipeline = Pipeline(steps=steps)
         self.model = GridSearchCV(pipeline, param_grid, scoring='f1', verbose=2, n_jobs=-1)
+
+    def train_phenomenet(self, epochs=100, batch_size=2500) -> keras.callbacks.History:
+        clinvar_clf_data = self.dataHandler.get_clinvar_clf_data(self.clinvar_train)
+        # split into train and validation sets
+        train_data, train_labels, eval_data, eval_labels = get_train_test(
+            clinvar_clf_data[['CHROM', 'POS', 'VAR', 'label']],
+            pipeline=Pipeline(steps=[('selector', VarianceThreshold()), ('scaler', StandardScaler())]))
+
+        phenomenet = Phenomenet(train_data.shape[1])
+        phenomenet = phenomenet.get_phenomenet()
+        return phenomenet.fit(train_data, train_labels, validation_data=(
+            eval_data, eval_labels),
+                              batch_size=batch_size, verbose=2,
+                              epochs=epochs)
 
     def train(self, x_train: pd.DataFrame, labels: pd.DataFrame) -> None:
         """
@@ -104,3 +122,6 @@ if __name__ == '__main__':
     # train model on training data
     cv.train(cv.x, cv.labels)
     print(cv.model.cv_results_)
+    history = cv.train_phenomenet(epochs=3, batch_size=5)
+    values = {k: v[-1] for k, v in history.history.items()}
+    print(values)

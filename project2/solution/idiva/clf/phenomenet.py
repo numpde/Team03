@@ -24,6 +24,6 @@ class Phenomenet:
         model.add(Dense(1, kernel_initializer='uniform', activation='sigmoid'))
 
         adam = keras.optimizers.Adam(lr=0.001)
-        model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
+        model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy', 'AUC'])
 
         return model
