@@ -45,12 +45,12 @@ def cache_df(
     file = (BASE / name).with_suffix(".gz")
     assert not file.is_dir()
 
-    log.info(F"Creating a potentially large DataFrame for the first time ({file.name}).")
 
     if file.is_file():
         log.debug(F"Loading DataFrame from {file.name}.")
         df = pandas.read_csv(file, sep=SEP, compression="infer", index_col=0)
     else:
+        log.info(F"Creating a potentially large DataFrame for the first time ({file.name}).")
         df = df_maker()
         log.debug(F"Saving DataFrame to {file.name}.")
         df.to_csv(file, sep=SEP, compression="gzip", index=True)
