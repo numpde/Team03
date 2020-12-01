@@ -1,6 +1,7 @@
 # RA, 2020-11-05
 
 import re
+import io
 import typing
 import pandas
 
@@ -53,7 +54,7 @@ class RawDataline:
         return "\t".join(map(str, fields))
 
 
-def proxy(fd: typing.TextIO):
+def proxy(fd: io.TextIOBase):
     """
     Separates the meta-info, the header and the data lines.
 
@@ -100,7 +101,7 @@ class ReadVCF:
     default_header = "CHROM,POS,ID,REF,ALT,QUAL,FILTER,INFO".split(',')
     fd_tracer = set()
 
-    def __init__(self, fd: typing.TextIO, rewind=True):
+    def __init__(self, fd: io.TextIOBase, rewind=True):
         assert (fd.tell() == 0) or (not rewind), "Specify rewind=False for a used file descriptor."
 
         self._fd = fd
@@ -112,7 +113,7 @@ class ReadVCF:
         self._parse_proxy(proxy(fd))
 
     @property
-    def fd(self) -> typing.TextIO:
+    def fd(self) -> io.TextIOBase:
         return self._fd
 
     def _parse_proxy(self, proxy):

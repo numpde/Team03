@@ -1,6 +1,6 @@
 # RA, 2020-11-05
 
-import typing
+import io
 
 
 class Oneliner:
@@ -14,7 +14,7 @@ class Oneliner:
     The attribute `last` keeps the last extracted line.
     """
 
-    def __init__(self, fd: typing.TextIO, buffered=True):
+    def __init__(self, fd: io.TextIOBase, buffered=True):
         self.fd = fd
         self.buffered = buffered
         self._line_stack = []
