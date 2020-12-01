@@ -6,7 +6,7 @@ import typing
 import numpy
 
 
-def chi2_test(df: pandas.DataFrame, cols: typing.Tuple[typing.List, typing.List], add=0):
+def chi2_test(df: pandas.DataFrame, cols: typing.Tuple[typing.List[str], typing.List[str]], add=0):
     """
     Chi-square test of independence of variables in a contingency table.
     The paired test is applied to each row of the dataframe `df`.
