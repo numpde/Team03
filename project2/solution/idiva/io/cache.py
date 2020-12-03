@@ -41,14 +41,23 @@ def cache_df(
 
     key = base64.urlsafe_b64encode(hashlib.sha256(key.encode()).digest()).decode()
 
-    name = name + (("_" + key[0:12]) if key else "")
+    name = name + (("__" + key[0:12]) if key else "")
     file = (BASE / name).with_suffix(".gz")
     assert not file.is_dir()
 
+    if True:
+        # Fix legacy filename
+        old_name = name + (("_" + key[0:12]) if key else "")
+        old_name = (BASE / old_name).with_suffix(".gz")
+        if old_name.is_file():
+            import os
+            os.rename(old_name, file)
 
     if file.is_file():
         log.debug(F"Loading DataFrame from {file.name}.")
-        df = pandas.read_csv(file, sep=SEP, compression="infer", index_col=0)
+        df = pandas.read_csv(file, sep=SEP, compression="infer")
+        df.set_index(df.columns[0], inplace=True)
+        # https://stackoverflow.com/a/61390345
     else:
         log.info(F"Creating a potentially large DataFrame for the first time ({file.name}).")
         df = df_maker()
