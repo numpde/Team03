@@ -112,8 +112,6 @@ class DataHandler:
         Returns training features and corresponding labels given a clinvar vcf file
         """
 
-        # create training set containg
-        # CHROM, POS, VAR, Polyphen2 score & success, sift score & success, cadd score & success
         clinvar_clf_data = self.get_clinvar_clf_data(clinvar_file)
 
         x_train = clinvar_clf_data.loc[:, clinvar_clf_data.columns != 'label']
@@ -389,6 +387,10 @@ class DataHandler:
         """
         translate non integer chromosomes (X,Y & MT) to integers (23, 24 & 25)
         """
+
+        if type(chrom)== pd.core.series.Series:
+            chrom = chrom[0]
+
         if chrom == 'X':
             return 23
         elif chrom == 'Y':
@@ -413,7 +415,11 @@ if __name__ == '__main__':
 
     dh = DataHandler()
 
-    x, y = dh.create_training_set()
+    x = dh.create_test_set("case_processed_v2.vcf", "control_v2.vcf")
+    print(x)
+    print(x.shape)
 
+    x,y = dh.create_training_set()
     print(x)
     print(y)
+    print(x.memory_usage(index=True).sum())

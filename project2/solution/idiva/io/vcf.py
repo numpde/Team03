@@ -1,5 +1,5 @@
 # RA, 2020-11-05
-
+from pathlib import Path
 
 from idiva import log
 
@@ -11,7 +11,7 @@ import pandas
 
 SEP = '\t'
 TCGA = {"T", "C", "G", "A"}
-KEY_COLS = ["CHROM", "POS", "ID"]
+KEY_COLS = ["CHROM", "POS", "REF", "ALT"]
 
 
 def parse_gt(gt: str) -> typing.Tuple[int, int]:
@@ -200,13 +200,15 @@ def align(*, case: ReadVCF, ctrl: ReadVCF):
     dfs = {}
     for (k, vcf) in zip(['case', 'ctrl'], [case, ctrl]):
         with seek_then_rewind(vcf.fd, seek=vcf.dataline_start_pos) as fd:
-            dfs[k] = pandas.read_csv(fd, sep=SEP, usecols=range(len(KEY_COLS)), header=None, names=KEY_COLS)
+            dfs[k] = pandas.read_csv(fd, sep=SEP, usecols=[0, 1, 3, 4], header=None, names=KEY_COLS)
             dfs[k].index = dfs[k].index.rename(name="rowid")
             dfs[k] = dfs[k].reset_index().astype({'rowid': 'Int64'})
 
-    log.info("Aligning case & control VCF: align.")
+    log.info("Aligning case (#rows: " + str(dfs['case'].shape[0]) + ") & control (#rows: " + str(
+        dfs['ctrl'].shape[0]) + ") VCF: align.")
 
     from idiva.clf.df import join
+
     df = join(case=dfs['case'], ctrl=dfs['ctrl'])
 
     # df.to_csv("sort_me.txt", sep=SEP)
@@ -216,3 +218,37 @@ def align(*, case: ReadVCF, ctrl: ReadVCF):
     # assert df['rowid_ctrl'].dropna().is_monotonic_increasing
 
     return df
+
+
+if __name__ == '__main__':
+    cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
+    assert cache.is_dir()
+
+    with open(str(cache) + "/" + "case_processed_v2.vcf") as case:
+        case_reader = ReadVCF(case)
+        with open(str(cache) + "/" + "control_v2.vcf") as ctrl:
+            ctrl_reader = ReadVCF(ctrl)
+
+            df = align(case=case_reader, ctrl=ctrl_reader)
+
+            print("dataframe shape", df.shape)
+
+            print("#unique pos", df['POS'].unique().shape)
+
+            print("duplicated POSs")
+            print(df.shape[0] - df['POS'].unique().shape[0])
+
+            pandas.set_option('display.max_columns', None)
+
+            print("dataframe with duplicated POSs only")
+            print(df[df.duplicated('POS', keep="first")])
+            print(df[df.duplicated('POS', keep="last")])
+
+            print("#occurrence of POS")
+            print(df['POS'].value_counts(ascending=False).head(100))
+
+            print(df)
+
+            print(df.isnull().sum(axis=0))
+
+            print(df[df.isna().any(axis=1)])

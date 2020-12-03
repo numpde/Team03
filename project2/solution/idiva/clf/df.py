@@ -27,7 +27,7 @@ def join(*, case: pandas.DataFrame, ctrl: pandas.DataFrame) -> pandas.DataFrame:
     df = pandas.merge_ordered(
         left=case, right=ctrl,
         suffixes=['_case', '_ctrl'],
-        on=['CHROM', 'POS', 'ID'],
+        on=['CHROM', 'POS'],
         how="outer",
     )
 
