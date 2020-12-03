@@ -1,8 +1,18 @@
 # RA, 2020-12-01
 
+import os
 import logging
 import pathlib
 import datetime
+
+import warnings
+
+# This doesn't help 'remotely'
+# RuntimeWarning: numpy.ufunc size changed
+# https://github.com/numpy/numpy/issues/14920#issuecomment-554672523
+warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
+
+logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 # Based in part on
 # https://dev.to/joaomcteixeira/setting-up-python-logging-for-a-library-app-6ml
@@ -55,3 +65,5 @@ class _:
 
 
 log = logging.getLogger(__name__)
+
+log.debug("Logger initialized.")
