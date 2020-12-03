@@ -1,14 +1,9 @@
 # RA, 2020-11-14
 
-import pandas as pd
-import numpy as np
-import typing
 import io
 
 from unittest import TestCase
 from pathlib import Path
-from idiva.utils import unlist1, at_most_n, first
-from tcga.utils import download
 
 # LARGE DATA EXTRACT
 
@@ -20,10 +15,6 @@ PATHS = {
 }
 
 # LARGE DATA
-
-download_cache = (Path(__file__).parent.parent.parent / "input/download_cache")
-assert download_cache.is_dir()
-download = download.to(abs_path=download_cache)
 
 URLS = {
     'ctrl': "https://public.bmi.inf.ethz.ch/eth_intern/teaching/cbm_2020/cbm_2020_project2/control_v2.vcf.gz",
@@ -40,15 +31,18 @@ class TestAlignVCF(TestCase):
 
         with PATHS['case'].open() as fd_case:
             with PATHS['ctrl'].open() as fd_ctrl:
+                assert isinstance(fd_case, io.TextIOBase)
+                assert isinstance(fd_ctrl, io.TextIOBase)
                 df = align(case=ReadVCF(fd_case), ctrl=ReadVCF(fd_ctrl))
-                print(df)
 
     def test_align_large(self):
         from idiva.io.vcf import ReadVCF
         from idiva.io.vcf import align
+        from idiva.io import open_maybe_gz
 
-        data = {k: download(URLS[k]).now for k in URLS}
-        with data['case'].open() as fd_case:
-            with data['ctrl'].open() as fd_ctrl:
+        with open_maybe_gz(URLS['case'], mode='r') as fd_case:
+            with open_maybe_gz(URLS['ctrl'], mode='r') as fd_ctrl:
+                assert isinstance(fd_case, io.TextIOBase)
+                assert isinstance(fd_ctrl, io.TextIOBase)
                 df = align(case=ReadVCF(fd_case), ctrl=ReadVCF(fd_ctrl))
                 print(df)
