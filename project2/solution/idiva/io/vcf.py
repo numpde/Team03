@@ -28,17 +28,21 @@ class RawDataline:
         def dot_is_none(s: str) -> str:
             return (None if (s == ".") else str(s))
 
-        line = line.split(SEP)
-        self.chrom = str(line[0])
-        self.pos = int(line[1])
-        self.id = dot_is_none(line[2])
-        self.ref = str(line[3])
-        self.alt = dot_is_none(line[4])
-        self.qual = (None if (line[5] == ".") else float(line[5]))
-        self.filter = str(line[6])
-        self.info = str(line[7])
-        self.format = (str(line[8]) if (len(line) >= 9) else None)
-        self.samples = line[9:] or None
+        try:
+            line = line.split(SEP)
+            self.chrom = str(line[0])
+            self.pos = int(line[1])
+            self.id = dot_is_none(line[2])
+            self.ref = str(line[3])
+            self.alt = dot_is_none(line[4])
+            self.qual = (None if (line[5] == ".") else float(line[5]))
+            self.filter = str(line[6])
+            self.info = str(line[7])
+            self.format = (str(line[8]) if (len(line) >= 9) else None)
+            self.samples = line[9:] or None
+        except:
+            log.error(F"Can't process {line}.")
+            raise
 
     def __str__(self):
         fields = [
