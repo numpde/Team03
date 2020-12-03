@@ -50,7 +50,6 @@ class DataHandler:
         """
         for idx, row in tqdm(df_clinvar.iterrows(), total=len(df_clinvar), postfix='iterating df_clinvar'):
             if (str(row.ref) in ['A', 'C', 'G', 'T']) and (str(row.alt) in ['A', 'C', 'G', 'T']):
-
                 line = {
                     'ID': row.id,
                     'CHROM': self.translate_chrom(row.chrom),
@@ -119,6 +118,13 @@ class DataHandler:
         y_train.set_index(x_train.index)
 
         return x_train, y_train
+
+    def create_training_set_vcf(self, vcf_file: str) -> typing.Tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Returns training features given a vcf vcf file
+        """
+
+        return self.translate_vcf_feature_extraction(vcf_file)
 
     def create_test_set(self, vcf_file: str, vcf_file2: str = None) -> pd.DataFrame:
 
@@ -207,6 +213,92 @@ class DataHandler:
 
         return dataframe
 
+    def translate_vcf_feature_extraction(self, vcf_file: str) -> pd.DataFrame:
+        """
+        Returns a dataframe that contains the following features from a vcf file
+        CHROM, POS, ID, VAR
+        """
+
+        cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
+        assert cache.is_dir()
+
+        with open(str(cache) + "/" + vcf_file) as vcf:
+            reader = ReadVCF(vcf)
+
+            with seek_then_rewind(reader.fd, seek=reader.dataline_start_pos) as fd:
+                header = reader.header
+
+                exclude = [2, 3, 5, 6, 7, 8]
+
+                names = [i for idx, i in enumerate(header) if idx not in exclude]
+
+                def convert_strang(strang: str) -> int:
+                    """
+                    SNP as 0, 1, 2 for homozygous, heterozygous, and variant homozygous
+                    """
+                    if strang == "0|0":
+                        return 0
+                    elif strang == "0|1":
+                        return 1
+                    elif strang == "1|0":
+                        return 1
+                    elif strang == "1|1":
+                        return 2
+
+                    return np.nan
+
+                converter_dict = {}
+
+                for column in names:
+                    if column not in ['CHROM','POS', 'ALT']:
+                        converter_dict[column] = convert_strang
+
+                def index_map(chromposalt) -> int:
+                    chrom = chromposalt[0]
+                    pos = chromposalt[1]
+                    alt = chromposalt[2]
+
+                    if alt == "A":
+                        alt = 0
+                    elif alt == "C":
+                        alt = 1
+                    elif alt == "G":
+                        alt = 2
+                    elif alt == "T":
+                        alt = 3
+
+                    return chrom * 10000000000 + pos * 10 + alt
+
+                dataframe = None
+
+                # read in file in chunks to downcast it to uint8 and append unique index
+                for idx, chunk in enumerate(pd.read_csv(fd, sep='\t', header=None,
+                                        usecols=[idx for idx, i in enumerate(header) if idx not in exclude],
+                                        names=names, converters=converter_dict, chunksize=500000)):
+
+                    print(idx)
+
+                    chunk['ID'] = chunk[['CHROM', 'POS', 'ALT']].apply(index_map, axis=1)
+
+                    chunk = chunk.drop(['CHROM', 'POS', 'ALT'], axis=1)
+
+                    chunk = chunk.set_index('ID')
+
+                    chunk = chunk.apply(pd.to_numeric, errors='coerce', downcast='unsigned')
+
+                    if idx == 0:
+                        dataframe = chunk
+                    else:
+                        dataframe = pd.concat([dataframe, chunk])
+
+        dataframe = dataframe.transpose()
+
+        print(dataframe)
+        print(dataframe.memory_usage(deep=True))
+        print(dataframe.memory_usage(deep=True).sum())
+
+        return dataframe
+
     def encode_ref_alt(self, dataframe: pd.DataFrame) -> pd.DataFrame:
         """
         Returns: Dataframe which contains CHROM, POS, ID and VAR
@@ -257,7 +349,6 @@ class DataHandler:
             new_ref = ''
 
             current_alt = ''
-
 
             status = 0
             count = 0
@@ -337,7 +428,6 @@ class DataHandler:
         # bucket spans a range of max cut_off nucleotide bases
         cut_off = 50000
 
-
         for idx, pos in enumerate(poss[1:], 1):
             if pos - poss[start_pos] > cut_off or current_chrom != chroms[idx]:
                 start_pos = idx
@@ -348,11 +438,9 @@ class DataHandler:
 
         futures = []
 
-        with tqdm(total=len(buckets)-1, postfix='creating CADD scores') as pbar:
+        with tqdm(total=len(buckets) - 1, postfix='creating CADD scores') as pbar:
             with concurrent.futures.ThreadPoolExecutor(max_workers=multiprocessing.cpu_count() - 1) as executor:
-
                 for idx in range(len(buckets) - 1):
-
                     args = [chroms[idx],
                             poss[buckets[idx]:buckets[idx + 1]],
                             refs[buckets[idx]:buckets[idx + 1]],
@@ -365,7 +453,6 @@ class DataHandler:
         phreds = futures[0].result()[1].ravel()
 
         for idx, future in enumerate(futures[1:], 1):
-
             scores = np.concatenate([scores, future.result()[0].ravel()])
             phreds = np.concatenate([phreds, future.result()[1].ravel()])
 
@@ -388,7 +475,7 @@ class DataHandler:
         translate non integer chromosomes (X,Y & MT) to integers (23, 24 & 25)
         """
 
-        if type(chrom)== pd.core.series.Series:
+        if type(chrom) == pd.core.series.Series:
             chrom = chrom[0]
 
         if chrom == 'X':
@@ -412,14 +499,13 @@ class DataHandler:
 
 
 if __name__ == '__main__':
-
     dh = DataHandler()
 
     x = dh.create_test_set("case_processed_v2.vcf", "control_v2.vcf")
     print(x)
     print(x.shape)
 
-    x,y = dh.create_training_set()
+    x, y = dh.create_training_set()
     print(x)
     print(y)
     print(x.memory_usage(index=True).sum())
