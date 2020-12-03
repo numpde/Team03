@@ -7,4 +7,4 @@ warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 
 from .fisher import v0_fisher
 from .chi2 import chi2_test
-from .fisher import v0_fisher
+from scipy.stats import fisher_exact as fisher_scipy
