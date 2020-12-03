@@ -3,6 +3,7 @@
 import contextlib
 import io
 import typing
+import re
 
 from idiva.utils import seek_then_rewind
 
@@ -50,6 +51,13 @@ def open_maybe_gz(file, *, mode='r') -> typing.IO:
 
             yield file
 
+        return
+
+    if isinstance(file, str) and re.match(r"^(http|https|ftp)://", file):
+        from idiva.download import download
+        with download(file).now.open(mode='rb') as fd:
+            with open_maybe_gz(fd, mode=mode) as fd:
+                yield fd
         return
 
     from pathlib import Path
