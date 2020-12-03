@@ -1,6 +1,10 @@
 # RA, 2020-11-14
 
+
+from idiva import log
+
 import pandas
+import io
 
 from unittest import TestCase
 from pathlib import Path
@@ -27,6 +31,7 @@ class TestDf(TestCase):
         from idiva.io import ReadVCF
         with download(URLS['case']).now.open(mode='rb') as fd:
             with open_maybe_gz(fd) as fd:
+                assert isinstance(fd, io.TextIOBase)
                 df = v0_df(ReadVCF(fd))
                 self.assertTrue(len(df) > 0)
                 self.assertEqual(len(df), ref_len_v2['case'])
@@ -37,6 +42,7 @@ class TestDf(TestCase):
         from idiva.io import ReadVCF
         with download(URLS['ctrl']).now.open(mode='rb') as fd:
             with open_maybe_gz(fd) as fd:
+                assert isinstance(fd, io.TextIOBase)
                 df = v0_df(ReadVCF(fd))
                 self.assertTrue(len(df) > 0)
                 self.assertEqual(len(df), ref_len_v2['ctrl'])
@@ -49,6 +55,7 @@ class TestDf(TestCase):
         for k in URLS:
             with download(URLS[k]).now.open(mode='rb') as fd:
                 with open_maybe_gz(fd) as fd:
+                    assert isinstance(fd, io.TextIOBase)
                     dfs[k] = v0_df(ReadVCF(fd))
 
         df = join(case=dfs['case'], ctrl=dfs['ctrl'])
