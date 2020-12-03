@@ -1,5 +1,9 @@
 # RA, 2020-11-05
 
+
+from idiva import log
+
+import contextlib
 import re
 import io
 import typing
@@ -104,6 +108,8 @@ class ReadVCF:
     def __init__(self, fd: io.TextIOBase, rewind=True):
         assert (fd.tell() == 0) or (not rewind), "Specify rewind=False for a used file descriptor."
 
+        self._md5 = None
+
         self._fd = fd
         self.meta = {}
         self.header: list = []
@@ -111,6 +117,13 @@ class ReadVCF:
         self.dataline_start_pos: int = None
 
         self._parse_proxy(proxy(fd))
+
+    @property
+    def md5(self) -> str:
+        from idiva.utils.files import checksum_md5
+        if not self._md5:
+            self._md5 = checksum_md5(self._fd)
+        return self._md5
 
     @property
     def fd(self) -> io.TextIOBase:
@@ -167,25 +180,35 @@ class ReadVCF:
     def __iter__(self) -> typing.Iterator[RawDataline]:
         return iter(self.datalines)
 
+    @property
+    @contextlib.contextmanager
+    def rewind_when_done(self):
+        from idiva.utils import seek_then_rewind
+        with seek_then_rewind(self.fd, seek=None):
+            yield
+
 
 def align(*, case: ReadVCF, ctrl: ReadVCF):
     from idiva.utils import seek_then_rewind
 
+    log.info("Aligning case & control VCF: reading files.")
+
     dfs = {}
     for (k, vcf) in zip(['case', 'ctrl'], [case, ctrl]):
         with seek_then_rewind(vcf.fd, seek=vcf.dataline_start_pos) as fd:
-            # 5971
             dfs[k] = pandas.read_csv(fd, sep=SEP, usecols=range(len(KEY_COLS)), header=None, names=KEY_COLS)
             dfs[k].index = dfs[k].index.rename(name="rowid")
             dfs[k] = dfs[k].reset_index().astype({'rowid': 'Int64'})
+
+    log.info("Aligning case & control VCF: align.")
 
     from idiva.clf.df import join
     df = join(case=dfs['case'], ctrl=dfs['ctrl'])
 
     # df.to_csv("sort_me.txt", sep=SEP)
 
-    # !
-    assert df['rowid_case'].dropna().is_monotonic_increasing
-    assert df['rowid_ctrl'].dropna().is_monotonic_increasing
+    # The following need not hold
+    # assert df['rowid_case'].dropna().is_monotonic_increasing
+    # assert df['rowid_ctrl'].dropna().is_monotonic_increasing
 
     return df
