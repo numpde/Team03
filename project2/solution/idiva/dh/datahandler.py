@@ -70,13 +70,9 @@ class DataHandler:
         """
         dataframe = pd.DataFrame(data=self.get_clf_datalines(df_clinvar))
         dataframe = dataframe.drop_duplicates()
-        print(dataframe)
 
         dataframe = dataframe.sort_values(by=['CHROM', 'POS'])
 
-        dataframe = self.add_cadd_score(dataframe)
-        dataframe = self.add_sift_score(dataframe)
-        print(dataframe)
         dataframe = dataframe.drop(columns=['REF', 'ALT'])
 
         return dataframe
@@ -182,6 +178,8 @@ class DataHandler:
         dataframe.drop_duplicates()
 
         # TODO:        same CHROM POS and rsID but not same REF & ALT
+        #              consequence of real world data (Kjong Nov 30)
+        #              => identify samples by CHROM, POS and VAR
         #              same CHROM rsID REF ALT but not same POS
         #              => rsIDs are not completely unique !
         #              Ignore rsID (Kjong Nov 23)
@@ -194,19 +192,18 @@ class DataHandler:
         56638       17   1649616  rs544719440   A   G    2
         576511      17  19159733  rs540831825   A   G    2
         717227      17  27196477  rs202111951   T   C   10
+        
         919995      17  34642425  rs568794696   C   A    3
         2105598     17  77663493  rs148485780   C   T    5
+        
                  CHROM       POS           ID REF ALT  VAR
         56637       17   1649616  rs544719440   A   C    1
         576510      17  19159733  rs540831825   A   C    1
         717226      17  27196477  rs202111951   T   A    9
+        
         919587      17  34540858  rs568794696   C   A    3
         2105592     17  77663435  rs148485780   C   T    5        
 
-        print(dataframe[dataframe.duplicated('ID', keep='first')])
-        print(dataframe[dataframe.duplicated('ID', keep='last')])
- 
-        assert(len(dataframe['ID'].unique().tolist()) == len(dataframe['ID'].tolist()))
        
         """
 
