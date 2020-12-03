@@ -1,21 +1,21 @@
 # RA, 2020-11-20
 
 import pandas
-import scipy.stats
 
+# This is much faster than scipy.stat.fisher_exact
+#
+from fisher import pvalue as fisher_pip
 
 def v0_fisher(df: pandas.DataFrame, alternative='two-sided', oddsratio=False):
     """
-    If oddsratio=True, compute the odds ratio.
-    Otherwise compute p-value.
-
-    From scipy doc:
-        The calculated odds ratio is different from the one R uses.
-        This scipy implementation returns the (more common)
-        "unconditional Maximum Likelihood Estimate",
-        while R uses the "conditional Maximum Likelihood Estimate".
-        [https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.fisher_exact.html]
+    This uses the pip package `fisher`.
+    Only alternative='two-sided' is accepted.
     """
+
+    from idiva import log
+
+    if not (alternative == 'two-sided'): raise NotImplementedError
+    if oddsratio: raise NotImplementedError
 
     import numpy as np
     import pandas as pd
@@ -33,6 +33,8 @@ def v0_fisher(df: pandas.DataFrame, alternative='two-sided', oddsratio=False):
         # ALTn vs Rest
         (ALTn_case, ALTn_ctrl) = (F"ALT{n}_case", F"ALT{n}_ctrl")
 
+        log.info(F"Computing p-values for ALT{n} vs Rest.")
+
         case0 = df[[ALTn_case]].to_numpy().sum(axis=1)
         case1 = df[set(case) - {ALTn_case}].to_numpy().sum(axis=1)
 
@@ -46,18 +48,27 @@ def v0_fisher(df: pandas.DataFrame, alternative='two-sided', oddsratio=False):
             np.array([[[10, 11], [12, 13]], [[20, 21], [22, 23]], [[30, 31], [32, 33]]])
         )
 
+        from tqdm import tqdm
+
+        def fisher(RxC):
+            if np.isnan(RxC).any().any():
+                return np.nan
+            else:
+                return fisher_pip(*RxC.flatten()).two_tail
+
+                # scipy alternative
+                # return (scipy.stats.fisher_exact(RxC, alternative=alternative))[1 - bool(oddsratio)]
+
+        from joblib import Parallel, delayed
+
+        matrixwise = matrixwise([case0, case1, ctrl0, ctrl1])
+
         tests[F"ALT{n}_vs_Other"] = pd.Series(
-            data=[
-                # (log-odds ratio, p-value)
-                (
-                    (scipy.stats.fisher_exact(RxC, alternative=alternative))[1 - bool(oddsratio)]
-                    if not np.isnan(RxC).any().any()
-                    else
-                    np.nan
-                )
-                for RxC in matrixwise([case0, case1, ctrl0, ctrl1])
-            ],
             index=df.index,
+            data=Parallel(n_jobs=7, prefer="processes")(
+                delayed(fisher)(RxC)
+                for RxC in tqdm(matrixwise)
+            ),
         )
 
     return pd.DataFrame(data=tests)
