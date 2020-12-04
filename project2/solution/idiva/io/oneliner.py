@@ -12,11 +12,13 @@ class Oneliner:
         print(line)
 
     The attribute `last` keeps the last extracted line.
+
+    RA, 2020-11-05
     """
 
-    def __init__(self, fd: io.TextIOBase, buffered=True):
+    def __init__(self, fd: io.TextIOBase, buffer_lines=True):
         self.fd = fd
-        self.buffered = buffered
+        self.buffer_lines = buffer_lines
         self._line_stack = []
 
     @property
@@ -27,7 +29,7 @@ class Oneliner:
     def __next__(self):
         while 1:
             if not self._line_stack:
-                if self.buffered:
+                if self.buffer_lines:
                     self._line_stack = list(map(str.strip, reversed(self.fd.readlines(1024))))
                 else:
                     line = self.fd.readline()
