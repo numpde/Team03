@@ -25,7 +25,7 @@ def head(src: io.TextIOBase, n=100) -> io.TextIOBase:
             for _ in range(n):
                 line = src.readline().strip()
                 assert not line.startswith("#")
-                print(line, file=tf)
+                print(line, file=tf, flush=True)
 
         with open(tf.name, mode='r') as fd:
             yield fd
