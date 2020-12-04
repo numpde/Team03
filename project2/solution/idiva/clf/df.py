@@ -16,7 +16,7 @@ def apply_dtype(df: pandas.DataFrame) -> pandas.DataFrame:
     return df.astype({c: dtype_v0[c] for c in df.columns if c in dtype_v0})
 
 
-def join(*, case: pandas.DataFrame, ctrl: pandas.DataFrame) -> pandas.DataFrame:
+def join(*, case: pandas.DataFrame, ctrl: pandas.DataFrame, how="outer") -> pandas.DataFrame:
     """
     Outer-join two dataframes on the columns CHROM, POS, ID.
     Use the suffixes _case and _ctrl for the other ambiguous columns.
@@ -28,7 +28,8 @@ def join(*, case: pandas.DataFrame, ctrl: pandas.DataFrame) -> pandas.DataFrame:
         left=case, right=ctrl,
         suffixes=['_case', '_ctrl'],
         on=['CHROM', 'POS', 'ID'],
-        how="outer",
+        how=how,
+
     )
 
     return df
