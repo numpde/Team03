@@ -119,13 +119,6 @@ class DataHandler:
 
         return x_train, y_train
 
-    def create_training_set_vcf(self, vcf_file: str) -> typing.Tuple[pd.DataFrame, pd.DataFrame]:
-        """
-        Returns training features given a vcf vcf file
-        """
-
-        return self.translate_vcf_feature_extraction(vcf_file)
-
     def create_test_set(self, vcf_file: str, vcf_file2: str = None) -> pd.DataFrame:
 
         frame = self.translate_vcf(vcf_file)
@@ -210,92 +203,6 @@ class DataHandler:
 
        
         """
-
-        return dataframe
-
-    def translate_vcf_feature_extraction(self, vcf_file: str) -> pd.DataFrame:
-        """
-        Returns a dataframe that contains the following features from a vcf file
-        CHROM, POS, ID, VAR
-        """
-
-        cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
-        assert cache.is_dir()
-
-        with open(str(cache) + "/" + vcf_file) as vcf:
-            reader = ReadVCF(vcf)
-
-            with seek_then_rewind(reader.fd, seek=reader.dataline_start_pos) as fd:
-                header = reader.header
-
-                exclude = [2, 3, 5, 6, 7, 8]
-
-                names = [i for idx, i in enumerate(header) if idx not in exclude]
-
-                def convert_strang(strang: str) -> int:
-                    """
-                    SNP as 0, 1, 2 for homozygous, heterozygous, and variant homozygous
-                    """
-                    if strang == "0|0":
-                        return 0
-                    elif strang == "0|1":
-                        return 1
-                    elif strang == "1|0":
-                        return 1
-                    elif strang == "1|1":
-                        return 2
-
-                    return np.nan
-
-                converter_dict = {}
-
-                for column in names:
-                    if column not in ['CHROM','POS', 'ALT']:
-                        converter_dict[column] = convert_strang
-
-                def index_map(chromposalt) -> int:
-                    chrom = chromposalt[0]
-                    pos = chromposalt[1]
-                    alt = chromposalt[2]
-
-                    if alt == "A":
-                        alt = 0
-                    elif alt == "C":
-                        alt = 1
-                    elif alt == "G":
-                        alt = 2
-                    elif alt == "T":
-                        alt = 3
-
-                    return chrom * 10000000000 + pos * 10 + alt
-
-                dataframe = None
-
-                # read in file in chunks to downcast it to uint8 and append unique index
-                for idx, chunk in enumerate(pd.read_csv(fd, sep='\t', header=None,
-                                        usecols=[idx for idx, i in enumerate(header) if idx not in exclude],
-                                        names=names, converters=converter_dict, chunksize=500000)):
-
-                    print(idx)
-
-                    chunk['ID'] = chunk[['CHROM', 'POS', 'ALT']].apply(index_map, axis=1)
-
-                    chunk = chunk.drop(['CHROM', 'POS', 'ALT'], axis=1)
-
-                    chunk = chunk.set_index('ID')
-
-                    chunk = chunk.apply(pd.to_numeric, errors='coerce', downcast='unsigned')
-
-                    if idx == 0:
-                        dataframe = chunk
-                    else:
-                        dataframe = pd.concat([dataframe, chunk])
-
-        dataframe = dataframe.transpose()
-
-        print(dataframe)
-        print(dataframe.memory_usage(deep=True))
-        print(dataframe.memory_usage(deep=True).sum())
 
         return dataframe
 
