@@ -73,23 +73,30 @@ def process_vcf(*, case: ReadVCF, ctrl: ReadVCF, out: Path):
 
     # # #
 
-    from idiva.clf.placeholder import placeholder
+    from idiva.clf.placeholder import placeholder, failure
     from idiva.stat.vcf_to_fisher import vcf_to_fisher
 
-    classifiers = [placeholder, vcf_to_fisher]
+    classifiers = [failure, placeholder, vcf_to_fisher]
 
-    for clf in classifiers:
+    for classifier in classifiers:
         with case.rewind_when_done:
-            response = clf(case=case, ctrl=ctrl)
-            info_meta.append(response.info)
+            log.info(F"=> Invoking the classifier `{classifier.__name__}`.")
+            try:
+                response = classifier(case=case, ctrl=ctrl)
+                info_meta.append(response.info)
 
-            assert set(response.id_cols).issubset(set(info_supp.columns))
-            df = response.df[set(response.id_cols) | set(response.info.keys())]
+                assert set(response.id_cols).issubset(set(info_supp.columns))
+                df = response.df[set(response.id_cols) | set(response.info.keys())]
 
-            info_supp = join(case=info_supp, ctrl=df, how="left", on=list(response.id_cols))
+                info_supp = join(case=info_supp, ctrl=df, how="left", on=list(response.id_cols))
 
-            del response
-
+                del response
+            except KeyboardInterrupt:
+                raise
+            except Exception as ex:
+                log.exception(F"=> Classifier `{classifier.__name__}` failed ({ex}).")
+            else:
+                log.info(F"=> Classifier `{classifier.__name__}` OK.")
 
     # # # #
 
