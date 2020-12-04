@@ -1,7 +1,15 @@
 # RA, 2020-12-01
 
+import contextlib
+import typing
+import re
+import pandas
+import numpy
 import idiva.io
+import idiva.utils
+
 from idiva import log
+from tqdm import tqdm
 
 
 def vcf_to_fisher(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
@@ -44,9 +52,10 @@ def vcf_to_fisher(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
         # One entry per columns, keyed by column name
         # https://samtools.github.io/hts-specs/VCFv4.1.pdf
         info = {
-            'F0': {'Number': "1", 'Type': "Float", 'Description': '"Fisher test case vs ctrl on ALT0 vs rest"'},
-            'F1': {'Number': "1", 'Type': "Float", 'Description': '"Fisher test case vs ctrl on ALT1 vs rest"'},
-            'F2': {'Number': "1", 'Type': "Float", 'Description': '"Fisher test case vs ctrl on ALT2 vs rest"'},
+            'F0': {'Number': "1", 'Type': "Float", 'Description': '"Fisher test  case vs ctrl  x  0/0 vs rest"'},
+            'F1': {'Number': "1", 'Type': "Float",
+                   'Description': '"Fisher test  case vs ctrl  x  (0/1 and 1/0) vs rest"'},
+            'F2': {'Number': "1", 'Type': "Float", 'Description': '"Fisher test  case vs ctrl  x  1/1 vs rest"'},
         }
 
         df = pvalues
@@ -54,7 +63,65 @@ def vcf_to_fisher(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
     return response
 
 
-def pscores_figure(vcf: idiva.io.ReadVCF):
+def extract_pvalues(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
+    from idiva.utils import unlist1
+
     with vcf.rewind_when_done:
-        for dataline in vcf:
-            dataline.info.split()
+        def data():
+            log.info("Reading p-values from VCF.")
+            for dataline in tqdm(vcf):
+                try:
+                    p = [
+                        float(unlist1(re.findall(rF"{FX}=([^;]+);", dataline.info.strip() + ";")))
+                        for FX in ["F0", "F1", "F2"]
+                    ]
+                    yield (dataline.chrom, dataline.pos, dataline.id, *p)
+                except ValueError:
+                    # Maybe encountered a '.'
+                    pass
+
+        return pandas.DataFrame(data=data(), columns=["CHROM", "POS", "ID", "F0", "F1", "F2"])
+
+
+def figure_pvalues(vcf: idiva.io.ReadVCF) -> typing.Iterable[idiva.utils.Plox]:
+    import numpy as np
+    import pandas as pd
+    from idiva.utils import Plox
+
+    pscores = extract_pvalues(vcf)
+
+    for FX in ["F0", "F1", "F2"]:
+
+        # with Plox() as px:
+        #     px.a.hist(pscores[pscores != 1.0].values)
+        #     yield px
+
+        # pscores = pscores.sort_values(ascending=True).nsmallest(n=10000)
+
+        # with Plox() as px:
+        #     rank = (1 + np.arange(0, len(pscores)))
+        #     px.a.plot(-np.log10(rank), -np.log10(pscores), '.-')
+        #     # px.a.plot(-np.log10(expect), -np.log10(expect), '--', lw=0.5)
+        #     px.a.grid()
+        #     px.a.set_xlabel(r"$-\log_{10}$ rank")
+        #     px.a.set_ylabel(r"$-\log_{10}$ p-value")
+        #     yield px
+
+        n = 2000
+        pscores = pscores.loc[pscores[FX].nsmallest(n=n).index]
+        assert isinstance(pscores, pd.DataFrame)
+
+        for (chrom, df) in pscores.groupby(pscores.CHROM):
+            with Plox() as px:
+                spec = {'F0': "0/0 vs rest", 'F1': "(0/1 and 1/0) vs rest", 'F2': "1/1 vs rest"}[FX]
+                name = F"pvalues_chrom={chrom}_fx={FX}_n={n}"
+                px.info = {'name proposal': name}
+                px.a.plot(pscores.POS, -np.log10(pscores[FX]), '.')
+                ylim = [0, max(max(px.a.get_ylim()), 1)]
+                px.a.set_yticks(list(range(0, 2 + round(max(ylim)))))
+                px.a.set_ylim(*ylim)
+                px.a.set_xlabel(F"position on chr. {chrom}")
+                px.a.set_ylabel(r"$-\log_{10}$ p-value")
+                px.a.set_title(F"{n} smallest p-values: {spec}")
+                px.a.grid()
+                yield px

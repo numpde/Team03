@@ -19,6 +19,8 @@ class Plox:
         except:
             raise
 
+        self.info = None
+
     def __enter__(self):
         self._style_context.__enter__()
         (self._f, self._a) = plt.subplots(dpi=180)
