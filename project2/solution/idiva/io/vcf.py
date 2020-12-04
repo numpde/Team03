@@ -1,5 +1,4 @@
 # RA, 2020-11-05
-from pathlib import Path
 
 from idiva import log
 
@@ -7,7 +6,6 @@ import contextlib
 import re
 import io
 import typing
-import pandas
 
 SEP = '\t'
 TCGA = {"T", "C", "G", "A"}
