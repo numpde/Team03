@@ -13,8 +13,8 @@ data_root = Path(__file__).parent / "data_for_tests/gz"
 ref_file = data_root / "test.txt"
 ref_file_gz = data_root / "test.txt.gz"
 
-with open(ref_file, mode='r') as fd:
-    reference = fd.read()
+with open(ref_file, mode='r') as fd_ref:
+    reference = fd_ref.read()
 
 
 class TestGz(TestCase):
@@ -31,7 +31,8 @@ class TestGz(TestCase):
 
     def test_open_rb(self):
         with open_maybe_gz(ref_file, mode='rb') as fd:
-            self.assertEqual(reference, io.TextIOWrapper(fd).read())
+            with io.TextIOWrapper(fd) as fd:
+                self.assertEqual(reference, fd.read())
 
     def test_dont_open_r_as_rb(self):
         with open(ref_file, mode='r') as fd:
@@ -47,4 +48,5 @@ class TestGz(TestCase):
     def test_open_from_rb_as_rb(self):
         with open(ref_file, mode='rb') as fd:
             with open_maybe_gz(fd, mode='rb') as fd:
-                self.assertEqual(reference, io.TextIOWrapper(fd).read())
+                with io.TextIOWrapper(fd) as fd:
+                    self.assertEqual(reference, fd.read())
