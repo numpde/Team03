@@ -73,9 +73,10 @@ def process_vcf(*, case: ReadVCF, ctrl: ReadVCF, out: Path):
 
     # # #
 
+    from idiva.clf.placeholder import placeholder
     from idiva.stat.vcf_to_fisher import vcf_to_fisher
 
-    classifiers = [vcf_to_fisher]
+    classifiers = [placeholder, vcf_to_fisher]
 
     for clf in classifiers:
         with case.rewind_when_done:
