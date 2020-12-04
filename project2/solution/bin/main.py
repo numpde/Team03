@@ -27,13 +27,9 @@ def parse_args():
     parser.add_argument('out_dir', type=Path, help="Output folder.")
     parser = parser.parse_args()
 
-    case_vcf = parser.case_vcf
-    ctrl_vcf = parser.ctrl_vcf
-    out_dir = parser.out_dir
-
-    assert isinstance(case_vcf, Path)
-    assert isinstance(ctrl_vcf, Path)
-    assert isinstance(out_dir, Path)
+    case_vcf = Path(parser.case_vcf)
+    ctrl_vcf = Path(parser.ctrl_vcf)
+    out_dir = Path(parser.out_dir)
 
     assert case_vcf.is_file(), F"{case_vcf} not found."
     assert ctrl_vcf.is_file(), F"{ctrl_vcf} not found."
@@ -75,14 +71,21 @@ def process_vcf(*, case: ReadVCF, ctrl: ReadVCF, out: Path):
 
     info_meta = []
 
-    # Repeat this for every "classifier"
-    with case.rewind_when_done:
-        from idiva.stat.vcf_to_fisher import vcf_to_fisher
-        response = vcf_to_fisher(case=case, ctrl=ctrl)
+    # # #
 
-        info_meta.append(response.info)
-        info_supp = join(case=info_supp, ctrl=response.df, how="left")
-        del response
+    from idiva.stat.vcf_to_fisher import vcf_to_fisher
+
+    classifiers = [vcf_to_fisher]
+
+    for clf in classifiers:
+        with case.rewind_when_done:
+            response = clf(case=case, ctrl=ctrl)
+
+            info_meta.append(response.info)
+            info_supp = join(case=info_supp, ctrl=response.df, how="left")
+            del response
+
+    # # # #
 
     vcf_out = (out / "results.vcf.gz")
     log.info(F"Writing VCF to: {relpath(vcf_out)} .")
