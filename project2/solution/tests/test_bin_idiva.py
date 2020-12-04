@@ -10,7 +10,6 @@ from idiva import log
 import os
 import sys
 import types
-import hashlib
 
 from pathlib import Path
 from unittest import TestCase
