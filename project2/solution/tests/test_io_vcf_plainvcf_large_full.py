@@ -1,8 +1,6 @@
 # RA, 2020-11-12
 
-import typing
 import io
-from contextlib import ExitStack
 
 from unittest import TestCase
 from pathlib import Path
