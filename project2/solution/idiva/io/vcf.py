@@ -199,6 +199,17 @@ class ReadVCF:
             yield
 
 
+def parse_info(info: str):
+    """
+    HK, 2020-12-02
+    RA, 2020-12-04
+    """
+
+    # See
+    # https://github.com/numpde/Team03/blob/5de2c7d/project2/solution/idiva/db/dbSNP.py#L40
+    raise NotImplementedError
+
+
 def align(*, case: ReadVCF, ctrl: ReadVCF):
     raise NotImplementedError("See https://github.com/numpde/Team03/blob/fae828d/project2/solution/idiva/io/vcf.py#L202")
 
