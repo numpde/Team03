@@ -38,7 +38,7 @@ class _:
                 'datefmt': "%H:%M:%S %Z",
             },
             'verbose': {
-                'format': "[%(levelname).1s][%(asctime)s][%(pathname)s][%(funcName)s:%(lineno)d]\n%(message)s",
+                'format': "[%(levelname).1s][%(asctime)s][%(pathname)s][%(threadName)s][%(processName)s][%(funcName)s:%(lineno)d]\n%(message)s",
                 'datefmt': "%Y%m%d %H:%M:%S %Z",
             },
         },

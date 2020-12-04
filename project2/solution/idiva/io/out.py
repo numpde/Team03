@@ -55,9 +55,7 @@ def spit_out_vcf_with_extra_info_no_samples(
 
         # Align on the fly
         while True:
-            a = dataline.pos
-            b = info.POS
-            if (a <= b):
+            if (dataline.pos <= info.POS):
                 break
             else:
                 (__, info) = next(i)
@@ -65,17 +63,18 @@ def spit_out_vcf_with_extra_info_no_samples(
         dataline.format = None
         dataline.samples = []
 
-        if ((dataline.id, dataline.ref, dataline.alt) == (info.ID, info.REF, info.ALT)):
-            for c in info_meta:
-                if info_meta[c] is not None:
-                    t = dict(info_meta[c]).get('Type')
-                    if t is not None:
-                        if (t == 'Float'):
-                            dataline.info += (F";{c}={info[c]:.3e}")
-                            continue
-                        if (t == 'Integer'):
-                            dataline.info += (F";{c}={info[c]}")
-                            continue
-                    dataline.info += (F";{c}={info[c]}")
+        for c in info_meta:
+            if ((dataline.id, dataline.ref, dataline.alt) != (info.ID, info.REF, info.ALT)) or pandas.isna(info.get(c)):
+                dataline.info += (F";{c}=.")
+            else:
+                t = dict(info_meta[c]).get('Type')
+                if t is not None:
+                    if (t == 'Float'):
+                        dataline.info += (F";{c}={info[c]:.3e}")
+                        continue
+                    if (t == 'Integer'):
+                        dataline.info += (F";{c}={info[c]}")
+                        continue
+                dataline.info += (F";{c}={info[c]}")
 
         print(str(dataline), flush=True)
