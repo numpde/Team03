@@ -11,7 +11,9 @@ import pandas
 
 SEP = '\t'
 TCGA = {"T", "C", "G", "A"}
-KEY_COLS = ["CHROM", "POS", "REF", "ALT"]
+
+
+# KEY_COLS = ["CHROM", "POS", "REF", "ALT"]
 
 
 def parse_gt(gt: str) -> typing.Tuple[int, int]:
