@@ -4,7 +4,7 @@ import os
 import logging
 import pathlib
 import datetime
-
+import multiprocessing, threading
 import warnings
 
 # This doesn't help 'remotely'
@@ -25,6 +25,16 @@ for f in sorted(LOG_FILE.glob("*-*-*.log"))[:-10]:
     os.remove(f)
 
 LOG_FILE = LOG_FILE / datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Z-%Y%m%d-%H%M%S")
+
+PROCESS_NAME = multiprocessing.current_process().name
+THREAD_NAME = threading.current_thread().name
+
+if (PROCESS_NAME != "MainProcess"):
+    LOG_FILE = pathlib.Path(str(LOG_FILE) + F"_{PROCESS_NAME}")
+
+if (THREAD_NAME != "MainThread"):
+    LOG_FILE = pathlib.Path(str(LOG_FILE) + F"_{THREAD_NAME}")
+
 LOG_FILE = LOG_FILE.with_suffix(".log")
 
 
@@ -65,7 +75,6 @@ class _:
 
 
 log = logging.getLogger(__name__)
-
 
 # import idiva.utils
 log.info(F"Log file: {LOG_FILE}")
