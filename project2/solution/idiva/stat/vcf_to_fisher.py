@@ -1,10 +1,10 @@
 # RA, 2020-12-01
 
 import idiva.io
+from idiva import log
 
 
 def vcf_to_fisher(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
-    from idiva import log
 
     from idiva.io import cache_df
     from idiva.clf.df import v0_df, join
