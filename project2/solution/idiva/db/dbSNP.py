@@ -1,6 +1,7 @@
 # HK, 2020-12-02
 
 import re
+import typing
 from collections.abc import MutableMapping
 
 import pandas as pd
@@ -37,7 +38,7 @@ def flatten(d, parent_key='', sep='_') -> dict:
     return dict(items)
 
 
-def get_info_dict(info: str) -> dict:
+def get_info_dict(info: str) -> typing.Iterable[dict]:
     """
     Yields info dict for every RS id.
 
@@ -75,7 +76,7 @@ def get_info_dict(info: str) -> dict:
         yield info_dict
 
 
-def dbSNP_datalines(vcf: idiva.io.ReadVCF, which_chrom: str = 'NC_000017.10'):
+def dbSNP_datalines(vcf: idiva.io.ReadVCF, which_chrom: str = 'NC_000017.10') -> typing.Iterable[dict]:
     """
     HK, 2020-12-02
     """
