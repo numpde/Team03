@@ -77,4 +77,4 @@ def spit_out_vcf_with_extra_info_no_samples(
                         continue
                 dataline.info += (F";{c}={info[c]}")
 
-        print(str(dataline), flush=True)
+        print(str(dataline))
