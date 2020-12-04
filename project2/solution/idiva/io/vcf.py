@@ -83,7 +83,7 @@ def proxy(fd: io.TextIOBase):
         datalines: typing.Iterable[RawDataline] = None
         dataline_start_pos: int = None
 
-    oneliner = Oneliner(fd, buffered=False)
+    oneliner = Oneliner(fd, buffer_lines=False)
 
     # First read in the comments
     for line in oneliner:
@@ -97,7 +97,7 @@ def proxy(fd: io.TextIOBase):
     VCFProxy.header = oneliner.last[1:]
 
     VCFProxy.dataline_start_pos = oneliner.fd.tell()
-    oneliner.buffered = True  # Ok after `tell`
+    oneliner.buffer_lines = True  # Ok after `tell`
 
     # The remainder are datalines that can be iterated
     VCFProxy.datalines = map(RawDataline, oneliner)
