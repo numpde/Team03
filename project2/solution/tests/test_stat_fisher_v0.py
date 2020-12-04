@@ -3,8 +3,6 @@
 from idiva import log
 
 import pandas as pd
-import numpy as np
-import io
 
 from pathlib import Path
 from unittest import TestCase
@@ -56,17 +54,12 @@ class TestChi2(TestCase):
     def test_fisher_large_head(self):
         from idiva.io import ReadVCF, open_maybe_gz
 
-        from idiva.clf.df import v0_df
-        from idiva.clf.df import join
+        with open_maybe_gz(PATHS_LARGE_HEAD['case'], mode='r') as case:
+            with open_maybe_gz(PATHS_LARGE_HEAD['ctrl'], mode='r') as ctrl:
+                from idiva.stat.vcf_to_fisher import vcf_to_fisher
+                result = vcf_to_fisher(case=ReadVCF(case), ctrl=ReadVCF(ctrl))
+                df = result.df
 
-        dfs = {}
-
-        for (k, file) in PATHS_LARGE_HEAD.items():
-            with open_maybe_gz(file, mode='r') as fd:
-                assert isinstance(fd, io.TextIOBase)
-                dfs[k] = v0_df(ReadVCF(fd))
-
-        df = join(case=dfs['case'], ctrl=dfs['ctrl'])
-
-        pvalues = v0_fisher(df)
-        print(pvalues.to_markdown())
+        from idiva.utils.testing import whatsmyname
+        out_dir = MY_SPACE / whatsmyname()
+        print(df)
