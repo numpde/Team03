@@ -34,8 +34,8 @@ def placeholder(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
         }
 
         # This results in INFO lines as follows:
-        # ##INFO=<ID=Dummy1,Number=1,Type=Float,Description="Just the number 1">
-        # ##INFO=<ID=Dummy2,Number=1,Type=Float,Description="Just the number 2">
+        # ##INFO=<ID=Dummy1,Number=1,Type=Integer,Description="Just the number 1">
+        # ##INFO=<ID=Dummy2,Number=1,Type=Float,Description="Just the number 2.0">
 
         df = result
 
