@@ -50,7 +50,6 @@ class DataHandler:
         """
         for idx, row in tqdm(df_clinvar.iterrows(), total=len(df_clinvar), postfix='iterating df_clinvar'):
             if (str(row.ref) in ['A', 'C', 'G', 'T']) and (str(row.alt) in ['A', 'C', 'G', 'T']):
-
                 line = {
                     'ID': row.id,
                     'CHROM': self.translate_chrom(row.chrom),
@@ -70,13 +69,9 @@ class DataHandler:
         """
         dataframe = pd.DataFrame(data=self.get_clf_datalines(df_clinvar))
         dataframe = dataframe.drop_duplicates()
-        print(dataframe)
 
         dataframe = dataframe.sort_values(by=['CHROM', 'POS'])
 
-        dataframe = self.add_cadd_score(dataframe)
-        dataframe = self.add_sift_score(dataframe)
-        print(dataframe)
         dataframe = dataframe.drop(columns=['REF', 'ALT'])
 
         return dataframe
@@ -116,8 +111,6 @@ class DataHandler:
         Returns training features and corresponding labels given a clinvar vcf file
         """
 
-        # create training set containg
-        # CHROM, POS, VAR, Polyphen2 score & success, sift score & success, cadd score & success
         clinvar_clf_data = self.get_clinvar_clf_data(clinvar_file)
 
         x_train = clinvar_clf_data.loc[:, clinvar_clf_data.columns != 'label']
@@ -182,6 +175,8 @@ class DataHandler:
         dataframe.drop_duplicates()
 
         # TODO:        same CHROM POS and rsID but not same REF & ALT
+        #              consequence of real world data (Kjong Nov 30)
+        #              => identify samples by CHROM, POS and VAR
         #              same CHROM rsID REF ALT but not same POS
         #              => rsIDs are not completely unique !
         #              Ignore rsID (Kjong Nov 23)
@@ -194,19 +189,18 @@ class DataHandler:
         56638       17   1649616  rs544719440   A   G    2
         576511      17  19159733  rs540831825   A   G    2
         717227      17  27196477  rs202111951   T   C   10
+        
         919995      17  34642425  rs568794696   C   A    3
         2105598     17  77663493  rs148485780   C   T    5
+        
                  CHROM       POS           ID REF ALT  VAR
         56637       17   1649616  rs544719440   A   C    1
         576510      17  19159733  rs540831825   A   C    1
         717226      17  27196477  rs202111951   T   A    9
+        
         919587      17  34540858  rs568794696   C   A    3
         2105592     17  77663435  rs148485780   C   T    5        
 
-        print(dataframe[dataframe.duplicated('ID', keep='first')])
-        print(dataframe[dataframe.duplicated('ID', keep='last')])
- 
-        assert(len(dataframe['ID'].unique().tolist()) == len(dataframe['ID'].tolist()))
        
         """
 
@@ -262,7 +256,6 @@ class DataHandler:
             new_ref = ''
 
             current_alt = ''
-
 
             status = 0
             count = 0
@@ -342,7 +335,6 @@ class DataHandler:
         # bucket spans a range of max cut_off nucleotide bases
         cut_off = 50000
 
-
         for idx, pos in enumerate(poss[1:], 1):
             if pos - poss[start_pos] > cut_off or current_chrom != chroms[idx]:
                 start_pos = idx
@@ -353,11 +345,9 @@ class DataHandler:
 
         futures = []
 
-        with tqdm(total=len(buckets)-1, postfix='creating CADD scores') as pbar:
+        with tqdm(total=len(buckets) - 1, postfix='creating CADD scores') as pbar:
             with concurrent.futures.ThreadPoolExecutor(max_workers=multiprocessing.cpu_count() - 1) as executor:
-
                 for idx in range(len(buckets) - 1):
-
                     args = [chroms[idx],
                             poss[buckets[idx]:buckets[idx + 1]],
                             refs[buckets[idx]:buckets[idx + 1]],
@@ -370,7 +360,6 @@ class DataHandler:
         phreds = futures[0].result()[1].ravel()
 
         for idx, future in enumerate(futures[1:], 1):
-
             scores = np.concatenate([scores, future.result()[0].ravel()])
             phreds = np.concatenate([phreds, future.result()[1].ravel()])
 
@@ -392,6 +381,10 @@ class DataHandler:
         """
         translate non integer chromosomes (X,Y & MT) to integers (23, 24 & 25)
         """
+
+        if type(chrom) == pd.core.series.Series:
+            chrom = chrom[0]
+
         if chrom == 'X':
             return 23
         elif chrom == 'Y':
@@ -413,10 +406,13 @@ class DataHandler:
 
 
 if __name__ == '__main__':
-
     dh = DataHandler()
 
-    x, y = dh.create_training_set()
+    x = dh.create_test_set("case_processed_v2.vcf", "control_v2.vcf")
+    print(x)
+    print(x.shape)
 
+    x, y = dh.create_training_set()
     print(x)
     print(y)
+    print(x.memory_usage(index=True).sum())
