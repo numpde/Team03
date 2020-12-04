@@ -27,7 +27,30 @@ def vcf_to_fisher(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
         return v0_fisher(df).assign(CHROM=df.CHROM, POS=df.POS, ID=df.ID)
 
     pvalues = cache_df(cached_file_prefix + "__pvalues", key=[case.md5, ctrl.md5], df_maker=df_maker2)
-    log.debug(pvalues)
 
     from idiva.clf.df import apply_dtype
-    return apply_dtype(pvalues)
+    pvalues = apply_dtype(pvalues)
+
+    pvalues.rename(inplace=True, columns={
+        'ALT0_vs_Other': "F0",
+        'ALT1_vs_Other': "F1",
+        'ALT2_vs_Other': "F2",
+    })
+
+    log.debug(pvalues)
+
+    class response:
+        # One entry per columns, keyed by column name
+        # https://samtools.github.io/hts-specs/VCFv4.1.pdf
+        info = {
+            'F0': {'Number': "1", 'Type': "Float", 'Description': '"Fisher test case vs ctrl on ALT0 vs rest"'},
+            'F1': {'Number': "1", 'Type': "Float", 'Description': '"Fisher test case vs ctrl on ALT1 vs rest"'},
+            'F2': {'Number': "1", 'Type': "Float", 'Description': '"Fisher test case vs ctrl on ALT2 vs rest"'},
+        }
+
+        df = pvalues
+
+    return response
+
+
+
