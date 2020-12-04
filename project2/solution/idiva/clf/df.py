@@ -77,12 +77,12 @@ def v0_datalines(vcf: idiva.io.ReadVCF) -> typing.Iterable[dict]:
     yield from lines
 
 
-def c3_df(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
+def c5_df(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
     """
     Returns a dataframe like
 
-           CHROM   POS           ID
-        0     17    52  rs556541063
+           CHROM   POS           ID     REF    ALT
+        0     17    52  rs556541063     ...    ...
         1     17    56  rs145615430
         2     17    78  rs148170422
         ..   ...   ...          ...
@@ -94,8 +94,8 @@ def c3_df(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
 
     with vcf.rewind_when_done:
         return apply_dtype(pandas.DataFrame(
-            data=((dataline.chrom, dataline.pos, dataline.id) for dataline in vcf),
-            columns=["CHROM", "POS", "ID"],
+            data=((dataline.chrom, dataline.pos, dataline.id, dataline.ref, dataline.alt) for dataline in vcf),
+            columns=["CHROM", "POS", "ID", "REF", "ALT"],
         ))
 
 

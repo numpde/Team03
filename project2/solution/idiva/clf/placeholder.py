@@ -11,15 +11,25 @@ def placeholder(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
 
     log.info("Running the placeholder classifier.")
 
+    # DUMMY result dataframe
     result = v0_df(case).assign(Dummy1=1, Dummy2=2)
 
-    # The result should contain the columns CHROM, POS, ID
-    # in the same order as `case`, but can have fewer rows
+    # The result should contain the columns
+    #   CHROM, POS, ID
+    # or
+    #   CHROM, POS, ALT
+    # or
+    #   CHROM, POS, REF, ALT
+    # but can have fewer rows than `case`.
+    #
+    # Specify these columns in `id_cols`.
 
     class response:
+        id_cols = ["CHROM", "POS", "ID"]
+
         info = {
-            'Dummy1': {'Number': '1', 'Type': 'Float', 'Description': '"Just the number 1"'},
-            'Dummy2': {'Number': '1', 'Type': 'Float', 'Description': '"Just the number 2"'},
+            'Dummy1': {'Number': '1', 'Type': 'Integer', 'Description': '"Just the number 1"'},
+            'Dummy2': {'Number': '1', 'Type': 'Float', 'Description': '"Just the number 2.0"'},
         }
 
         # This results in INFO lines as follows:
@@ -27,5 +37,8 @@ def placeholder(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
         # ##INFO=<ID=Dummy2,Number=1,Type=Float,Description="Just the number 2">
 
         df = result
+
+    assert set(response.id_cols).issubset(set(response.df.columns))
+    assert set(response.info.keys()).issubset(set(response.df.columns))
 
     return response

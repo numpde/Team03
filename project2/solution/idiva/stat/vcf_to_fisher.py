@@ -40,6 +40,8 @@ def vcf_to_fisher(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
     log.debug(pvalues)
 
     class response:
+        id_cols = ["CHROM", "POS", "ID"]
+
         # One entry per columns, keyed by column name
         # https://samtools.github.io/hts-specs/VCFv4.1.pdf
         info = {

@@ -57,18 +57,25 @@ def spit_out_vcf_with_extra_info_no_samples(
         while True:
             a = dataline.pos
             b = info.POS
-            if (a == b):
+            if (a <= b):
                 break
-            elif (a < b):
-                dataline = next(vcf)
-            elif (a > b):
+            else:
                 (__, info) = next(i)
 
         dataline.format = None
         dataline.samples = []
 
-        if (dataline.id == info.ID):
+        if ((dataline.id, dataline.ref, dataline.alt) == (info.ID, info.REF, info.ALT)):
             for c in info_meta:
-                dataline.info += (F";{c}={info[c]:.3e}")
+                if info_meta[c] is not None:
+                    t = dict(info_meta[c]).get('Type')
+                    if t is not None:
+                        if (t == 'Float'):
+                            dataline.info += (F";{c}={info[c]:.3e}")
+                            continue
+                        if (t == 'Integer'):
+                            dataline.info += (F";{c}={info[c]}")
+                            continue
+                    dataline.info += (F";{c}={info[c]}")
 
         print(str(dataline), flush=True)
