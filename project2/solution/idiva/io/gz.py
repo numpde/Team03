@@ -9,7 +9,7 @@ from idiva.utils import seek_then_rewind
 
 
 @contextlib.contextmanager
-def open_maybe_gz(file, *, mode='r') -> typing.IO:
+def open_maybe_gz(file, *, mode='r') -> typing.Union[io.TextIOBase, io.BytesIO]:
     """
     Open `file` for reading that could be a
      - file descriptor
@@ -26,11 +26,13 @@ def open_maybe_gz(file, *, mode='r') -> typing.IO:
     assert mode in ['r', 'rb']
 
     if isinstance(file, io.TextIOBase):
-        assert (mode == 'r'), "Incoming file is TextIOBase."
+        assert (mode == 'r'), "Can't convert TextIOBase to mode='rb'."
         yield file
         return
 
     if isinstance(file, io.IOBase):
+        assert isinstance(file, (io.BufferedIOBase, io.TextIOBase))
+
         with contextlib.ExitStack() as stack:
             import gzip
             try:
@@ -47,6 +49,7 @@ def open_maybe_gz(file, *, mode='r') -> typing.IO:
 
             if (mode == 'r'):
                 if not isinstance(file, io.TextIOBase):
+                    assert isinstance(file, io.BufferedIOBase)
                     file = stack.enter_context(io.TextIOWrapper(file))
 
             yield file
