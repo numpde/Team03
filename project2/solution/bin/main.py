@@ -3,6 +3,7 @@
 from idiva import log
 
 import io
+import sys
 import gzip
 import argparse
 
@@ -50,12 +51,12 @@ def process(*, case_vcf: Path, ctrl_vcf: Path, out_dir: Path):
             log.info("======================")
             log.info("Processing VCF (HEAD).")
             log.info("======================")
-            process_vcf(case=ReadVCF(case_head), ctrl=ReadVCF(ctrl_head), out=(out_dir / "head"))
+            post(process_vcf(case=ReadVCF(case_head), ctrl=ReadVCF(ctrl_head), out=(out_dir / "head")))
 
         log.info("======================")
         log.info("Processing VCF (FULL).")
         log.info("======================")
-        process_vcf(case=ReadVCF(case_full), ctrl=ReadVCF(ctrl_full), out=(out_dir / "full"))
+        post(process_vcf(case=ReadVCF(case_full), ctrl=ReadVCF(ctrl_full), out=(out_dir / "full")))
 
 
 def process_vcf(*, case: ReadVCF, ctrl: ReadVCF, out: Path):
@@ -112,6 +113,16 @@ def process_vcf(*, case: ReadVCF, ctrl: ReadVCF, out: Path):
         fd.flush()
 
     log.info("Done.")
+
+    return vcf_out
+
+
+def post(vcf_file: Path):
+    from idiva.stat.vcf_to_fisher import figure_pvalues
+
+    with ReadVCF.open(vcf_file) as vcf:
+        for px in figure_pvalues(vcf):
+            px.f.savefig((vcf_file.parent / px.info['name proposal']).with_suffix(".png"))
 
 
 if __name__ == '__main__':
