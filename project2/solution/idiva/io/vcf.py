@@ -209,7 +209,33 @@ def align(*, case: ReadVCF, ctrl: ReadVCF):
 
     from idiva.clf.df import join
 
+    dfs['case'] = dfs['case'].drop_duplicates(['CHROM', 'POS', 'REF', 'ALT'], keep='first')
+
+    dfs['ctrl'] = dfs['ctrl'].drop_duplicates(['CHROM', 'POS', 'REF', 'ALT'], keep='first')
+
     df = join(case=dfs['case'], ctrl=dfs['ctrl'])
+
+    def index_map(chromposalt) -> int:
+        chrom = chromposalt[0]
+        pos = chromposalt[1]
+        alt = chromposalt[2]
+
+        if alt == "A":
+            alt = 0
+        elif alt == "C":
+            alt = 1
+        elif alt == "G":
+            alt = 2
+        elif alt == "T":
+            alt = 3
+
+        return chrom * 10000000000 + pos * 10 + alt
+
+    df['ID'] = df[['CHROM', 'POS', 'ALT']].apply(index_map, axis=1)
+
+    # df = df.drop(['CHROM', 'POS', 'ALT'], axis=1)
+
+    df = df.set_index('ID')
 
     # df.to_csv("sort_me.txt", sep=SEP)
 
@@ -252,3 +278,5 @@ if __name__ == '__main__':
             print(df.isnull().sum(axis=0))
 
             print(df[df.isna().any(axis=1)])
+
+            print(df.index.is_unique)

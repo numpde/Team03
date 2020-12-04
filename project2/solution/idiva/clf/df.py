@@ -22,12 +22,13 @@ def join(*, case: pandas.DataFrame, ctrl: pandas.DataFrame) -> pandas.DataFrame:
     Use the suffixes _case and _ctrl for the other ambiguous columns.
 
     RA, 2020-11-14
+    LB, 2020-12-04 adapted
     """
 
     df = pandas.merge_ordered(
         left=case, right=ctrl,
         suffixes=['_case', '_ctrl'],
-        on=['CHROM', 'POS'],
+        on=['CHROM', 'POS', 'REF', 'ALT'],
         how="outer",
     )
 
