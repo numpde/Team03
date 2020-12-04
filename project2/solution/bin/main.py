@@ -107,6 +107,9 @@ def process_vcf(*, case: ReadVCF, ctrl: ReadVCF, out: Path):
         with redirect_stdout(fd):
             info_meta = {k: i[k] for i in info_meta for k in i}
             spit_out_vcf_with_extra_info_no_samples(case, info_supp, info_meta)
+            sys.stdout.flush()
+
+        fd.flush()
 
     log.info("Done.")
 
