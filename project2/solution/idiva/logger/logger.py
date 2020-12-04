@@ -66,4 +66,6 @@ class _:
 
 log = logging.getLogger(__name__)
 
-log.debug("Logger initialized.")
+
+# import idiva.utils
+log.info(F"Log file: {LOG_FILE}")
