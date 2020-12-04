@@ -3,14 +3,21 @@
 from idiva import log
 
 import io
+import gzip
 import argparse
 
 from pathlib import Path
 from idiva.io import ReadVCF
+from idiva.utils import relpath
 
 
 def main():
-    process(**parse_args())
+    try:
+        process(**parse_args())
+    except KeyboardInterrupt:
+        import logging
+        log.info("Aborted. Bye-bye.")
+        logging.shutdown()
 
 
 def parse_args():
@@ -20,15 +27,19 @@ def parse_args():
     parser.add_argument('out_dir', type=Path, help="Output folder.")
     parser = parser.parse_args()
 
-    assert isinstance(parser.case_vcf, Path)
-    assert isinstance(parser.ctrl_vcf, Path)
-    assert isinstance(parser.out_dir, Path)
+    case_vcf = parser.case_vcf
+    ctrl_vcf = parser.ctrl_vcf
+    out_dir = parser.out_dir
 
-    assert parser.case_vcf.is_file()
-    assert parser.ctrl_vcf.is_file()
-    assert not parser.out_dir.is_file()
+    assert isinstance(case_vcf, Path)
+    assert isinstance(ctrl_vcf, Path)
+    assert isinstance(out_dir, Path)
 
-    return dict(case_vcf=parser.case_vcf, ctrl_vcf=parser.ctrl_vcf, out_dir=parser.out_dir)
+    assert case_vcf.is_file(), F"{case_vcf} not found."
+    assert ctrl_vcf.is_file(), F"{ctrl_vcf} not found."
+    assert not out_dir.is_file(), F"{out_dir} is not a folder."
+
+    return dict(case_vcf=case_vcf, ctrl_vcf=ctrl_vcf, out_dir=out_dir)
 
 
 def process(*, case_vcf: Path, ctrl_vcf: Path, out_dir: Path):
@@ -40,24 +51,48 @@ def process(*, case_vcf: Path, ctrl_vcf: Path, out_dir: Path):
         assert isinstance(ctrl_full, io.TextIOBase)
 
         with head(case_full) as case_head, head(ctrl_full) as ctrl_head:
+            log.info("======================")
             log.info("Processing VCF (HEAD).")
+            log.info("======================")
             process_vcf(case=ReadVCF(case_head), ctrl=ReadVCF(ctrl_head), out=(out_dir / "head"))
 
+        log.info("======================")
         log.info("Processing VCF (FULL).")
+        log.info("======================")
         process_vcf(case=ReadVCF(case_full), ctrl=ReadVCF(ctrl_full), out=(out_dir / "full"))
 
 
 def process_vcf(*, case: ReadVCF, ctrl: ReadVCF, out: Path):
+    from idiva.clf.df import join
+    from idiva.io.out import spit_out_vcf_with_extra_info_no_samples
+    from contextlib import redirect_stdout
+
     out.mkdir(exist_ok=True, parents=True)
 
-    from idiva.clf.df import c3_df, join
-    case_idx = c3_df(case)
+    with case.rewind_when_done:
+        from idiva.clf.df import c3_df
+        info_supp = c3_df(case)
 
-    from idiva.stat.vcf_to_fisher import vcf_to_fisher
-    df = vcf_to_fisher(case=case, ctrl=ctrl)
+    info_meta = []
 
-    # TODO: pack into INFO format
-    (join(case=case_idx, ctrl=df))
+    # Repeat this for every "classifier"
+    with case.rewind_when_done:
+        from idiva.stat.vcf_to_fisher import vcf_to_fisher
+        response = vcf_to_fisher(case=case, ctrl=ctrl)
+
+        info_meta.append(response.info)
+        info_supp = join(case=info_supp, ctrl=response.df, how="left")
+        del response
+
+    vcf_out = (out / "results.vcf.gz")
+    log.info(F"Writing VCF to: {relpath(vcf_out)} .")
+
+    with gzip.open(vcf_out, mode="wt") as fd:
+        with redirect_stdout(fd):
+            info_meta = {k: i[k] for i in info_meta for k in i}
+            spit_out_vcf_with_extra_info_no_samples(case, info_supp, info_meta)
+
+    log.info("Done.")
 
 
 if __name__ == '__main__':
