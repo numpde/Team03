@@ -5,7 +5,6 @@ from idiva import log
 
 
 def vcf_to_fisher(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
-
     from idiva.io import cache_df
     from idiva.clf.df import v0_df, join
     from idiva.stat import v0_fisher
@@ -55,4 +54,7 @@ def vcf_to_fisher(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
     return response
 
 
-
+def pscores_figure(vcf: idiva.io.ReadVCF):
+    with vcf.rewind_when_done:
+        for dataline in vcf:
+            dataline.info.split()
