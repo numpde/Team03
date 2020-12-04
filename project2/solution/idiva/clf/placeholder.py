@@ -1,6 +1,7 @@
 # RA, 2020-12-04
 
-# Template for a classifier interface to main
+# Template for a classifier interface to main.
+# Make a copy for your implementation.
 
 import idiva.io
 from idiva import log
@@ -9,10 +10,10 @@ from idiva import log
 def placeholder(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
     from idiva.clf.df import v0_df
 
-    log.info("Running the placeholder classifier.")
+    log.info("Running the placeholder 'classifier'.")
 
     # DUMMY result dataframe
-    result = v0_df(case).assign(Dummy1=1, Dummy2=2)
+    result = v0_df(case).assign(Dummy1=1, Dummy2=2.0)
 
     # The result should contain the columns
     #   CHROM, POS, ID
