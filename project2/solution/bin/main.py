@@ -80,7 +80,7 @@ def process_vcf(*, case: ReadVCF, ctrl: ReadVCF, out: Path):
 
     for classifier in classifiers:
         with case.rewind_when_done:
-            log.info(F"=> Invoking the classifier `{classifier.__name__}`.")
+            log.info(F"=> Invoking the annotation `{classifier.__name__}`.")
             try:
                 response = classifier(case=case, ctrl=ctrl)
                 info_meta.append(response.info)
@@ -94,9 +94,9 @@ def process_vcf(*, case: ReadVCF, ctrl: ReadVCF, out: Path):
             except KeyboardInterrupt:
                 raise
             except Exception as ex:
-                log.exception(F"=> Classifier `{classifier.__name__}` failed ({ex}).")
+                log.exception(F"=> Annotation `{classifier.__name__}` failed ({ex}).")
             else:
-                log.info(F"=> Classifier `{classifier.__name__}` OK.")
+                log.info(F"=> Annotation `{classifier.__name__}` OK.")
 
     # # # #
 
