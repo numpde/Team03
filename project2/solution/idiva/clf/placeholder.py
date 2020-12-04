@@ -43,3 +43,7 @@ def placeholder(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
     assert set(response.info.keys()).issubset(set(response.df.columns))
 
     return response
+
+
+def failure(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
+    pass
