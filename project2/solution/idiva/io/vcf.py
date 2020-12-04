@@ -181,6 +181,13 @@ class ReadVCF:
         self.datalines = proxy.datalines
         self.dataline_start_pos = proxy.dataline_start_pos
 
+    def preload_all(self):
+        from idiva.utils import seek_then_rewind
+        with seek_then_rewind(self.fd, seek=None):
+            self.datalines = list(iter(self.datalines))
+
+        return self
+
     def __iter__(self) -> typing.Iterator[RawDataline]:
         return iter(self.datalines)
 
