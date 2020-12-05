@@ -1,5 +1,7 @@
 # HK, 2020-12-02
 
+from idiva import log
+
 import re
 import typing
 from collections.abc import MutableMapping
@@ -17,6 +19,8 @@ DTYPES: dict = {'ref': str, 'alt': str, 'chrom': str, 'id': str, 'GNO': bool, 'C
                 'U5': bool,
                 'U3': bool,
                 'SYN': bool, 'NSN': bool, 'NSM': bool, 'NSF': bool, 'SAO': float, 'FREQ': str, 'VC': str}
+
+dbSNP_URL = "https://www.dropbox.com/s/u2vfggr70prk3wx/GRCh37_latest_dbSNP_all_chrom17.csv.gz?dl=1"
 
 
 def flatten(d, parent_key='', sep='_') -> dict:
@@ -121,17 +125,14 @@ def get_dbSNP_df() -> pd.DataFrame:
     Downloads it if not found, loads it otherwise
     """
     from idiva.download import download
-    from idiva.io import cache_df
+    import gzip
 
-    def maker_dbSNP_df() -> pd.DataFrame:
-        # data = download('https://www.dropbox.com/s/u2vfggr70prk3wx/GRCh37_latest_dbSNP_all_chrom17.csv.gz').now()
-        # file_path = data.local_file
-        file_path = Path(__file__).parent.parent.parent / 'data/GRCh37_latest_dbSNP_all_chrom17.csv.gz'
-        return pd.read_csv(file_path, compression="infer")
+    log.info("Downloading dbSNP excerpt.")
+    with download(dbSNP_URL).now.open(mode='rb') as fd:
+        with gzip.open(fd, mode='r') as fd:
+            df = pd.read_csv(fd)
 
-    df_dbSNP = cache_df(name="dbsNP_", key='', df_maker=maker_dbSNP_df)
-
-    return df_dbSNP
+    return df
 
 
 def create_dbSNP_df(dbSNP_file_path: str, out_base: Path):
@@ -151,6 +152,7 @@ def create_dbSNP_df(dbSNP_file_path: str, out_base: Path):
 if __name__ == '__main__':
     from pathlib import Path
     from tqdm import tqdm
+
     dbSNP_file_path = '/mnt/data/hendrik/db_SNP/GRCh37_latest_dbSNP_chrom17.vcf'
     out_base = Path(__file__).parent.parent.parent / 'data'
     out_path = out_base / 'GRCh37_latest_dbSNP_all_chrom17.csv.gz'
