@@ -26,8 +26,7 @@ the VCF files provided
 To run the code on those files:
 
 ```
-# Without package install, it is important
-# to start from this folder
+# It is important to start from this folder to resolve dependencies
 cd solution
 
 # Input path (for convenience)
@@ -45,7 +44,7 @@ on the first few datalines of the input,
 and the results are written to the subfolder 
 [head](solution/example_data/chrom17/output/head).
 The results include a compressed VCF file
-and a few figures.
+and a few figures (with the corresponding data).
 
 Then the full files are processed
 into the subfolder 
