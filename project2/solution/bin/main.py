@@ -78,7 +78,7 @@ def process_vcf(*, case: ReadVCF, ctrl: ReadVCF, out: Path):
     from idiva.clf.placeholder import placeholder, failure
     from idiva.stat.vcf_to_fisher import vcf_to_fisher
     from idiva.db.sc2disease import allgwas
-    from idiva.db.db_clf import classify as db_classifier
+    from idiva.db.db_clf import db_classifier
 
     classifiers = [vcf_to_fisher, allgwas, db_classifier]
 
