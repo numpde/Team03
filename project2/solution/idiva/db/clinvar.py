@@ -65,7 +65,7 @@ def get_info_dict(info: str) -> dict:
         # spit into key, value
         k, v = elem.split('=')
         if k == 'CLNDISDB':
-            OMIM_ids = re.findall('OMIM:\d+', v)
+            OMIM_ids = re.findall(r'OMIM:\d+', v)
         info_dict[k] = v
         if k == 'RS':
             for rs_id in v.split('|'):
