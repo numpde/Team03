@@ -1,6 +1,6 @@
 ## idiva: identification of disease variants
 
-Team03 solution manual
+Team03 solution manual.
 
 
 ### Installation
