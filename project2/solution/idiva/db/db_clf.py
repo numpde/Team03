@@ -19,7 +19,7 @@ def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> object:
     """
     from idiva.clf.df import c5_df
 
-    log.info("Running the database classifier.")
+    log.info("Running the database 'classifier'.")
     case_control = c5_df(case)
 
     db_PosRefAlt = db.get_db_label_df()
@@ -34,16 +34,14 @@ def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> object:
     result = merge_on_PosRefAlt[['CHROM', 'POS', 'ID', 'REF', 'ALT', 'class']]
 
     class response:
-        id_cols = ['CHROM', 'POS', 'ID', 'REF', 'ALT']
+        id_cols = ['CHROM', 'POS', 'ID', 'REF', 'ALT', 'class']
 
         info = {
-            'class': {
-                'Number': '.',
-                'Type': 'Integer',
-                'Description':
-                    '"Number indicating to which class the variant belongs. '
-                    '0 - Benign, 1 - Pathogenic, 2 - Unknown"'
-            },
+            'class': {'Number': '.',
+                      'Type': 'Integer',
+                      'Description': '"Number indicating to which class the variant belongs. '
+                                     '0 - Benign, 1 - Pathogenic, 2 - Unknown"'
+                      },
         }
 
         df = result
