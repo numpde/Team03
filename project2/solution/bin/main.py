@@ -80,7 +80,7 @@ def process_vcf(*, case: ReadVCF, ctrl: ReadVCF, out: Path):
     from idiva.db.sc2disease import allgwas
     from idiva.db.db_clf import classify as db_classifier
 
-    classifiers = [failure, placeholder, vcf_to_fisher, allgwas, db_classifier]
+    classifiers = [vcf_to_fisher, allgwas, db_classifier]
 
     for classifier in classifiers:
         with case.rewind_when_done:
