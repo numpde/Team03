@@ -10,7 +10,7 @@ from idiva import log
 from idiva.db import db
 
 
-def classify(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF,
+def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF,
              case_control: typing.Optional[pd.DataFrame] = None) -> object:
     """
     Joins the case df and ctrl df on 'CHROM', 'POS', 'REF', 'ALT', 'ID' as a case-control df.
