@@ -73,7 +73,7 @@ def spit_out_vcf_with_extra_info_no_samples(
                         dataline.info += (F";{c}={info[c]:.3e}")
                         continue
                     if (t == 'Integer'):
-                        dataline.info += (F";{c}={info[c]}")
+                        dataline.info += (F";{c}={int(info[c])}")
                         continue
                 dataline.info += (F";{c}={info[c]}")
 
