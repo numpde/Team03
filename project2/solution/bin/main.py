@@ -76,8 +76,9 @@ def process_vcf(*, case: ReadVCF, ctrl: ReadVCF, out: Path):
 
     from idiva.clf.placeholder import placeholder, failure
     from idiva.stat.vcf_to_fisher import vcf_to_fisher
+    from idiva.clf.sc2disease import allgwas
 
-    classifiers = [failure, placeholder, vcf_to_fisher]
+    classifiers = [failure, placeholder, vcf_to_fisher, allgwas]
 
     for classifier in classifiers:
         with case.rewind_when_done:
@@ -102,7 +103,7 @@ def process_vcf(*, case: ReadVCF, ctrl: ReadVCF, out: Path):
     # # # #
 
     vcf_out = (out / "results.vcf.gz")
-    log.info(F"Writing VCF to: {relpath(vcf_out)} .")
+    log.info(F"=> Writing VCF to: {relpath(vcf_out)} .")
 
     with gzip.open(vcf_out, mode="wt") as fd:
         with redirect_stdout(fd):
@@ -112,12 +113,14 @@ def process_vcf(*, case: ReadVCF, ctrl: ReadVCF, out: Path):
 
         fd.flush()
 
-    log.info("Done.")
+    log.info("=> Done.")
 
     return vcf_out
 
 
 def post(vcf_file: Path):
+    log.info("=> Entering the postprocessing stage.")
+
     from idiva.stat.vcf_to_fisher import figure_pvalues
 
     with ReadVCF.open(vcf_file) as vcf:

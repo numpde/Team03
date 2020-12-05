@@ -8,12 +8,12 @@ from idiva import log
 
 
 def placeholder(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
-    from idiva.clf.df import v0_df
+    from idiva.clf.df import c5_df
 
     log.info("Running the placeholder 'classifier'.")
 
     # DUMMY result dataframe
-    result = v0_df(case).assign(Dummy1=1, Dummy2=2.0)
+    result = c5_df(case).assign(Dummy1=1, Dummy2=2.0)
 
     # The result should contain the columns
     #   CHROM, POS, ID
