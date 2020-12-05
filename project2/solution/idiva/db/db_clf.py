@@ -42,7 +42,7 @@ def classify(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF,
 
         info = {
             'class': {'Number': '.', 'Type': 'Integer',
-                      'Description': '"Number indicating to which class the variant beolongs. '
+                      'Description': '"Number indicating to which class the variant belongs. '
                                      '0 - Benign, 1 - Pathogenic, 2 - Unknown"'},
         }
 
