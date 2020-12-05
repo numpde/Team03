@@ -1,6 +1,6 @@
 ## idiva: identification of disease variants
 
-Team03 solution manual
+Team03 solution manual.
 
 
 ### Installation
@@ -23,7 +23,7 @@ contains a toy excerpt from
 the VCF files provided
 (see [here](solution/example_data/chrom17/input/readme.md)).
 
-The code is run on those files as follows:
+To run the code on those files:
 
 ```
 # Without package install, it is important

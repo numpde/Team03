@@ -147,14 +147,25 @@ def clinvar_to_df(vcf: idiva.io.ReadVCF) -> pd.DataFrame:
     return pd.DataFrame(data=clinvar_datalines(vcf)).astype({'ref': str, 'alt': str})
 
 
-def clinvar_rs_ids(which='vcf_37'):
-    from idiva.io.vcf import ReadVCF
-    with clinvar_open(which) as fd:
-        for dataline in ReadVCF(fd):
-            pass
+def clinvar_rsid_clnsig(which='vcf_37') -> pd.DataFrame:
+    """
+    RA, 2020-12-05
+    """
+
+    def maker():
+        from idiva.io.vcf import ReadVCF
+        with clinvar_open(which) as fd:
+            df = pd.DataFrame(data=(clinvar_datalines(ReadVCF(fd))))
+            df = df[["RS", "CLNSIG"]].rename(columns={'RS': "ID", 'CLNSIG': "ClnSig"})
+            df = df[df.ID.fillna('').str.contains(r"^rs[0-9]+$")]
+            df = df.groupby('ID', as_index=False)
+            df = df.agg({'ClnSig': lambda s: F'"{", ".join(sorted(set(map(str, s))))}"'})
+            return df
+
+    from idiva.io import cache_df
+    return cache_df("rsid_clnsig", [which, 'v1'], df_maker=maker)
 
 
 if __name__ == '__main__':
-    with clinvar_open('vcf_37') as fd:
-        reader = ReadVCF(fd)
-        print(*at_most_n(reader.datalines, n=10), sep='\n')
+    df = clinvar_rsid_clnsig()
+    print(df)

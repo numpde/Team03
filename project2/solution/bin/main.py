@@ -5,6 +5,7 @@ from idiva import log
 import io
 import sys
 import gzip
+import pandas
 import argparse
 
 from pathlib import Path
@@ -76,7 +77,7 @@ def process_vcf(*, case: ReadVCF, ctrl: ReadVCF, out: Path):
 
     from idiva.clf.placeholder import placeholder, failure
     from idiva.stat.vcf_to_fisher import vcf_to_fisher
-    from idiva.clf.sc2disease import allgwas
+    from idiva.db.sc2disease import allgwas
 
     classifiers = [failure, placeholder, vcf_to_fisher, allgwas]
 
@@ -122,10 +123,17 @@ def post(vcf_file: Path):
     log.info("=> Entering the postprocessing stage.")
 
     from idiva.stat.vcf_to_fisher import figure_pvalues
+    from idiva.io.vcf import SEP
 
     with ReadVCF.open(vcf_file) as vcf:
         for px in figure_pvalues(vcf):
-            px.f.savefig((vcf_file.parent / px.info['name proposal']).with_suffix(".png"))
+            file = vcf_file.parent / px.info['name proposal']
+            log.info(F"Saving figure and data to {file}.* .")
+
+            px.f.savefig(file.with_suffix(".png"))
+
+            df: pandas.DataFrame = px.info['df']
+            df.to_csv(file.with_suffix(".csv"), sep=SEP)
 
 
 if __name__ == '__main__':

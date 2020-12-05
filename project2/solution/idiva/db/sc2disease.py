@@ -23,6 +23,7 @@ def allgwas_reference() -> pandas.DataFrame:
     from idiva.download import download
     log.info(F"Downloading {URL}")
     with download(URL).now.open() as fd:
+        log.info(F"Processing.")
         s: pandas.Series
         df = pandas.read_csv(fd, sep='\t', names=["gene", "rs", "p", "chrom", "pos", "disease"])
         df = pandas.DataFrame(
@@ -61,7 +62,8 @@ def allgwas(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
         df = join(case=case, ctrl=ref, how='left', on='ID')
 
     catch: pandas.DataFrame = response.df[~response.df.SC2D.isna()]
-    log.info(F"SC2Disease found: {dict(catch.set_index('ID').SC2D)}")
+    catch = catch.ID.groupby(catch.SC2D).agg(lambda s: ",".join(s))
+    log.info(F"SC2Disease found: {dict(catch)}")
 
     return response
 
