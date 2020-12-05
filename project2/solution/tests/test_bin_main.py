@@ -26,7 +26,7 @@ workspace.mkdir(exist_ok=True, parents=True)
 
 
 class TestBin(TestCase):
-    def test_idiva_small(self):
+    def test_main_small(self):
         mod = import_from_source("main", str(basepath / "bin/main.py"))
 
         (case, ctrl) = sorted(map(relpath, Path.cwd().glob("../input/head/*_v2.vcf")))
@@ -40,7 +40,7 @@ class TestBin(TestCase):
             assert hasattr(mod, 'main')
             mod.main()
 
-    def test_idiva_large(self):
+    def test_main_large(self):
         mod = import_from_source("main", str(basepath / "bin/main.py"))
 
         (case, ctrl) = sorted(map(relpath, Path.cwd().glob("../input/full/*_v2.vcf.gz")))
