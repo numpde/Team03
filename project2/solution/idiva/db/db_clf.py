@@ -31,7 +31,7 @@ def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> object:
     result = merge_on_PosRefAlt[['CHROM', 'POS', 'ID', 'REF', 'ALT', 'class']]
 
     class response:
-        id_cols = ['CHROM', 'POS', 'ID', 'REF', 'ALT', 'class']
+        id_cols = ['CHROM', 'POS', 'ID', 'REF', 'ALT']
 
         info = {
             'class': {'Number': '.',
