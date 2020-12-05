@@ -1,13 +1,7 @@
 # HK, 2020-12-05
 
-
-import typing
-
-import pandas as pd
-
 import idiva.io
 from idiva import log
-from idiva.db import db
 
 
 def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> object:
@@ -15,8 +9,9 @@ def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> object:
     Classifies the case-control df by querying the clinvar and dbSNP data.
     """
     from idiva.clf.df import c5_df
+    from idiva.db import db
 
-    log.info("Running the database 'classifier'.")
+    log.info("Running the database classifier.")
     case_control = c5_df(case)
 
     db_PosRefAlt = db.get_db_label_df()
@@ -26,7 +21,7 @@ def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> object:
     merge_on_PosRefAlt['class'] = merge_on_PosRefAlt['class'].fillna(2)
     log.info(
         f"Found {len(merge_on_PosRefAlt) - merge_on_PosRefAlt.loc[merge_on_PosRefAlt['class'] == 2, 'class'].count()} "
-        f"labels in databases")
+        f"labels in databases.")
 
     result = merge_on_PosRefAlt[['CHROM', 'POS', 'ID', 'REF', 'ALT', 'class']]
 
