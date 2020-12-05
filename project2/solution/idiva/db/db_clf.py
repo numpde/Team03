@@ -3,40 +3,47 @@
 # Template for a classifier interface to main.
 # Make a copy for your implementation.
 
+import typing
+
+import pandas as pd
+
 import idiva.io
 from idiva import log
+from idiva.db import db
 
 
-def classify(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
-    from idiva.clf.df import c5_df, v0_df
+def classify(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF,
+             case_control: typing.Optional[pd.DataFrame] = None) -> object:
+    """
+    Labels the case-control vcf by querying the clinvar and bdSNP data.
+    Possibility to pass the case-control dataframe directly via the case_control input for testing purposes.
+    """
+    from idiva.clf.df import c5_df, join
 
-    log.info("Running the placeholder 'classifier'.")
+    log.info("Running the database 'classifier'.")
+    if case_control is None:
+        log.info("Joining case and control")
+        case_control = join(case=c5_df(case), ctrl=c5_df(ctrl), on=['CHROM', 'POS', 'REF', 'ALT', 'ID'])
 
-    # DUMMY result dataframe
-    result = v0_df(case).assign(Dummy1=1, Dummy2=2.0)
-    # result = c5_df(case).assign(Dummy1=1, Dummy2=2.0)
+    db_PosRefAlt = db.get_db_label_df()
 
-    # The result should contain the columns
-    #   CHROM, POS, ID
-    # or
-    #   CHROM, POS, ALT
-    # or
-    #   CHROM, POS, REF, ALT
-    # but can have fewer rows than `case`.
-    #
-    # Specify these columns in `id_cols`.
+    merge_on_PosRefAlt = case_control.merge(db_PosRefAlt, left_on=['POS', 'REF', 'ALT'], right_on=['pos', 'ref', 'alt'],
+                                            how='left')
+    merge_on_PosRefAlt['class'] = merge_on_PosRefAlt['class'].fillna(2)
+    log.info(
+        f"Found {len(merge_on_PosRefAlt) - merge_on_PosRefAlt.loc[merge_on_PosRefAlt['class'] == 2, 'class'].count()} "
+        f"labels in databases")
+
+    result = merge_on_PosRefAlt[['CHROM', 'POS', 'ID', 'REF', 'ALT', 'class']]
 
     class response:
-        id_cols = ["CHROM", "POS", "ID"]
+        id_cols = ['CHROM', 'POS', 'ID', 'REF', 'ALT', 'class']
 
         info = {
-            'Dummy1': {'Number': '1', 'Type': 'Integer', 'Description': '"Just the number 1"'},
-            'Dummy2': {'Number': '1', 'Type': 'Float', 'Description': '"Just the number 2.0"'},
+            'class': {'Number': '.', 'Type': 'Integer',
+                      'Description': '"Number indicating to which class the variant beolongs. '
+                                     '0 - Benign, 1 - Pathogenic, 2 - Unknown"'},
         }
-
-        # This results in INFO lines as follows:
-        # ##INFO=<ID=Dummy1,Number=1,Type=Integer,Description="Just the number 1">
-        # ##INFO=<ID=Dummy2,Number=1,Type=Float,Description="Just the number 2.0">
 
         df = result
 
@@ -44,7 +51,3 @@ def classify(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
     assert set(response.info.keys()).issubset(set(response.df.columns))
 
     return response
-
-
-def failure(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
-    pass

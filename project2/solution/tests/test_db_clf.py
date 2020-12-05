@@ -1,29 +1,38 @@
 # HK, 2020-12-05
 
 
-from idiva import log
-
-import pandas
-import io
-
 from unittest import TestCase
-from pathlib import Path
+
 from tcga.utils import download
-from idiva.io import open_maybe_gz
+
+from idiva.clf.df import join, c5_df
 from idiva.db.db_clf import classify
+from idiva.download import download
+from idiva.io import cache_df
+from idiva.io.gz import open_maybe_gz
 from idiva.io.vcf import ReadVCF
-from idiva.io import open_maybe_gz
 
-BASE = (Path(__file__).parent) / "data_for_tests/large_head"
-
-PATHS = {
-    'ctrl': BASE / "control_v2.vcf",
-    'case': BASE / "case_processed_v2.vcf",
+URLS = {
+    'ctrl': "https://public.bmi.inf.ethz.ch/eth_intern/teaching/cbm_2020/cbm_2020_project2/control_v2.vcf.gz",
+    'case': "https://public.bmi.inf.ethz.ch/eth_intern/teaching/cbm_2020/cbm_2020_project2/case_processed_v2.vcf.gz",
 }
+
+
+def case_control_maker():
+    dfs = {}
+    for group, value in URLS.items():
+        with download(value).now.open(mode='rb') as fd:
+            with open_maybe_gz(fd, mode='r') as fd:
+                dfs[group] = c5_df(ReadVCF(fd))
+
+    return join(case=dfs['case'], ctrl=dfs['ctrl'], on=['CHROM', 'POS', 'REF', 'ALT', 'ID'])
 
 
 class TestDbClf(TestCase):
     def test_db_clf(self):
-        with open(PATHS['ctrl'], mode='r') as control, open(PATHS['case'], mode='r') as case:
-        # with open_maybe_gz(PATHS['ctrl']) as control, open_maybe_gz(PATHS['case']) as case:
-            classify(case=ReadVCF(case), ctrl=ReadVCF(control))
+        with download(URLS['ctrl']).now.open(mode='rb') as ctrl, download(URLS['case']).now.open(mode='rb') as case:
+            with open_maybe_gz(ctrl, mode='r') as ctrl, open_maybe_gz(case, mode='r') as case:
+                result = classify(case=ReadVCF(case), ctrl=ReadVCF(ctrl),
+                                  case_control=cache_df(name=("case_control"), key='c5_df',
+                                                        df_maker=case_control_maker))
+        self.assertTrue(len(result.df))
