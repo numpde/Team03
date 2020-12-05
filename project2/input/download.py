@@ -17,7 +17,7 @@ HEAD = Path(__file__).parent / "head"
 HEAD.mkdir(parents=True, exist_ok=True)
 
 # Number of datalines for the `head` preview of VCF
-N = 100
+N = 1000
 
 for url in URLS.values():
     data = download(url).now
