@@ -1,7 +1,5 @@
 # HK, 2020-12-05
 
-# Template for a classifier interface to main.
-# Make a copy for your implementation.
 
 import typing
 
