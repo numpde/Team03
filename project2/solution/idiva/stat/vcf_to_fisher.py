@@ -67,8 +67,12 @@ def extract_pvalues(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
     with vcf.rewind_when_done:
         def data():
             log.info("Obtaining SC2Disease.")
-            from idiva.clf.sc2disease import allgwas_reference
+            from idiva.db.sc2disease import allgwas_reference
             sc2d = dict(allgwas_reference()[["ID", "SC2D"]].set_index("ID").SC2D)
+
+            log.info("Obtaining ClinVar.")
+            from idiva.db.clinvar import clinvar_rsid_clnsig
+            clnsig = dict(clinvar_rsid_clnsig()[["ID", "ClnSig"]].set_index("ID").ClnSig)
 
             log.info("Reading p-values from VCF.")
             for dataline in tqdm(vcf):
@@ -77,12 +81,17 @@ def extract_pvalues(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
                         float(unlist1(re.findall(rF"{FX}=([^;]+);", dataline.info.strip() + ";")))
                         for FX in ["F0", "F1", "F2"]
                     ]
-                    yield (dataline.chrom, dataline.pos, dataline.id, *p, sc2d.get(dataline.id, "N/A"))
+                    yield (
+                        dataline.chrom, dataline.pos, dataline.id,
+                        *p,
+                        sc2d.get(dataline.id, "N/A"),
+                        clnsig.get(dataline.id, "N/A"),
+                    )
                 except ValueError:
                     # Maybe encountered a '.'
                     pass
 
-        return pandas.DataFrame(data=data(), columns=["CHROM", "POS", "ID", "F0", "F1", "F2", "SC2Disease"])
+        return pandas.DataFrame(data=data(), columns=["CHROM", "POS", "ID", "F0", "F1", "F2", "SC2Disease", "ClnSig"])
 
 
 def figure_pvalues(vcf: idiva.io.ReadVCF) -> typing.Iterable[idiva.utils.Plox]:
