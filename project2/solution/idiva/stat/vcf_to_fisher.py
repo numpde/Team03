@@ -1,10 +1,8 @@
 # RA, 2020-12-01
 
-import contextlib
 import typing
 import re
 import pandas
-import numpy
 import idiva.io
 import idiva.utils
 
@@ -68,6 +66,10 @@ def extract_pvalues(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
 
     with vcf.rewind_when_done:
         def data():
+            log.info("Obtaining SC2Disease.")
+            from idiva.clf.sc2disease import allgwas_reference
+            sc2d = dict(allgwas_reference()[["ID", "SC2D"]].set_index("ID").SC2D)
+
             log.info("Reading p-values from VCF.")
             for dataline in tqdm(vcf):
                 try:
@@ -75,12 +77,12 @@ def extract_pvalues(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
                         float(unlist1(re.findall(rF"{FX}=([^;]+);", dataline.info.strip() + ";")))
                         for FX in ["F0", "F1", "F2"]
                     ]
-                    yield (dataline.chrom, dataline.pos, dataline.id, *p)
+                    yield (dataline.chrom, dataline.pos, dataline.id, *p, sc2d.get(dataline.id, "N/A"))
                 except ValueError:
                     # Maybe encountered a '.'
                     pass
 
-        return pandas.DataFrame(data=data(), columns=["CHROM", "POS", "ID", "F0", "F1", "F2"])
+        return pandas.DataFrame(data=data(), columns=["CHROM", "POS", "ID", "F0", "F1", "F2", "SC2Disease"])
 
 
 def figure_pvalues(vcf: idiva.io.ReadVCF) -> typing.Iterable[idiva.utils.Plox]:
@@ -108,15 +110,14 @@ def figure_pvalues(vcf: idiva.io.ReadVCF) -> typing.Iterable[idiva.utils.Plox]:
         #     yield px
 
         n = 2000
-        pscores = pscores.loc[pscores[FX].nsmallest(n=n).index]
-        assert isinstance(pscores, pd.DataFrame)
+        pscores_fx = pscores.loc[pscores[FX].nsmallest(n=n).index]
+        assert isinstance(pscores_fx, pd.DataFrame)
 
-        for (chrom, df) in pscores.groupby(pscores.CHROM):
+        for (chrom, df) in pscores_fx.groupby(pscores_fx.CHROM):
             with Plox() as px:
                 spec = {'F0': "0/0 vs rest", 'F1': "(0/1 and 1/0) vs rest", 'F2': "1/1 vs rest"}[FX]
-                name = F"pvalues_chrom={chrom}_fx={FX}_n={n}"
-                px.info = {'name proposal': name}
-                px.a.plot(pscores.POS, -np.log10(pscores[FX]), '.')
+                px.info = {'name proposal': F"pvalues_chrom={chrom}_fx={FX}_n={n}", 'df': df, }
+                px.a.plot(pscores_fx.POS, -np.log10(pscores_fx[FX]), '.')
                 ylim = [0, max(max(px.a.get_ylim()), 1)]
                 px.a.set_yticks(list(range(0, 2 + round(max(ylim)))))
                 px.a.set_ylim(*ylim)
