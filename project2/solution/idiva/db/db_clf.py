@@ -10,21 +10,17 @@ from idiva import log
 from idiva.db import db
 
 
-def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF,
-             case_control: typing.Optional[pd.DataFrame] = None) -> object:
+def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> object:
     """
-    Joins the case df and ctrl df on 'CHROM', 'POS', 'REF', 'ALT', 'ID' as a case-control df.
     Classifies the case-control df by querying the clinvar and dbSNP data.
 
     case_control: Possibility to pass the case-control dataframe directly
                   via the case_control input for testing purposes.
     """
-    from idiva.clf.df import c5_df, join
+    from idiva.clf.df import c5_df
 
     log.info("Running the database classifier.")
-    if case_control is None:
-        log.info("Joining case and control.")
-        case_control = join(case=c5_df(case), ctrl=c5_df(ctrl), on=['CHROM', 'POS', 'REF', 'ALT', 'ID'])
+    case_control = c5_df(case)
 
     db_PosRefAlt = db.get_db_label_df()
 
