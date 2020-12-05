@@ -129,6 +129,7 @@ def get_dbSNP_df() -> pd.DataFrame:
 
     log.info("Downloading dbSNP excerpt.")
     with download(dbSNP_URL).now.open(mode='rb') as fd:
+        log.info("Reading dbSNP excerpt.")
         with gzip.open(fd, mode='r') as fd:
             df = pd.read_csv(fd)
 
