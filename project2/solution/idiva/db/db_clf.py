@@ -13,9 +13,6 @@ from idiva.db import db
 def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> object:
     """
     Classifies the case-control df by querying the clinvar and dbSNP data.
-
-    case_control: Possibility to pass the case-control dataframe directly
-                  via the case_control input for testing purposes.
     """
     from idiva.clf.df import c5_df
 
