@@ -3,3 +3,5 @@ data_for_tests
 **/output
 **/output_ref
 **/download_cache
+input/full
+_cache
