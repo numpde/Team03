@@ -1,4 +1,4 @@
-#LB DEZ 20
+# LB DEZ 20
 import os
 import pickle
 import warnings
@@ -31,7 +31,6 @@ class FeatureExtractor:
 
         filename = 'classifier.sav'
         pickle.dump(self.clf, open(filename, 'wb'))
-
 
     def get_extracted_variants(self) -> pd.DataFrame:
         """
