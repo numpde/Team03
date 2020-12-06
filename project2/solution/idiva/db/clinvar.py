@@ -57,8 +57,8 @@ def get_info_dict(info: str) -> dict:
     HK, 2020-11-12
     """
     import re
-    OMIM_ids = [None]
-    RS_ids = [None]
+    OMIM_ids = []
+    RS_ids = []
     info_dict = {}
     # go through info which is semicolon separated
     for elem in info.split(';'):
@@ -71,11 +71,24 @@ def get_info_dict(info: str) -> dict:
             for rs_id in v.split('|'):
                 RS_ids.append('rs' + str(int(rs_id)))
 
+    yield info_dict
+    """
+    # LB 6-12-2020 adapted
+    if len(OMIM_ids) > 0 and len(RS_ids) > 0:
+        for OMIM_id, RS_id in product(OMIM_ids, RS_ids):
+            info_dict['OMIM_id'] = OMIM_id
+            info_dict['RS'] = RS_id
+            yield info_dict
+    else:
+        yield info_dict
+    """
+    """
+    # original:
     for OMIM_id, RS_id in product(OMIM_ids, RS_ids):
         info_dict['OMIM_id'] = OMIM_id
         info_dict['RS'] = RS_id
         yield info_dict
-
+    """
 
 class ClfDatalines:
     """
@@ -134,7 +147,6 @@ def clinvar_datalines(vcf: idiva.io.ReadVCF):
             if info_dict['CLNVC'] == 'single_nucleotide_variant':
                 line_dict = {k: line.__dict__[k] for k in line.__dict__.keys() if k != 'info'}
                 line_dict = dict(line_dict, **info_dict)
-
                 yield line_dict
 
 
