@@ -1,4 +1,4 @@
-#LB DEZ 20
+# LB DEZ 20
 import os
 import pickle
 import warnings
@@ -9,7 +9,6 @@ import numpy as np
 
 import pandas as pd
 from sklearn.dummy import DummyClassifier
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import Perceptron, SGDClassifier, PassiveAggressiveClassifier
 from sklearn.naive_bayes import MultinomialNB
@@ -33,7 +32,6 @@ class FeatureExtractor:
         filename = 'classifier.sav'
         pickle.dump(self.clf, open(filename, 'wb'))
 
-
     def get_extracted_variants(self) -> pd.DataFrame:
         """
         Returns the id's of the selected SNP's
@@ -52,7 +50,7 @@ class FeatureExtractor:
         The files are divided into equally many chunks and therefore the individual chunksize can differ
         """
         # clf = RandomForestClassifier(n_estimators=10000, warm_start=True)
-        clf = Perceptron()
+        clf = MultinomialNB()
 
         cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
         assert cache.is_dir()
@@ -176,8 +174,8 @@ class FeatureExtractor:
 
                 dataframe_case = dataframe_case.reindex(columns=id, fill_value=4)
 
-                labels = np.ones(dataframe_ctrl.shape[0])
-                labels = np.append(labels, np.zeros(dataframe_case.shape[0]))
+                labels = np.zeros(dataframe_ctrl.shape[0])
+                labels = np.append(labels, np.ones(dataframe_case.shape[0]))
 
                 dataframe = dataframe_ctrl.append(dataframe_case)
 
