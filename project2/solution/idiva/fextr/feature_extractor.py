@@ -174,8 +174,8 @@ class FeatureExtractor:
 
                 dataframe_case = dataframe_case.reindex(columns=id, fill_value=4)
 
-                labels = np.ones(dataframe_ctrl.shape[0])
-                labels = np.append(labels, np.zeros(dataframe_case.shape[0]))
+                labels = np.zeros(dataframe_ctrl.shape[0])
+                labels = np.append(labels, np.ones(dataframe_case.shape[0]))
 
                 dataframe = dataframe_ctrl.append(dataframe_case)
 
