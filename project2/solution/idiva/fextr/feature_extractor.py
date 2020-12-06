@@ -28,19 +28,71 @@ class FeatureExtractor:
     def __init__(self, ctrl_vcf: str, case_vcf: str):
 
         self.clf, self.id = self.feature_extraction_chunks(ctrl_vcf, case_vcf)
+        self.save_classifier()
 
-        filename = 'classifier.sav'
+    def save_classifier(self):
+        cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
+        assert cache.is_dir()
+
+        filename = str(cache) + "/classifier.sav"
+
         pickle.dump(self.clf, open(filename, 'wb'))
 
     def get_extracted_variants(self) -> pd.DataFrame:
         """
         Returns the id's of the selected SNP's
         """
-        selector = SelectFromModel(self.clf, max_features=20000, prefit=True)
-
-        print(selector.get_support())
+        selector = SelectFromModel(self.clf, prefit=True)
 
         return self.id[selector.get_support()]
+
+    def get_reduced_dataframe(self) -> pd.DataFrame:
+        cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
+        assert cache.is_dir()
+
+        from idiva.fextr import align
+
+        with open(str(cache) + "/control_v2.vcf") as ctrl_vcf:
+            ctrl_reader = ReadVCF(ctrl_vcf)
+            with open(str(cache) + "/case_processed_v2.vcf") as case_vcf:
+                case_reader = ReadVCF(case_vcf)
+                dataframe = align(ctrl=ctrl_reader, case=case_reader)
+
+        dataframe['ID'] = dataframe.ID_case.combine_first(dataframe.ID_ctrl)
+
+        dataframe = dataframe[['CHROM', 'POS', 'ID', 'REF', 'ALT']]
+
+        extracted = self.get_extracted_variants().values
+
+        return dataframe.loc[extracted]
+
+    @staticmethod
+    def get_reduced_dataframe_from_saved_classifier() -> pd.DataFrame:
+
+        clf = FeatureExtractor.get_saved_classifier()
+
+        selector = SelectFromModel(clf, prefit=True)
+
+        cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
+        assert cache.is_dir()
+
+        from idiva.fextr import align
+
+        with open(str(cache) + "/control_v2.vcf") as ctrl_vcf:
+            ctrl_reader = ReadVCF(ctrl_vcf)
+            with open(str(cache) + "/case_processed_v2.vcf") as case_vcf:
+                case_reader = ReadVCF(case_vcf)
+                dataframe = align(ctrl=ctrl_reader, case=case_reader)
+                id = dataframe.index
+
+
+        dataframe['ID'] = dataframe.ID_case.combine_first(dataframe.ID_ctrl)
+
+        dataframe = dataframe[['CHROM', 'POS', 'ID', 'REF', 'ALT']]
+
+        extracted = id[selector.get_support()].values
+
+        return dataframe.loc[extracted]
 
     def feature_extraction_chunks(self, ctrl_vcf_file: str, case_vcf_file: str):
         """
@@ -62,17 +114,13 @@ class FeatureExtractor:
             ctrl_reader = ReadVCF(ctrl_vcf)
             with open(str(cache) + "/" + case_vcf_file) as case_vcf:
                 case_reader = ReadVCF(case_vcf)
-                dataframe = self.align(ctrl=ctrl_reader, case=case_reader)
+                dataframe = align(ctrl=ctrl_reader, case=case_reader)
                 id = dataframe.index
 
         print(id)
 
-        cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
-        assert cache.is_dir()
-
         with open(str(cache) + "/" + ctrl_vcf_file) as ctrl_vcf:
             with open(str(cache) + "/" + case_vcf_file) as case_vcf:
-
                 reader_ctrl = ReadVCF(ctrl_vcf)
                 reader_case = ReadVCF(case_vcf)
 
@@ -102,7 +150,6 @@ class FeatureExtractor:
                 batches_case.append(len_case)
 
                 for idx in tqdm(range(number_of_batches), total=number_of_batches, postfix='feature selection'):
-
                     clf = self.feature_extraction_batch(reader_ctrl, reader_case, names_ctrl, names_case,
                                                         batches_ctrl, batches_case, idx, clf, id)
 
@@ -148,7 +195,7 @@ class FeatureExtractor:
 
                 dataframe_ctrl = dataframe_ctrl.drop_duplicates(['CHROM', 'POS', 'ALT'], keep='first')
 
-                dataframe_ctrl['ID'] = dataframe_ctrl[['CHROM', 'POS', 'ALT']].apply(self.index_map, axis=1)
+                dataframe_ctrl['ID'] = dataframe_ctrl[['CHROM', 'POS', 'ALT']].apply(index_map, axis=1)
 
                 dataframe_ctrl = dataframe_ctrl.drop(['CHROM', 'POS', 'ALT'], axis=1)
 
@@ -164,7 +211,7 @@ class FeatureExtractor:
 
                 dataframe_case = dataframe_case.drop_duplicates(['CHROM', 'POS', 'ALT'], keep='first')
 
-                dataframe_case['ID'] = dataframe_case[['CHROM', 'POS', 'ALT']].apply(self.index_map, axis=1)
+                dataframe_case['ID'] = dataframe_case[['CHROM', 'POS', 'ALT']].apply(index_map, axis=1)
 
                 dataframe_case = dataframe_case.drop(['CHROM', 'POS', 'ALT'], axis=1)
 
@@ -190,69 +237,6 @@ class FeatureExtractor:
 
         return clf
 
-    def align(self, case: ReadVCF, ctrl: ReadVCF):
-        """
-        aligning case and control vcf file by joining on chrom, pos and alt
-        """
-        from idiva.utils import seek_then_rewind
-
-        dfs = {}
-        for (k, vcf) in zip(['case', 'ctrl'], [case, ctrl]):
-            with seek_then_rewind(vcf.fd, seek=vcf.dataline_start_pos) as fd:
-                dfs[k] = pd.read_csv(fd, sep='\t', usecols=[0, 1, 3, 4], header=None,
-                                     names=["CHROM", "POS", "REF", "ALT"])
-                dfs[k].index = dfs[k].index.rename(name="rowid")
-                dfs[k] = dfs[k].reset_index().astype({'rowid': 'Int64'})
-
-        dfs['case'] = dfs['case'].drop_duplicates(['CHROM', 'POS', 'REF', 'ALT'], keep='first')
-
-        dfs['ctrl'] = dfs['ctrl'].drop_duplicates(['CHROM', 'POS', 'REF', 'ALT'], keep='first')
-
-        df = self.join(case=dfs['case'], ctrl=dfs['ctrl'])
-
-        df['ID'] = df[['CHROM', 'POS', 'ALT']].apply(self.index_map, axis=1)
-
-        df = df.set_index('ID')
-
-        return df
-
-    def join(self, case: pd.DataFrame, ctrl: pd.DataFrame) -> pd.DataFrame:
-        """
-        Outer-join two dataframes on the columns CHROM, POS, ALT.
-        Use the suffixes _case and _ctrl for the other ambiguous columns.
-
-        RA, 2020-11-14
-        LB, 2020-12-04 adapted
-        """
-
-        df = pd.merge_ordered(
-            left=case, right=ctrl,
-            suffixes=['_case', '_ctrl'],
-            on=['CHROM', 'POS', 'REF', 'ALT'],
-            how="outer",
-        )
-
-        return df
-
-    def index_map(self, chromposalt) -> int:
-        """
-        Returns unique identifier by mapping chrom, pos & alt
-        """
-        chrom = chromposalt[0]
-        pos = chromposalt[1]
-        alt = chromposalt[2]
-
-        if alt == "A":
-            alt = 0
-        elif alt == "C":
-            alt = 1
-        elif alt == "G":
-            alt = 2
-        elif alt == "T":
-            alt = 3
-
-        return chrom * 10000000000 + pos * 10 + alt
-
     def convert_strang(self, strang: str) -> int:
         """
         SNP as 0, 1, 2 for homozygous, heterozygous, and variant homozygous
@@ -274,7 +258,11 @@ class FeatureExtractor:
         Returns the saved classifier if it exists
         otherwise a dummy classifier is returned
         """
-        filename = 'classifier.sav'
+        cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
+        assert cache.is_dir()
+
+        filename = str(cache) + "/classifier.sav"
+
         if os.path.exists(filename):
             loaded_model = pickle.load(open(filename, 'rb'))
         else:
@@ -283,9 +271,80 @@ class FeatureExtractor:
         return loaded_model
 
 
+def align(case: ReadVCF, ctrl: ReadVCF):
+    """
+    aligning case and control vcf file by joining on chrom, pos and alt
+    """
+    from idiva.utils import seek_then_rewind
+
+    dfs = {}
+    for (k, vcf) in zip(['case', 'ctrl'], [case, ctrl]):
+        with seek_then_rewind(vcf.fd, seek=vcf.dataline_start_pos) as fd:
+            dfs[k] = pd.read_csv(fd, sep='\t', usecols=[0, 1, 2, 3, 4], header=None,
+                                 names=["CHROM", "POS", "ID", "REF", "ALT"])
+            dfs[k].index = dfs[k].index.rename(name="rowid")
+            dfs[k] = dfs[k].reset_index().astype({'rowid': 'Int64'})
+
+    dfs['case'] = dfs['case'].drop_duplicates(['CHROM', 'POS', 'REF', 'ALT'], keep='first')
+
+    dfs['ctrl'] = dfs['ctrl'].drop_duplicates(['CHROM', 'POS', 'REF', 'ALT'], keep='first')
+
+    df = join(case=dfs['case'], ctrl=dfs['ctrl'])
+
+    df['ID'] = df[['CHROM', 'POS', 'ALT']].apply(index_map, axis=1)
+
+    df = df.set_index('ID')
+
+    # remove indels
+    df = df[df['REF'].apply(lambda x: str(x) in ['A', 'C', 'G', 'T'])]
+    df = df[df['ALT'].apply(lambda x: str(x) in ['A', 'C', 'G', 'T'])]
+
+    return df
+
+
+def join(case: pd.DataFrame, ctrl: pd.DataFrame) -> pd.DataFrame:
+    """
+    Outer-join two dataframes on the columns CHROM, POS, ALT.
+    Use the suffixes _case and _ctrl for the other ambiguous columns.
+
+    RA, 2020-11-14
+    LB, 2020-12-04 adapted
+    """
+
+    df = pd.merge_ordered(
+        left=case, right=ctrl,
+        suffixes=['_case', '_ctrl'],
+        on=['CHROM', 'POS', 'REF', 'ALT'],
+        how="outer",
+    )
+
+    return df
+
+
+def index_map(chromposalt) -> int:
+    """
+    Returns unique identifier by mapping chrom, pos & alt
+    """
+    chrom = chromposalt[0]
+    pos = chromposalt[1]
+    alt = chromposalt[2]
+
+    if alt == "A":
+        alt = 0
+    elif alt == "C":
+        alt = 1
+    elif alt == "G":
+        alt = 2
+    elif alt == "T":
+        alt = 3
+
+    return chrom * 10000000000 + pos * 10 + alt
+
+
 if __name__ == '__main__':
-    fx = FeatureExtractor("control_v2.vcf", "case_processed_v2.vcf")
-    print("finished")
+    # fx = FeatureExtractor("control_v2.vcf", "case_processed_v2.vcf")
+    # print("finished")
+
     clf = FeatureExtractor.get_saved_classifier()
     print(clf)
     print(type(clf))
@@ -294,5 +353,7 @@ if __name__ == '__main__':
     print(test)
     print(test.get_support())
     print(sum(test.get_support()))
+
+    print(FeatureExtractor.get_reduced_dataframe_from_saved_classifier())
 
     # print(fx.get_extracted_variants())
