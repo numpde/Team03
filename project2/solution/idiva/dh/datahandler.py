@@ -72,6 +72,10 @@ class DataHandler:
 
         dataframe = dataframe.sort_values(by=['CHROM', 'POS'])
 
+        dataframe['CHROMPOSALTID'] = dataframe[['CHROM', 'POS', 'ALT']].apply(self.index_map, axis=1)
+        dataframe = dataframe.set_index('CHROMPOSALTID')
+        print(dataframe.index.is_unique)
+
         dataframe = dataframe.drop(columns=['REF', 'ALT'])
 
         return dataframe
@@ -404,10 +408,48 @@ class DataHandler:
         else:
             return chrom
 
+    def index_map(self, chromposalt) -> int:
+        """
+        Returns unique identifier by mapping chrom, pos & alt
+        """
+        chrom = chromposalt[0]
+        pos = chromposalt[1]
+        alt = chromposalt[2]
+
+        if alt == "A":
+            alt = 0
+        elif alt == "C":
+            alt = 1
+        elif alt == "G":
+            alt = 2
+        elif alt == "T":
+            alt = 3
+
+        return chrom * 10000000000 + pos * 10 + alt
+
+    def preprocess_clinvar(which='vcf_37') -> pd.DataFrame:
+
+        # TODO:
+        # call sift
+        # read in chrom pos ref alt id
+        # append default sift score and sift success
+        # read in sift score
+        # fill in sift scores at correct positions
+
+        # TODO:
+        # strip down dataframe (chrom pos ref alt)
+        # add empty columns
+        # save file
+        # submit online
+        # read in cadd scores and success
+        # add this two columns to sift dataframe
+
+        return None
+
 
 if __name__ == '__main__':
     dh = DataHandler()
-
+    """
     x = dh.create_test_set("case_processed_v2.vcf", "control_v2.vcf")
     print(x)
     print(x.shape)
@@ -416,3 +458,8 @@ if __name__ == '__main__':
     print(x)
     print(y)
     print(x.memory_usage(index=True).sum())
+    """
+
+    x, y = dh.create_training_set()
+
+    print(x,y)
