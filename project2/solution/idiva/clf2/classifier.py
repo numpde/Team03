@@ -1,20 +1,23 @@
 # LB 23-11-2020
 
+import keras
+import numpy as np
 import pandas as pd
-from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.model_selection import GridSearchCV
 from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-import numpy as np
 from sklearn.svm import SVC
 
-from idiva.dh.datahandler import DataHandler
 from idiva.clf.phenomenet import Phenomenet
-from keras.wrappers.scikit_learn import KerasClassifier
 from idiva.clf.utils import get_train_test
-import keras
+from idiva.db import db
+from idiva.db.dbSNP import get_dbSNP_df
+from idiva.dh.datahandler import DataHandler
+from idiva import log
+import typing
 
 
 class Classifier:
@@ -71,6 +74,10 @@ class Classifier:
         self.model = GridSearchCV(pipeline, param_grid, scoring='f1', verbose=2, n_jobs=-1)
 
     def train_phenomenet(self, epochs=100, batch_size=2500) -> keras.callbacks.History:
+        """
+        Trains the phenomenet on the clinvar dataset
+        HK, 2020 - 11 - 21
+        """
         clinvar_clf_data = self.dataHandler.get_clinvar_clf_data(self.clinvar_train)
         # split into train and validation sets
         train_data, train_labels, eval_data, eval_labels = get_train_test(
@@ -79,6 +86,35 @@ class Classifier:
 
         phenomenet = Phenomenet(train_data.shape[1])
         phenomenet = phenomenet.get_phenomenet()
+        return phenomenet.fit(train_data, train_labels, validation_data=(
+            eval_data, eval_labels),
+                              batch_size=batch_size, verbose=2,
+                              epochs=epochs)
+
+    def train_phenomenet_clinvar_dbSNP(self, epochs=100, batch_size=2500,
+                                       feature_list: typing.Iterable[str] = ['chrom', 'pos', 'var', 'label']
+                                       ) -> keras.callbacks.History:
+        """
+        Trains the phenomenet on the clinvar and dbSNP data.
+
+        HK, 2020-12-05
+        """
+        log.info('Getting clinvar and dbSNP dataframe.')
+        clf_data = db.get_db_label_df(which_dbSNP=17, with_chrom_col=True).rename(columns={'class':'label'})
+        # def get_var(ref,alt):
+        clf_data = clf_data.dropna(subset=['ref', 'alt'])
+        clf_data = clf_data[clf_data.ref != 'N']
+        clf_data = clf_data[clf_data.alt != 'N']
+        clf_data['var'] = clf_data[['ref', 'alt']].apply(lambda x: self.dataHandler.mapping[x[0]][x[1]], axis=1)
+        # clf_data = self.dataHandler.get_clinvar_clf_data(self.clinvar_train)
+        # split into train and validation sets
+        train_data, train_labels, eval_data, eval_labels = get_train_test(
+            clf_data[feature_list],
+            pipeline=Pipeline(steps=[('selector', VarianceThreshold()), ('scaler', StandardScaler())]))
+
+        phenomenet = Phenomenet(train_data.shape[1])
+        phenomenet = phenomenet.get_phenomenet()
+        log.info(f'Training phenomenet for {epochs} epochs.')
         return phenomenet.fit(train_data, train_labels, validation_data=(
             eval_data, eval_labels),
                               batch_size=batch_size, verbose=2,
@@ -115,13 +151,13 @@ class Classifier:
 
 if __name__ == '__main__':
     cv = Classifier()
-    # Create model to train
-    cv.create_model(n_steps=1)
-    cv.x = cv.x[:10]
-    cv.labels = cv.labels[:10]
-    # train model on training data
-    cv.train(cv.x, cv.labels)
-    print(cv.model.cv_results_)
-    history = cv.train_phenomenet(epochs=3, batch_size=5)
+    # # Create model to train
+    # cv.create_model(n_steps=1)
+    # cv.x = cv.x[:10]
+    # cv.labels = cv.labels[:10]
+    # # train model on training data
+    # cv.train(cv.x, cv.labels)
+    # print(cv.model.cv_results_)
+    history = cv.train_phenomenet_clinvar_dbSNP(epochs=3, batch_size=500)
     values = {k: v[-1] for k, v in history.history.items()}
     print(values)

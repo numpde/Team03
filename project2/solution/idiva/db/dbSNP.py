@@ -87,7 +87,7 @@ def dbSNP_datalines(vcf: idiva.io.ReadVCF, which_chrom: str = 'NC_000017.10') ->
     from itertools import product
     for idx, line in tqdm(enumerate(vcf.datalines), postfix='reading dbSNP file',
                           total=MAX_LEN_DF):
-        if line.chrom == which_chrom:
+        if line.chrom.startswith(which_chrom):
             for info_dict in get_info_dict(line.info):
                 if info_dict['VC'] == 'SNV':
                     # making pos,ref,alt unique:
@@ -99,7 +99,7 @@ def dbSNP_datalines(vcf: idiva.io.ReadVCF, which_chrom: str = 'NC_000017.10') ->
                         yield line_dict
 
 
-def dbSNP_to_df(vcf: idiva.io.ReadVCF) -> pd.DataFrame:
+def dbSNP_to_df(vcf: idiva.io.ReadVCF, which_chrom: str = 'NC_000017.10') -> pd.DataFrame:
     """
     Creates a dataframe from the clinvar file. Adds all the INFO fields as additional columns.
     HK, 2020-12-02
@@ -107,7 +107,7 @@ def dbSNP_to_df(vcf: idiva.io.ReadVCF) -> pd.DataFrame:
     # fill nans for type conversion
     try:
 
-        df = pd.DataFrame(data=dbSNP_datalines(vcf))
+        df = pd.DataFrame(data=dbSNP_datalines(vcf, which_chrom))
         dtypes = {k: v for k, v in DTYPES.items() if k in df.columns}
         df = df.fillna(
             value={'GNO': False, 'COMMON': False, 'INT': False, 'R5': False, 'R3': False, 'DSS': False, 'ASS': False,
@@ -139,7 +139,7 @@ def get_dbSNP_df(which_dbSNP: int = 17) -> pd.DataFrame:
     return df
 
 
-def create_dbSNP_df(dbSNP_file_path: Path, out_base: Path, which_chrom: int = 17) -> None:
+def create_dbSNP_df(dbSNP_file_path: Path, out_base: Path, which_chrom: typing.Union[int, str] = 17) -> None:
     """
     Converts the dbSNP vcf file to a dataframe
     """
@@ -149,9 +149,11 @@ def create_dbSNP_df(dbSNP_file_path: Path, out_base: Path, which_chrom: int = 17
     assert out_base.exists()
 
     with open(dbSNP_file_path, mode='r') as fd:
-        df = dbSNP_to_df(ReadVCF(fd))
+        df = dbSNP_to_df(ReadVCF(fd), which_chrom='NC' if which_chrom == '_all' else f'NC_{str(which_chrom).zfill(6)}')
 
     df.to_csv(out_path, index=False, compression="gzip")
+    if not len(df):
+        log.warning(f'created dataframe is empty for chrom {which_chrom}')
 
 
 def create_dbSNP_chrom_vcf(dl_path: Path, which_chrom: str = 'NC_000017.10',
@@ -210,3 +212,4 @@ if __name__ == '__main__':
     print(out_base)
     assert out_base.exists()
     extract_all_dbSNPchroms(dl_path=out_base, dbSNP_path=dbSNP_file_path)
+    create_dbSNP_df(dbSNP_file_path=dbSNP_file_path, out_base=out_base, which_chrom='_all')
