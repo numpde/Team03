@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # WARNING! Don't run this script, it will download a 15GB and expand to 110GB
 
 wget ftp://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/GRCh37_latest/refseq_identifiers/GRCh37_latest_dbSNP_all.vcf.gz

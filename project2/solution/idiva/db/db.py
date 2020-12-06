@@ -24,8 +24,9 @@ def join_clinvar_dbSNP(df_clinvar: pd.DataFrame, df_dbSNP: pd.DataFrame) -> pd.D
     return merge_on_pos_ref_alt
 
 
-def get_db_label_df(clinvar_file: str = 'vcf_37') -> pd.DataFrame:
+def get_db_label_df(clinvar_file: str = 'vcf_37', which_dbSNP: int = 17) -> pd.DataFrame:
     """
+    which_dbSNP: integer indicating which chromosome is looked up in the dbSNP
     Returns a dataframe like the following:
 
                        pos ref alt  class
@@ -37,7 +38,7 @@ def get_db_label_df(clinvar_file: str = 'vcf_37') -> pd.DataFrame:
     4           949523   C   T    1.0
 
     The class label is obtained by joining the clinvar dataframe with the dbSNP dataframe on pos, ref, alt.
-    the class label from left and right are joined by taking a logical and of both.
+    the class label from left and right are joined by taking a logical AND of both.
     """
     from idiva.db.dbSNP import get_dbSNP_df
     from idiva.io import cache_df
@@ -45,7 +46,7 @@ def get_db_label_df(clinvar_file: str = 'vcf_37') -> pd.DataFrame:
 
     def maker_merge_on_pos_ref_alt() -> pd.DataFrame:
         log.info("Creating database labels dataframe")
-        dbSNP_df = get_dbSNP_df()
+        dbSNP_df = get_dbSNP_df(which_dbSNP)
         reduced_dbSNP = dbSNP_df.loc[(dbSNP_df.CLNSIG == 2) | (dbSNP_df.CLNSIG == 5)]
 
         def maker_clinvar() -> pd.DataFrame:

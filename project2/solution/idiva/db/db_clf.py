@@ -14,7 +14,7 @@ def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> object:
     log.info("Running the database classifier.")
     case_control = c5_df(case)
 
-    db_PosRefAlt = db.get_db_label_df()
+    db_PosRefAlt = db.get_db_label_df(which_dbSNP=int(case_control.iloc[0]['CHROM']))
 
     merge_on_PosRefAlt = case_control.merge(db_PosRefAlt, left_on=['POS', 'REF', 'ALT'], right_on=['pos', 'ref', 'alt'],
                                             how='left')

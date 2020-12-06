@@ -1,14 +1,15 @@
 # HK, 2020-12-02
 
-from idiva import log
-
+import os
 import re
 import typing
 from collections.abc import MutableMapping
-import gzip
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
+
 import idiva.utils
+from idiva import log
 from idiva.io.vcf import ReadVCF
 
 MAX_LEN_DF = 19260539
@@ -19,8 +20,6 @@ DTYPES: dict = {'ref': str, 'alt': str, 'chrom': str, 'id': str, 'GNO': bool, 'C
                 'U5': bool,
                 'U3': bool,
                 'SYN': bool, 'NSN': bool, 'NSM': bool, 'NSF': bool, 'SAO': float, 'FREQ': str, 'VC': str}
-
-dbSNP_URL = "https://www.dropbox.com/s/u2vfggr70prk3wx/GRCh37_latest_dbSNP_all_chrom17.csv.gz?dl=1"
 
 
 def flatten(d, parent_key='', sep='_') -> dict:
@@ -119,13 +118,17 @@ def dbSNP_to_df(vcf: idiva.io.ReadVCF) -> pd.DataFrame:
     return df
 
 
-def get_dbSNP_df() -> pd.DataFrame:
+def get_dbSNP_df(which_dbSNP: int = 17) -> pd.DataFrame:
     """
-    Returns the dbSNP for chrom 17 as dataframe.
+    which_dbSNP: integer indicating which chromosome is looked up in the dbSNP
+
+    Returns the dbSNP for requested chrom as dataframe.
     Downloads it if not found, loads it otherwise
     """
     from idiva.download import download
     import gzip
+    from idiva.db.dbSNP_urls import dbSNP_URLs
+    dbSNP_URL = dbSNP_URLs[which_dbSNP]
 
     log.info("Downloading dbSNP excerpt.")
     with download(dbSNP_URL).now.open(mode='rb') as fd:
@@ -136,11 +139,12 @@ def get_dbSNP_df() -> pd.DataFrame:
     return df
 
 
-def create_dbSNP_df(dbSNP_file_path: str, out_base: Path):
+def create_dbSNP_df(dbSNP_file_path: Path, out_base: Path, which_chrom: int = 17) -> None:
     """
     Converts the dbSNP vcf file to a dataframe
     """
-    out_path = out_base / 'GRCh37_latest_dbSNP_all_chrom17.csv.gz'
+    log.info(f"Converting {dbSNP_file_path} to out_base / f'GRCh37_latest_dbSNP_all_chrom{which_chrom}.csv.gz")
+    out_path = out_base / f'GRCh37_latest_dbSNP_all_chrom{which_chrom}.csv.gz'
     print(out_path)
     assert out_base.exists()
 
@@ -148,18 +152,61 @@ def create_dbSNP_df(dbSNP_file_path: str, out_base: Path):
         df = dbSNP_to_df(ReadVCF(fd))
 
     df.to_csv(out_path, index=False, compression="gzip")
+
+
+def create_dbSNP_chrom_vcf(dl_path: Path, which_chrom: str = 'NC_000017.10',
+                           dbSNP_path: typing.Optional[Path] = None) -> Path:
+    """
+    Extracts all variants for a corresponding chromosomes from the dbSNP.
+    Downloads dbSNP if not found under dl_path or dbSMP_path. The extracted variants will be saved under dl_path.
+    """
+    import hashlib
+    import base64
+    key = base64.urlsafe_b64encode(hashlib.sha256(which_chrom.encode()).digest()).decode()
+    file_names = {
+        'all_vcf': 'GRCh37_latest_dbSNP_all.vcf',
+        'all_gzip': 'GRCh37_latest_dbSNP_all.vcf.gz'
+    }
+    dbSNP_path = dbSNP_path or dl_path / file_names['all_vcf']
+
+    if not dbSNP_path and not os.path.exists(dbSNP_path):
+        if not os.path.exists(dl_path / file_names['all_gzip']):
+            log.info('Downloading dbSNP database.')
+            wget_command = f'wget -P {dl_path} ftp://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/' \
+                           f'GRCh37_latest/refseq_identifiers/GRCh37_latest_dbSNP_all.vcf.gz'
+            os.system(wget_command)
+        else:
+            log.info('Unpacking dbSNP database.')
+            gunzip_command = 'gunzip GRCh37_latest_dbSNP_all.vcf.gz'
+            os.system(gunzip_command)
+    else:
+        log.info('Unpacked dbSNP database found.')
+
+    log.info(f'Extracting {which_chrom} from the dbSNP database.')
+    grep_command = f"grep '^{which_chrom}' {dbSNP_path} > {dl_path}/temp.vcf"
+    os.system(grep_command)
+    out_name = f"dbSNP_{key[0:12]}.vcf"
+    log.info(f'Extracting vcf header, creating file {dl_path}/{out_name}.')
+    os.system(f"head -n38 {dbSNP_path} > {dl_path}/{out_name}")
+    os.system(f'cat {dl_path}/temp.vcf >> {dl_path}/{out_name}; rm {dl_path}/temp.vcf')
+
+    return dl_path / out_name
+
+
+def extract_all_dbSNPchroms(dl_path: Path, dbSNP_path: typing.Optional[Path] = None):
+    from tqdm import tqdm
+    for which_chrom in tqdm(range(1, 25)):
+        id = f'NC_{str(which_chrom).zfill(6)}'
+        chrom_extracted_path: Path = create_dbSNP_chrom_vcf(dl_path=dl_path, which_chrom=id, dbSNP_path=dbSNP_path)
+        create_dbSNP_df(dbSNP_file_path=chrom_extracted_path, out_base=dl_path, which_chrom=which_chrom)
 
 
 if __name__ == '__main__':
     from pathlib import Path
     from tqdm import tqdm
 
-    dbSNP_file_path = '/mnt/data/hendrik/db_SNP/GRCh37_latest_dbSNP_chrom17.vcf'
-    out_base = Path(__file__).parent.parent.parent / 'data'
-    out_path = out_base / 'GRCh37_latest_dbSNP_all_chrom17.csv.gz'
-    print(out_path)
+    dbSNP_file_path = Path('/mnt/data/hendrik/db_SNP/GRCh37_latest_dbSNP_all.vcf')
+    out_base = Path('/mnt/data/hendrik/db_SNP')
+    print(out_base)
     assert out_base.exists()
-
-    with open(dbSNP_file_path, mode='r') as fd:
-        df = dbSNP_to_df(ReadVCF(fd))
-    df.to_csv(out_path, index=False, compression="gzip")
+    extract_all_dbSNPchroms(dl_path=out_base, dbSNP_path=dbSNP_file_path)
