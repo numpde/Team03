@@ -10,7 +10,7 @@ from idiva import log
 def placeholder(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF):
     from idiva.clf.df import c5_df
 
-    log.info("Running the placeholder 'classifier'.")
+    log.info("Running the `placeholder`.")
 
     # DUMMY result dataframe
     result = c5_df(case).assign(Dummy1=1, Dummy2=2.0)

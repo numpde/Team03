@@ -1,27 +1,18 @@
 # HK, 2020-12-05
 
-
-import typing
-
-import pandas as pd
-
 import idiva.io
 from idiva import log
-from idiva.db import db
 
 
-def classify(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF,
-             case_control: typing.Optional[pd.DataFrame] = None) -> object:
+def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> object:
     """
-    Labels the case-control vcf by querying the clinvar and bdSNP data.
-    Possibility to pass the case-control dataframe directly via the case_control input for testing purposes.
+    Classifies the case-control df by querying the clinvar and dbSNP data.
     """
-    from idiva.clf.df import c5_df, join
+    from idiva.clf.df import c5_df
+    from idiva.db import db
 
-    log.info("Running the database 'classifier'.")
-    if case_control is None:
-        log.info("Joining case and control")
-        case_control = join(case=c5_df(case), ctrl=c5_df(ctrl), on=['CHROM', 'POS', 'REF', 'ALT', 'ID'])
+    log.info("Running the database classifier.")
+    case_control = c5_df(case)
 
     db_PosRefAlt = db.get_db_label_df()
 
@@ -30,17 +21,19 @@ def classify(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF,
     merge_on_PosRefAlt['class'] = merge_on_PosRefAlt['class'].fillna(2)
     log.info(
         f"Found {len(merge_on_PosRefAlt) - merge_on_PosRefAlt.loc[merge_on_PosRefAlt['class'] == 2, 'class'].count()} "
-        f"labels in databases")
+        f"labels in databases.")
 
     result = merge_on_PosRefAlt[['CHROM', 'POS', 'ID', 'REF', 'ALT', 'class']]
 
     class response:
-        id_cols = ['CHROM', 'POS', 'ID', 'REF', 'ALT', 'class']
+        id_cols = ['CHROM', 'POS', 'ID', 'REF', 'ALT']
 
         info = {
-            'class': {'Number': '.', 'Type': 'Integer',
-                      'Description': '"Number indicating to which class the variant beolongs. '
-                                     '0 - Benign, 1 - Pathogenic, 2 - Unknown"'},
+            'class': {'Number': '.',
+                      'Type': 'Integer',
+                      'Description': '"Number indicating to which class the variant belongs. '
+                                     '0 - Benign, 1 - Pathogenic, 2 - Unknown"'
+                      },
         }
 
         df = result

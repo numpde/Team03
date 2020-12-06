@@ -3,25 +3,19 @@
 
 from idiva import log
 
-import pandas
-
-import contextlib
-import typing
 import re
 import pandas
-import numpy
 import idiva.io
 import idiva.utils
 
 from idiva import log
-from tqdm import tqdm
 
 URL = "http://easybioai.com/sc2disease/static/allgwas.txt"
 
 
 def allgwas_reference() -> pandas.DataFrame:
     from idiva.download import download
-    log.info(F"Downloading {URL}")
+    log.info(F"Opening (cached) {URL}")
     with download(URL).now.open() as fd:
         log.info(F"Processing.")
         s: pandas.Series
