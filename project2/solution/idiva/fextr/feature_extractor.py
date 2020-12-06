@@ -9,7 +9,6 @@ import numpy as np
 
 import pandas as pd
 from sklearn.dummy import DummyClassifier
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import Perceptron, SGDClassifier, PassiveAggressiveClassifier
 from sklearn.naive_bayes import MultinomialNB
@@ -52,7 +51,7 @@ class FeatureExtractor:
         The files are divided into equally many chunks and therefore the individual chunksize can differ
         """
         # clf = RandomForestClassifier(n_estimators=10000, warm_start=True)
-        clf = Perceptron()
+        clf = MultinomialNB()
 
         cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
         assert cache.is_dir()
