@@ -2,13 +2,18 @@
 
 import typing
 from pathlib import Path
+import shlex
+from subprocess import Popen
 
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+from idiva.fextr import FeatureExtractor
 from idiva.io import ReadVCF
 from idiva.utils import seek_then_rewind
+from idiva import log
+import xlrd
 
 
 class DataHandler:
@@ -69,13 +74,9 @@ class DataHandler:
         """
         dataframe = pd.DataFrame(data=self.get_clf_datalines(df_clinvar))
         dataframe = dataframe.drop_duplicates()
-
         dataframe = dataframe.sort_values(by=['CHROM', 'POS'])
-
         dataframe['CHROMPOSALTID'] = dataframe[['CHROM', 'POS', 'ALT']].apply(self.index_map, axis=1)
         dataframe = dataframe.set_index('CHROMPOSALTID')
-        print(dataframe.index.is_unique)
-
         dataframe = dataframe.drop(columns=['REF', 'ALT'])
 
         return dataframe
@@ -105,10 +106,42 @@ class DataHandler:
                 return clinvar_to_df(ReadVCF(fd))
 
         df_clinvar = cache_df(name=("clinvar_" + clinvar_file), key=[clinvar_file], df_maker=maker_clinvar)
+        df_clinvar = df_clinvar.sort_values(by=['chrom', 'pos'])
+
         df_clinvar_reduced = df_clinvar[df_clinvar['CLNSIG'].isin({'Pathogenic', 'Benign'})]
 
         return cache_df(name="clinvar_clf_data", key=[clinvar_file, "v01"],
                         df_maker=lambda: self.df_clinvar_to_clf_data(df_clinvar_reduced))
+
+    def get_clinvar_clf_extended(self, clinvar_file: str = 'vcf_37'):
+        from idiva.io import cache_df
+
+        def maker_clinvar() -> pd.DataFrame:
+            from idiva.db import clinvar_open
+            from idiva.io import ReadVCF
+            from idiva.db.clinvar import clinvar_to_df
+
+            with clinvar_open(which=clinvar_file) as fd:
+                return clinvar_to_df(ReadVCF(fd))
+
+        df_clinvar = cache_df(name=("clinvar_" + clinvar_file), key=[clinvar_file], df_maker=maker_clinvar)
+        df_clinvar_reduced = df_clinvar[df_clinvar['CLNSIG'].isin({'Pathogenic', 'Benign'})]
+
+        df_clinvar_reduced = df_clinvar_reduced.rename(columns={'chrom': 'CHROM', 'pos': 'POS',
+                                                                'id': 'ID', 'ref': 'REF', 'alt': 'ALT', 'qual': 'QUAL',
+                                                                'filter': 'FILTER'})
+
+        # remove indels
+        df_clinvar_reduced = df_clinvar_reduced[df_clinvar_reduced['REF'].apply(lambda x: str(x) in ['A', 'C', 'G', 'T'])]
+        df_clinvar_reduced = df_clinvar_reduced[df_clinvar_reduced['ALT'].apply(lambda x: str(x) in ['A', 'C', 'G', 'T'])]
+
+        df_clinvar_reduced = df_clinvar_reduced.drop_duplicates()
+
+        df_clinvar_reduced = df_clinvar_reduced[['CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER']]
+
+        df_clinvar_reduced['INFO'] = "."
+
+        return df_clinvar_reduced
 
     def create_training_set(self, clinvar_file: str = 'vcf_37') -> typing.Tuple[pd.DataFrame, pd.DataFrame]:
         """
@@ -226,14 +259,76 @@ class DataHandler:
 
         return dataframe
 
-    def add_sift_score(self, dataframe: pd.DataFrame) -> pd.DataFrame:
+    def add_sift_score(self, dataframe: pd.DataFrame, type: str) -> pd.DataFrame:
         """
-        Returns: status of sift score query and the corresponding sift score for a given rsID
+        Appends sift scores and success to dataframe
+        The dataframe needs at least following columns: CHROM, POS, REF, ALT
         """
-        # TODO: get sift score
+        log.info("creating sift scores for " + type)
 
-        dataframe['SS'] = np.zeros(shape=(dataframe.shape[0], 1))
-        dataframe['SP'] = np.zeros(shape=(dataframe.shape[0], 1))
+        # make dataframe compatible for sift annotator
+        if 'ID' not in dataframe:
+            dataframe['ID'] = '.'
+        if 'QUAL' not in dataframe:
+            dataframe['QUAL'] = '.'
+        if 'FILTER' not in dataframe:
+            dataframe['FILTER'] = '.'
+        if 'INFO' not in dataframe:
+            dataframe['INFO'] = '.'
+
+        dataframe = dataframe.fillna(value=".")
+
+        cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
+        assert cache.is_dir()
+
+        file_path = str(cache) + "/" + type + "_sift.vcf"
+
+        # create vcf file
+        dataframe.rename(columns={'CHROM': '#CHROM'}).to_csv(file_path, sep='\t', index=False)
+
+        file_name = type
+
+        sift_folder = str(cache) + "/" + file_name + "_sift"
+
+        cmd = 'java -jar ' + str(cache) + '/SIFT4G_Annotator.jar -c -i ' + file_path + ' -d ' + str(
+            cache) + '/GRCh37.74 -r ' + sift_folder
+
+        args = shlex.split(cmd)
+
+        process = Popen(args)
+        process.wait()
+
+        sift_file = sift_folder + "/" + file_name + "_sift_SIFTannotations.xls"
+
+        sift_dataframe = pd.read_table(sift_file)
+
+        dataframe['SIFT_SCORE'] = np.nan
+        dataframe['SIFT_SUCC'] = np.nan
+
+        sift_iter = sift_dataframe.iterrows()
+        next_sift = next(sift_iter, None)
+
+        for idx, row in tqdm(dataframe.iterrows(), total=len(dataframe), postfix='inserting sift scores'):
+
+            if next_sift is not None:
+                if row['POS'] == next_sift[1]['POS']:
+                    if not pd.isna(next_sift[1]['SIFT_SCORE']):
+                        sift_score= next_sift[1]['SIFT_SCORE']
+                        sift_succ = 1
+                    else:
+                        sift_score = np.nan
+                        sift_succ = 0
+
+                    next_sift = next(sift_iter, None)
+                else:
+                    sift_score = np.nan
+                    sift_succ = 0
+            else:
+                sift_score = np.nan
+                sift_succ = 0
+
+            dataframe.loc[idx, 'SIFT_SCORE'] = sift_score
+            dataframe.loc[idx, 'SIFT_SUCC'] = sift_succ
 
         return dataframe
 
@@ -427,39 +522,43 @@ class DataHandler:
 
         return chrom * 10000000000 + pos * 10 + alt
 
-    def preprocess_clinvar(which='vcf_37') -> pd.DataFrame:
+    def preprocess_clinvar(self, which='vcf_37'):
+
+        log.info("preprocessing clinvar file")
 
         # TODO:
-        # call sift
-        # read in chrom pos ref alt id
-        # append default sift score and sift success
-        # read in sift score
-        # fill in sift scores at correct positions
+        #  How to download clinvar file, unzip it and store it as clinvar.vcf in download_cache???
+
+        # TODO:
+        #  How to download GRCH37.74 unzip it and store it in download_cache???
+
+        dataframe = self.get_clinvar_clf_extended()
+
+        print(dataframe)
+
+        dataframe = self.add_sift_score(dataframe, 'clinvar')
+
+        print(dataframe)
 
         # TODO:
         # strip down dataframe (chrom pos ref alt)
-        # add empty columns
+        # add empty columns?
         # save file
         # submit online
         # read in cadd scores and success
         # add this two columns to sift dataframe
 
-        return None
+        return
 
 
 if __name__ == '__main__':
     dh = DataHandler()
-    """
-    x = dh.create_test_set("case_processed_v2.vcf", "control_v2.vcf")
-    print(x)
-    print(x.shape)
 
-    x, y = dh.create_training_set()
-    print(x)
-    print(y)
-    print(x.memory_usage(index=True).sum())
-    """
+    dh.preprocess_clinvar()
 
-    x, y = dh.create_training_set()
+    reduced_vcf = FeatureExtractor.get_reduced_dataframe_from_saved_classifier()
 
-    print(x,y)
+    print(reduced_vcf)
+
+    print(dh.add_sift_score(reduced_vcf, 'our'))
+
