@@ -13,6 +13,8 @@ from idiva.fextr import FeatureExtractor
 from idiva.io import ReadVCF
 from idiva.utils import seek_then_rewind
 from idiva import log
+from idiva.clf.utils import TrainPhenomenetArgs
+from idiva.db import db
 import xlrd
 
 MAPPING = {'A': {'C': 1, 'G': 2, 'T': 2},
@@ -82,6 +84,20 @@ class DataHandler:
         dataframe = dataframe.drop(columns=['REF', 'ALT'])
 
         return dataframe
+
+    def get_phenomenet_training_data(self, args: TrainPhenomenetArgs) -> pd.DataFrame:
+        if args.database == 'clinvar_dbSNP':
+            clf_data = db.get_db_label_df(which_dbSNP=17, with_chrom_col=True).rename(columns={'class': 'label'})
+            clf_data = clf_data.dropna(subset=['ref', 'alt'])
+            clf_data = clf_data[clf_data.ref != 'N']
+            clf_data = clf_data[clf_data.alt != 'N']
+            clf_data['var'] = clf_data[['ref', 'alt']].apply(lambda x: self.mapping[x[0]][x[1]], axis=1)
+        elif args.database == 'clinvar_processed':
+            clf_data = self.get_clinvar_clf_processed_data()
+        else:
+            raise NotImplementedError(f"database {args.database} is not implemented.")
+
+        return clf_data
 
     def get_clinvar_clf_data(self, clinvar_file: str = 'vcf_37') -> pd.DataFrame:
         """
@@ -156,7 +172,8 @@ class DataHandler:
 
         df_clinvar_reduced['labels'] = df_clinvar_reduced['CLNSIG'].apply(lambda row: 1 if row == 'Pathogenic' else 0)
 
-        df_clinvar_reduced = df_clinvar_reduced[['CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO', 'labels']]
+        df_clinvar_reduced = df_clinvar_reduced[
+            ['CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO', 'labels']]
 
         return df_clinvar_reduced
 
@@ -571,7 +588,7 @@ class DataHandler:
         file_path = str(cache) + "/cadd_annotations.tsv"
 
         cadd_scores = pd.read_csv(file_path, sep='\t', usecols=range(1, 6), comment='#',
-                           names=['CHROM', 'POS', 'REF', 'ALT', 'CADD_SCORE', 'CADD_PHRED'])
+                                  names=['CHROM', 'POS', 'REF', 'ALT', 'CADD_SCORE', 'CADD_PHRED'])
 
         cadd_scores['CADD_SUCC'] = 1
 
@@ -608,7 +625,7 @@ if __name__ == '__main__':
 
     print(dataframe)
 
-    x,y = dh.create_training_set()
+    x, y = dh.create_training_set()
     print(x)
     print(y)
 
@@ -624,4 +641,3 @@ if __name__ == '__main__':
 
     dataframe.rename(columns={'CHROM': '#CHROM'}).to_csv(file_path, sep='\t', index=False)
     """
-
