@@ -5,12 +5,12 @@ Team03 solution manual.
 
 ### Installation
 
-Create/update/activate the conda environment `Team03`:
+Clone the repo and create the conda environment `team03`:
 ```{shell script}
-cd solution
-conda env create -f environment.yml
-conda env update -f environment.yml
-conda activate Team03
+git clone git@gitlab.inf.ethz.ch:COURSE-BIOMED20/team03.git
+cd team03/project2/solution
+conda env create -f environment.yml -n team03
+conda activate team03
 ```
 
 
