@@ -19,7 +19,7 @@ conda activate Team03
 #### Small example
 
 The folder [solution/example_data/chrom17/input](solution/example_data/chrom17/input)
-contains a toy excerpt from 
+contains a small excerpt from 
 the VCF files provided
 (see [here](solution/example_data/chrom17/input/readme.md)).
 
