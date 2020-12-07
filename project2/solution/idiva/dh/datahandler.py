@@ -585,10 +585,13 @@ class DataHandler:
         cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
         assert cache.is_dir()
 
-        file_path = str(cache) + "/cadd_annotations.tsv"
+        # get cadd annotations
+        from idiva.download import download
 
-        cadd_scores = pd.read_csv(file_path, sep='\t', usecols=range(1, 6), comment='#',
-                                  names=['CHROM', 'POS', 'REF', 'ALT', 'CADD_SCORE', 'CADD_PHRED'])
+        data = download('https://polybox.ethz.ch/index.php/s/GRgDYHOAaw75D60/download').now
+        with data.open() as fd:
+            cadd_scores = pd.read_csv(fd, sep='\t', usecols=range(1, 6), comment='#',
+                                      names=['CHROM', 'POS', 'REF', 'ALT', 'CADD_SCORE', 'CADD_PHRED'])
 
         cadd_scores['CADD_SUCC'] = 1
 
