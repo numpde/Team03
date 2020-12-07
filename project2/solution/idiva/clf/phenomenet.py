@@ -1,10 +1,12 @@
 # HK, 2020 - 11 - 21
 import keras
+import kerastuner
 import tensorflow as tf
 from keras.layers import Dense
 from keras.layers import Dropout
 from keras.models import Sequential
 from kerastuner.engine.hypermodel import HyperModel
+from kerastuner.tuners import RandomSearch, Hyperband
 from tensorflow import keras
 from tensorflow.keras import layers
 
@@ -42,16 +44,6 @@ class HyperPhenomenet(HyperModel):
         self.input_dim = input_dim
 
     def build(self, hp):
-        # optimizers = {
-        #     'Adam': keras.optimizers.Adam(
-        #         hp.Choice('learning_rate_Adam',
-        #                   values=[1e-2, 1e-3, 1e-4])),
-        #     'SGD': tf.keras.optimizers.SGD(
-        #         hp.Choice('learning_rate_SGD',
-        #                   values=[1e-2, 1e-3, 1e-4]), momentum=0.0, nesterov=False, name='SGD')
-        # }
-
-        # which_optimizer = hp.Choice('optimizer', ['Adam', 'SGD'])
         model = keras.Sequential()
         model.add(layers.Dense(units=hp.Int('units_' + str(0),
                                             min_value=32,
@@ -76,3 +68,21 @@ class HyperPhenomenet(HyperModel):
             metrics=['accuracy', 'AUC', tf.keras.metrics.Precision(name='precision'),
                      tf.keras.metrics.Recall()])
         return model
+
+
+def get_tuner(which_tuner, input_shape):
+    tuners = {
+        'hyperband': Hyperband(
+            HyperPhenomenet(input_shape),
+            objective=kerastuner.Objective("val_precision", direction="max"),
+            directory='hyperband',
+            project_name='hyperband'
+        ),
+        'random_search': RandomSearch(
+            HyperPhenomenet(input_shape),
+            objective=kerastuner.Objective("val_precision", direction="max"),
+            directory='keras_tuner',
+            project_name='hyperband',
+            max_trials=100)
+    }
+    return tuners[which_tuner]

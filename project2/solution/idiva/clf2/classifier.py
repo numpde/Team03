@@ -6,8 +6,6 @@ import typing
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from kerastuner.tuners import RandomSearch
-import kerastuner
 from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.model_selection import GridSearchCV
@@ -19,7 +17,7 @@ from sklearn.utils import class_weight
 
 from idiva import log
 from idiva.clf.phenomenet import Phenomenet
-from idiva.clf.phenomenet import HyperPhenomenet
+from idiva.clf.phenomenet import get_tuner
 from idiva.clf.utils import TrainPhenomenetArgs
 from idiva.clf.utils import get_train_test
 from idiva.dh.datahandler import DataHandler
@@ -123,7 +121,7 @@ class Classifier:
 
         return history, phenomenet
 
-    def keras_tuner_rs(self):
+    def keras_tuner_rs(self, which_tuner: str):
         """
         Launches keras tuner random search.
         HK, 2020-12-07
@@ -135,17 +133,13 @@ class Classifier:
             monitor='val_precision', min_delta=0, patience=args.early_stopping_patience, verbose=1, mode='max',
             baseline=None, restore_best_weights=True)
 
-        tuner = RandomSearch(
-            HyperPhenomenet(train_data.shape[1]),
-            objective=kerastuner.Objective("val_precision", direction="max"),
-            directory='test_dir_new',
-            max_trials=5)
+        tuner = get_tuner(which_tuner, train_data.shape[1])
 
         tuner.search_space_summary()
 
         tuner.search(x=train_data,
                      y=train_labels,
-                     epochs=3,
+                     epochs=100,
                      validation_data=(eval_data, eval_labels), class_weight=weights,
                      batch_size=args.batch_size, callbacks=[cb], verbose=2)
 
@@ -184,7 +178,8 @@ def predict(self, vcf_file_test: str, vcf_file_test2: str = None) -> pd.DataFram
 
 if __name__ == '__main__':
     cv = Classifier()
-    cv.keras_tuner_rs()
+    for tuner in ['random_search', 'hyperband']:
+        cv.keras_tuner_rs(tuner)
     # # Create model to train
     # cv.create_model(n_steps=1)
     # cv.x = cv.x[:10]

@@ -57,3 +57,4 @@ def get_functional_consequence_from_SNP(rs_id: str) -> str:
 if __name__ == '__main__':
     rs_id = 'rs369122589'
     get_functional_consequence_from_SNP(rs_id)
+    dfgdg = 0
