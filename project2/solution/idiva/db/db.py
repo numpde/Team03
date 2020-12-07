@@ -87,8 +87,13 @@ def get_db_label_df(clinvar_file: str = 'vcf_37', which_dbSNP: int = 17, with_ch
             types['chrom'] = int
         return merge_on_pos_ref_alt.astype(types)
 
-    merge_on_pos_ref_alt = cache_df(name=("db_PosRefAlt" + clinvar_file),
-                                    key=[clinvar_file, str(which_dbSNP), str(with_chrom_col)],
-                                    df_maker=maker_merge_on_pos_ref_alt)
+    from idiva.clf.df import apply_dtype
+    merge_on_pos_ref_alt = apply_dtype(
+        cache_df(
+            name=("db_PosRefAlt" + clinvar_file),
+            key=[clinvar_file, str(which_dbSNP), str(with_chrom_col)],
+            df_maker=maker_merge_on_pos_ref_alt
+        )
+    )
 
     return merge_on_pos_ref_alt

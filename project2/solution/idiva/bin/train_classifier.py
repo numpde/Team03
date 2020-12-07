@@ -3,9 +3,12 @@ import os
 from datetime import datetime
 
 import pandas as pd
-import typer
-
+from idiva.clf.utils import TrainPhenomenetClinvardbSNPArgs
 from idiva.clf2.classifier import Classifier
+from dataclasses import dataclass
+import typing
+from pathlib import Path
+from idiva import log
 
 
 class Experiment:
@@ -29,26 +32,33 @@ class Experiment:
 
 def main():
     cv = Classifier()
-    # Create model to train
-    cv.create_model()
-    cv.x = cv.x
-    cv.labels = cv.labels
-    # train model on training data
-    cv.train(cv.x, cv.labels)
-    print(cv.model.cv_results_)
+    # # Create model to train
+    # cv.create_model()
+    # cv.x = cv.x
+    # cv.labels = cv.labels
+    # # train model on training data
+    # cv.train(cv.x, cv.labels)
+    # print(cv.model.cv_results_)
     exp = Experiment()
-    exp.save_experiment(cv.model.cv_results_)
+    checkpoint_dir = Path(__file__).parent.parent / 'clf/checkpoints'
+    checkpoint_dir.mkdir(exist_ok=True, parents=True)
+    checkpoint_path = checkpoint_dir / exp.experiment_uid
+    # exp.save_experiment(cv.model.cv_results_)
+    args = TrainPhenomenetClinvardbSNPArgs(weighted_loss=True, feature_list=['chrom', 'pos', 'var', 'label'])
 
     # train phenomenet
-    epochs = 100
+    epochs = 5
     batch_size = 2500
-    history = cv.train_phenomenet(epochs=epochs, batch_size=batch_size)
+    history, model = cv.train_phenomenet_clinvar_dbSNP(epochs=epochs, batch_size=batch_size, args=args)
+    end_epoch = len(history.history['loss'])
     values = {k: v[-1] for k, v in history.history.items()}
     values['model'] = 'phenomenet'
-    values['epochs'] = epochs
+    values['epochs'] = end_epoch
     values['batch_size'] = batch_size
     exp.save_experiment(values)
+    log.info(f'saving model to {checkpoint_path}_{end_epoch}')
+    model.save(checkpoint_path)
 
 
 if __name__ == '__main__':
-    typer.run(main)
+    main()

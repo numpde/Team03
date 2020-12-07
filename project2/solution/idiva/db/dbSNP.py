@@ -86,7 +86,7 @@ def dbSNP_datalines(vcf: idiva.io.ReadVCF, which_chrom: str = 'NC_000017.10') ->
     from tqdm import tqdm
     from itertools import product
     for idx, line in tqdm(enumerate(vcf.datalines), postfix='reading dbSNP file',
-                          total=MAX_LEN_DF):
+                          total=TOTAL_LEN if which_chrom == 'NC' else MAX_LEN_DF):
         if line.chrom.startswith(which_chrom):
             for info_dict in get_info_dict(line.info):
                 if info_dict['VC'] == 'SNV':
@@ -211,5 +211,5 @@ if __name__ == '__main__':
     out_base = Path('/mnt/data/hendrik/db_SNP')
     print(out_base)
     assert out_base.exists()
-    extract_all_dbSNPchroms(dl_path=out_base, dbSNP_path=dbSNP_file_path)
+    # extract_all_dbSNPchroms(dl_path=out_base, dbSNP_path=dbSNP_file_path)
     create_dbSNP_df(dbSNP_file_path=dbSNP_file_path, out_base=out_base, which_chrom='_all')

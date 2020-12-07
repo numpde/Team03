@@ -15,6 +15,11 @@ from idiva.utils import seek_then_rewind
 from idiva import log
 import xlrd
 
+MAPPING = {'A': {'C': 1, 'G': 2, 'T': 2},
+           'C': {'A': 3, 'G': 4, 'T': 5},
+           'G': {'A': 6, 'C': 7, 'T': 8},
+           'T': {'A': 9, 'C': 10, 'G': 11}}
+
 
 class DataHandler:
     URL = {
@@ -40,10 +45,7 @@ class DataHandler:
     T -> G = 11
     """
 
-    mapping = {'A': {'C': 1, 'G': 2, 'T': 2},
-               'C': {'A': 3, 'G': 4, 'T': 5},
-               'G': {'A': 6, 'C': 7, 'T': 8},
-               'T': {'A': 9, 'C': 10, 'G': 11}}
+    mapping = MAPPING
 
     INIT_COLS = ["CHROM", "POS", "ID", "REF", "ALT"]
     CLINVAR_COLS = INIT_COLS
@@ -143,8 +145,10 @@ class DataHandler:
                                                                 'filter': 'FILTER'})
 
         # remove indels
-        df_clinvar_reduced = df_clinvar_reduced[df_clinvar_reduced['REF'].apply(lambda x: str(x) in ['A', 'C', 'G', 'T'])]
-        df_clinvar_reduced = df_clinvar_reduced[df_clinvar_reduced['ALT'].apply(lambda x: str(x) in ['A', 'C', 'G', 'T'])]
+        df_clinvar_reduced = df_clinvar_reduced[
+            df_clinvar_reduced['REF'].apply(lambda x: str(x) in ['A', 'C', 'G', 'T'])]
+        df_clinvar_reduced = df_clinvar_reduced[
+            df_clinvar_reduced['ALT'].apply(lambda x: str(x) in ['A', 'C', 'G', 'T'])]
 
         df_clinvar_reduced = df_clinvar_reduced.drop_duplicates()
 
@@ -326,7 +330,7 @@ class DataHandler:
             if next_sift is not None:
                 if row['POS'] == next_sift[1]['POS']:
                     if not pd.isna(next_sift[1]['SIFT_SCORE']):
-                        sift_score= next_sift[1]['SIFT_SCORE']
+                        sift_score = next_sift[1]['SIFT_SCORE']
                         sift_succ = 1
                     else:
                         sift_score = np.nan
@@ -623,13 +627,3 @@ if __name__ == '__main__':
     dataframe.rename(columns={'CHROM': '#CHROM'}).to_csv(file_path, sep='\t', index=False)
     """
 
-
-    """
-    dh.preprocess_clinvar()
-
-    reduced_vcf = FeatureExtractor.get_reduced_dataframe_from_saved_classifier()
-
-    print(reduced_vcf)
-
-    print(dh.add_sift_score(reduced_vcf, 'our'))
-    """

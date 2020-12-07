@@ -21,12 +21,6 @@ URLS = {
 
 class TestDbClf(TestCase):
     def test_db_clf(self):
-        with download(URLS['ctrl']).now.open(mode='rb') as ctrl, download(URLS['case']).now.open(mode='rb') as case:
-            with open_maybe_gz(ctrl, mode='r') as ctrl, open_maybe_gz(case, mode='r') as case:
-                def case_df_maker() -> pd.DataFrame:
-                    return c5_df(ReadVCF(case))
-
-                case_df = cache_df(name=("case_df"), df_maker=case_df_maker, key=[''])
-
-                result = db_classifier(case=ReadVCF(case), ctrl=ReadVCF(ctrl), case_df=case_df)
+        with ReadVCF.open(URLS['case']) as case:
+            result = db_classifier(case=case, ctrl=None)
         self.assertTrue(len(result.df))

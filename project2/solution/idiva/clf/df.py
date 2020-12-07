@@ -92,11 +92,15 @@ def c5_df(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
     RA, 2020-12-03
     """
 
-    with vcf.rewind_when_done:
-        return apply_dtype(pandas.DataFrame(
-            data=((dataline.chrom, dataline.pos, dataline.id, dataline.ref, dataline.alt) for dataline in vcf),
-            columns=["CHROM", "POS", "ID", "REF", "ALT"],
-        ))
+    def maker():
+        with vcf.rewind_when_done:
+            return apply_dtype(pandas.DataFrame(
+                data=((dataline.chrom, dataline.pos, dataline.id, dataline.ref, dataline.alt) for dataline in vcf),
+                columns=["CHROM", "POS", "ID", "REF", "ALT"],
+            ))
+
+    from idiva.io import cache_df
+    return apply_dtype(cache_df(name="c5_df__case", df_maker=maker, key=[vcf.md5, 'v2']))
 
 
 def v0_df(vcf: idiva.io.ReadVCF) -> pandas.DataFrame:
