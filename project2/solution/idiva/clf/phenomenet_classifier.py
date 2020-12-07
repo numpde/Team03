@@ -21,7 +21,7 @@ def phenomenet_classifier(*, case: idiva.io.ReadVCF) -> object:
     case_control['var'] = case_control[['REF', 'ALT']].apply(lambda x: datahandler.MAPPING[x[0]][x[1]], axis=1)
     clf_data = case_control[['CHROM', 'POS', 'var']]
     # ----------------------------------------------------------------------------
-    # todo get CASS scores
+    # todo get CADD scores
     for col in ['CADD_PHRED', 'CADD_SUCC', 'SIFT_SCORE', 'SIFT_SUCC']:
         clf_data[col] = 1
     # ----------------------------------------------------------------------------
