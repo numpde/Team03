@@ -4,6 +4,7 @@ from keras.layers import Dense
 from keras.layers import Dropout
 from keras.models import Sequential
 import tensorflow as tf
+import typing
 
 """ 
 taken from https://github.com/bio-ontology-research-group/phenomenet-vp/blob/master/dev/nn_final_training.py
@@ -25,7 +26,8 @@ class Phenomenet:
         model.add(Dense(1, kernel_initializer='uniform', activation='sigmoid'))
 
         adam = keras.optimizers.Adam(lr=0.001)
-        model.compile(loss='binary_crossentropy', optimizer=adam,
+        loss = tf.keras.losses.BinaryCrossentropy()
+        model.compile(loss=loss, optimizer=adam,
                       metrics=['accuracy', 'AUC', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()])
 
         return model

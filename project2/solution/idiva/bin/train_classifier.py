@@ -3,9 +3,10 @@ import os
 from datetime import datetime
 
 import pandas as pd
-import typer
-
+from idiva.clf.utils import TrainPhenomenetClinvardbSNPArgs
 from idiva.clf2.classifier import Classifier
+from dataclasses import dataclass
+import typing
 
 
 class Experiment:
@@ -29,20 +30,21 @@ class Experiment:
 
 def main():
     cv = Classifier()
-    # Create model to train
-    cv.create_model()
-    cv.x = cv.x
-    cv.labels = cv.labels
-    # train model on training data
-    cv.train(cv.x, cv.labels)
-    print(cv.model.cv_results_)
+    # # Create model to train
+    # cv.create_model()
+    # cv.x = cv.x
+    # cv.labels = cv.labels
+    # # train model on training data
+    # cv.train(cv.x, cv.labels)
+    # print(cv.model.cv_results_)
     exp = Experiment()
-    exp.save_experiment(cv.model.cv_results_)
+    # exp.save_experiment(cv.model.cv_results_)
+    args = TrainPhenomenetClinvardbSNPArgs(weighted_loss=True, feature_list=['chrom', 'pos', 'var', 'label'])
 
     # train phenomenet
-    epochs = 100
+    epochs = 1
     batch_size = 2500
-    history = cv.train_phenomenet(epochs=epochs, batch_size=batch_size)
+    history = cv.train_phenomenet_clinvar_dbSNP(epochs=epochs, batch_size=batch_size, args=args)
     values = {k: v[-1] for k, v in history.history.items()}
     values['model'] = 'phenomenet'
     values['epochs'] = epochs
@@ -51,4 +53,4 @@ def main():
 
 
 if __name__ == '__main__':
-    typer.run(main)
+    main()

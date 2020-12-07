@@ -5,6 +5,14 @@ from sklearn.dummy import DummyClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from idiva import log
+import typing
+from dataclasses import dataclass
+
+
+@dataclass
+class TrainPhenomenetClinvardbSNPArgs:
+    weighted_loss: bool
+    feature_list: typing.Iterable[str]
 
 
 def get_clf(which_clf: str):
