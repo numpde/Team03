@@ -1,6 +1,6 @@
 # LB 23-11-2020
 
-import keras
+
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier, StackingClassifier
@@ -19,6 +19,7 @@ from idiva.dh.datahandler import DataHandler
 from idiva import log
 import typing
 from sklearn.utils import class_weight
+import tensorflow as tf
 
 
 class Classifier:
@@ -74,7 +75,7 @@ class Classifier:
         pipeline = Pipeline(steps=steps)
         self.model = GridSearchCV(pipeline, param_grid, scoring='f1', verbose=2, n_jobs=-1)
 
-    def train_phenomenet(self, epochs=100, batch_size=2500) -> keras.callbacks.History:
+    def train_phenomenet(self, epochs=100, batch_size=2500) -> tf.keras.callbacks.History:
         """
         Trains the phenomenet on the clinvar dataset
         HK, 2020 - 11 - 21
@@ -93,7 +94,7 @@ class Classifier:
                               epochs=epochs)
 
     def train_phenomenet_clinvar_dbSNP(self, args: TrainPhenomenetClinvardbSNPArgs, epochs=100,
-                                       batch_size=2500) -> keras.callbacks.History:
+                                       batch_size=2500) -> typing.Tuple[tf.keras.callbacks.History, tf.keras.Sequential]:
         """
         Trains the phenomenet on the clinvar and dbSNP data.
 
@@ -120,10 +121,15 @@ class Classifier:
         phenomenet = Phenomenet(train_data.shape[1])
         phenomenet = phenomenet.get_phenomenet()
         log.info(f'Training phenomenet for {epochs} epochs.')
+
+        cb = tf.keras.callbacks.EarlyStopping(
+            monitor='val_precision', min_delta=0, patience=10, verbose=1, mode='auto',
+            baseline=None, restore_best_weights=True)
+
         return phenomenet.fit(train_data, train_labels, validation_data=(
             eval_data, eval_labels),
                               batch_size=batch_size, verbose=2,
-                              epochs=epochs, class_weight=weights)
+                              epochs=epochs, class_weight=weights, callbacks=[cb]), phenomenet
 
     def train(self, x_train: pd.DataFrame, labels: pd.DataFrame) -> None:
         """

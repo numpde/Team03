@@ -7,6 +7,8 @@ from idiva.clf.utils import TrainPhenomenetClinvardbSNPArgs
 from idiva.clf2.classifier import Classifier
 from dataclasses import dataclass
 import typing
+from pathlib import Path
+from idiva import log
 
 
 class Experiment:
@@ -38,18 +40,24 @@ def main():
     # cv.train(cv.x, cv.labels)
     # print(cv.model.cv_results_)
     exp = Experiment()
+    checkpoint_dir = Path(__file__).parent.parent / 'clf/checkpoints'
+    checkpoint_dir.mkdir(exist_ok=True, parents=True)
+    checkpoint_path = checkpoint_dir / exp.experiment_uid
     # exp.save_experiment(cv.model.cv_results_)
     args = TrainPhenomenetClinvardbSNPArgs(weighted_loss=True, feature_list=['chrom', 'pos', 'var', 'label'])
 
     # train phenomenet
-    epochs = 1
+    epochs = 5
     batch_size = 2500
-    history = cv.train_phenomenet_clinvar_dbSNP(epochs=epochs, batch_size=batch_size, args=args)
+    history, model = cv.train_phenomenet_clinvar_dbSNP(epochs=epochs, batch_size=batch_size, args=args)
+    end_epoch = len(history.history['loss'])
     values = {k: v[-1] for k, v in history.history.items()}
     values['model'] = 'phenomenet'
-    values['epochs'] = epochs
+    values['epochs'] = end_epoch
     values['batch_size'] = batch_size
     exp.save_experiment(values)
+    log.info(f'saving model to {checkpoint_path}_{end_epoch}')
+    model.save(checkpoint_path)
 
 
 if __name__ == '__main__':

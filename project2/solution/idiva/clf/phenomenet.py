@@ -28,6 +28,6 @@ class Phenomenet:
         adam = keras.optimizers.Adam(lr=0.001)
         loss = tf.keras.losses.BinaryCrossentropy()
         model.compile(loss=loss, optimizer=adam,
-                      metrics=['accuracy', 'AUC', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()])
+                      metrics=['accuracy', 'AUC', tf.keras.metrics.Precision(name='precision'), tf.keras.metrics.Recall()])
 
         return model
