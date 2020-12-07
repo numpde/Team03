@@ -23,6 +23,7 @@ def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> object:
 
     merge_on_PosRefAlt = case_control.merge(db_PosRefAlt, left_on=['POS', 'REF', 'ALT'], right_on=['pos', 'ref', 'alt'],
                                             how='left')
+    # filling all missing values with 2, for "unknown"
     merge_on_PosRefAlt['class'] = merge_on_PosRefAlt['class'].fillna(2)
     log.info(
         f"Found {len(merge_on_PosRefAlt) - merge_on_PosRefAlt.loc[merge_on_PosRefAlt['class'] == 2, 'class'].count()} "

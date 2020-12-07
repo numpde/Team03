@@ -11,8 +11,12 @@ chromid_to_chromidx = {'NC_000001': 1, 'NC_000002': 2, 'NC_000003': 3, 'NC_00000
 
 
 def join_clinvar_dbSNP(df_clinvar: pd.DataFrame, df_dbSNP: pd.DataFrame, with_chrom_col: bool = False) -> pd.DataFrame:
+    """
+    Joining clinvar and dbSNP on pos, ref, alt and possibly chrom.
+    The chrom values X,Y,MT are transformed to 23, 24, 25 respectively.
+    """
     cols = ['pos', 'ref', 'alt', 'CLNSIG']
-    on = ['pos', 'ref', 'alt', 'chrom']
+    on = ['pos', 'ref', 'alt']
     if with_chrom_col:
         for k, v in chromid_to_chromidx.items():
             df_dbSNP['chrom'] = df_dbSNP['chrom'].replace(to_replace=f'^{k}', value=v, regex=True)
@@ -58,10 +62,10 @@ def get_db_label_df(clinvar_file: str = 'vcf_37', which_dbSNP: int = 17, with_ch
     """
     from idiva.db.dbSNP import get_dbSNP_df
     from idiva.io import cache_df
-    log.info("Getting database labels")
+    log.info("Getting database labels.")
 
     def maker_merge_on_pos_ref_alt() -> pd.DataFrame:
-        log.info("Creating database labels dataframe")
+        log.info("Creating database labels dataframe.")
         dbSNP_df = get_dbSNP_df(which_dbSNP)
         reduced_dbSNP = dbSNP_df.loc[(dbSNP_df.CLNSIG == 2) | (dbSNP_df.CLNSIG == 5)]
 
