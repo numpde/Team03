@@ -115,6 +115,17 @@ class DataHandler:
         return cache_df(name="clinvar_clf_data", key=[clinvar_file, "v01"],
                         df_maker=lambda: self.df_clinvar_to_clf_data(df_clinvar_reduced))
 
+    def get_clinvar_clf_processed_data(self) -> pd.DataFrame:
+
+        cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
+        assert cache.is_dir()
+
+        file_path = str(cache) + "/training.csv"
+
+        dataframe = pd.read_csv(file_path, sep='\t', comment='#')
+
+        return dataframe
+
     def get_clinvar_clf_extended(self, clinvar_file: str = 'vcf_37'):
         from idiva.io import cache_df
 
@@ -141,18 +152,20 @@ class DataHandler:
 
         df_clinvar_reduced = df_clinvar_reduced.drop_duplicates()
 
-        df_clinvar_reduced = df_clinvar_reduced[['CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER']]
-
         df_clinvar_reduced['INFO'] = "."
+
+        df_clinvar_reduced['labels'] = df_clinvar_reduced['CLNSIG'].apply(lambda row: 1 if row == 'Pathogenic' else 0)
+
+        df_clinvar_reduced = df_clinvar_reduced[['CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO', 'labels']]
 
         return df_clinvar_reduced
 
-    def create_training_set(self, clinvar_file: str = 'vcf_37') -> typing.Tuple[pd.DataFrame, pd.DataFrame]:
+    def create_training_set(self) -> typing.Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Returns training features and corresponding labels given a clinvar vcf file
         """
 
-        clinvar_clf_data = self.get_clinvar_clf_data(clinvar_file)
+        clinvar_clf_data = self.get_clinvar_clf_processed_data()
 
         x_train = clinvar_clf_data.loc[:, clinvar_clf_data.columns != 'label']
         y_train = clinvar_clf_data.loc[:, clinvar_clf_data.columns == 'label']
@@ -299,8 +312,8 @@ class DataHandler:
 
         args = shlex.split(cmd)
 
-        process = Popen(args)
-        process.wait()
+        # process = Popen(args)
+        # process.wait()
 
         sift_file = sift_folder + "/" + file_name + "_sift_SIFTannotations.xls"
 
@@ -536,23 +549,56 @@ class DataHandler:
         # TODO:
         #  How to download GRCH37.74 unzip it and store it in download_cache???
 
-        dataframe = self.get_clinvar_clf_extended()
+        dataframe_base = self.get_clinvar_clf_extended()
+        dataframe_base = dataframe_base.reset_index(drop=True)
 
-        print(dataframe)
+        labels = dataframe_base['labels']
+        dataframe_base = dataframe_base.drop('labels', axis=1)
 
-        dataframe = self.add_sift_score(dataframe, 'clinvar')
+        dataframe_sift = self.add_sift_score(dataframe_base, 'clinvar')
 
-        print(dataframe)
+        dataframe_sift['CHROM'] = pd.to_numeric(dataframe_sift[['CHROM']].apply(self.translate_chrom, axis=1))
 
-        # TODO:
-        # strip down dataframe (chrom pos ref alt)
-        # add empty columns?
-        # save file
-        # submit online
-        # read in cadd scores and success
-        # add this two columns to sift dataframe
+        dataframe_cadd = dataframe_base
 
-        return
+        dataframe_cadd['CHROM'] = pd.to_numeric(dataframe_cadd[['CHROM']].apply(self.translate_chrom, axis=1))
+        dataframe_cadd = dataframe_cadd[['CHROM', 'POS', 'ID', 'REF', 'ALT']]
+        dataframe_cadd = dataframe_cadd.reset_index(drop=True)
+
+        cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
+        assert cache.is_dir()
+
+        file_path = str(cache) + "/cadd_annotations.tsv"
+
+        cadd_scores = pd.read_csv(file_path, sep='\t', usecols=range(1, 6), comment='#',
+                           names=['CHROM', 'POS', 'REF', 'ALT', 'CADD_SCORE', 'CADD_PHRED'])
+
+        cadd_scores['CADD_SUCC'] = 1
+
+        dataframe_cadd[['CADD_PHRED', 'CADD_SUCC']] = cadd_scores[['CADD_PHRED', 'CADD_SUCC']]
+
+        dataframe = dataframe_cadd
+        dataframe[['SIFT_SCORE', 'SIFT_SUCC']] = dataframe_sift[['SIFT_SCORE', 'SIFT_SUCC']]
+
+        dataframe['SIFT_SCORE'] = dataframe['SIFT_SCORE'].fillna(value=0.05)
+        dataframe['CADD_SUCC'] = dataframe['CADD_SUCC'].fillna(value=0)
+        dataframe['CADD_PHRED'] = dataframe['CADD_PHRED'].fillna(value=30)
+
+        dataframe = self.encode_ref_alt(dataframe)
+
+        dataframe = dataframe[['CHROM', 'POS', 'VAR', 'CADD_PHRED', 'CADD_SUCC', 'SIFT_SCORE', 'SIFT_SUCC']]
+
+        dataframe.insert(7, 'label', labels)
+
+        cols = ['CHROM', 'POS', 'VAR', 'CADD_PHRED', 'CADD_SUCC', 'SIFT_SCORE', 'SIFT_SUCC', 'label']
+
+        dataframe[cols] = dataframe[cols].apply(pd.to_numeric, errors='coerce', axis=1)
+
+        file_path = str(cache) + "/training.csv"
+
+        dataframe.to_csv(file_path, sep='\t', index=False)
+
+        return dataframe
 
 
 if __name__ == '__main__':
@@ -560,8 +606,24 @@ if __name__ == '__main__':
 
     dh.preprocess_clinvar()
 
-    reduced_vcf = FeatureExtractor.get_reduced_dataframe_from_saved_classifier()
+    dataframe = dh.get_clinvar_clf_processed_data()
 
-    print(reduced_vcf)
+    print(dataframe)
 
-    print(dh.add_sift_score(reduced_vcf, 'our'))
+    x,y = dh.create_training_set()
+    print(x)
+    print(y)
+
+    """
+    print(dataframe)
+
+    cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
+    assert cache.is_dir()
+
+    file_path = str(cache) + "/cadd_full.vcf"
+
+    dataframe = dataframe.fillna(value=".")
+
+    dataframe.rename(columns={'CHROM': '#CHROM'}).to_csv(file_path, sep='\t', index=False)
+    """
+
