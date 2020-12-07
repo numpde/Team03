@@ -203,6 +203,60 @@ class DataHandler:
 
         return frame
 
+    def create_test_set_v2(self, ctrl_vcf_file: str, case_vcf_file: str) -> pd.DataFrame:
+
+        # fextr = FeatureExtractor(ctrl_vcf_file, case_vcf_file)
+        # fextr.get_reduced_dataframe()
+
+        dataframe_base = FeatureExtractor.get_reduced_dataframe_from_saved_classifier()
+
+        print(dataframe_base)
+
+        dataframe_sift = self.add_sift_score(dataframe_base, 'our')
+
+        dataframe_sift['CHROM'] = pd.to_numeric(dataframe_sift[['CHROM']].apply(self.translate_chrom, axis=1))
+
+        print(dataframe_sift.head(50))
+
+
+        dataframe_cadd = dataframe_base
+
+        print(dataframe_cadd)
+
+        dataframe_cadd = dataframe_cadd[['CHROM', 'POS', 'ID', 'REF', 'ALT']]
+
+        dataframe_cadd = self.add_cadd_score(dataframe_cadd)
+
+        print(dataframe_cadd)
+
+        dataframe = dataframe_cadd
+        dataframe[['SIFT_SCORE', 'SIFT_SUCC']] = dataframe_sift[['SIFT_SCORE', 'SIFT_SUCC']]
+
+        dataframe['SIFT_SUCC'] = dataframe['SIFT_SUCC'].fillna(value=0)
+        dataframe['SIFT_SCORE'] = dataframe['SIFT_SCORE'].fillna(value=0.05)
+        dataframe['CADD_SUCC'] = dataframe['CADD_SUCC'].fillna(value=0)
+        dataframe['CADD_PHRED'] = dataframe['CADD_PHRED'].fillna(value=30)
+
+        dataframe = self.encode_ref_alt(dataframe)
+
+        dataframe = dataframe[['CHROM', 'POS', 'VAR', 'CADD_PHRED', 'CADD_SUCC', 'SIFT_SCORE', 'SIFT_SUCC']]
+
+        cols = ['CHROM', 'POS', 'VAR', 'CADD_PHRED', 'CADD_SUCC', 'SIFT_SCORE', 'SIFT_SUCC']
+
+        dataframe[cols] = dataframe[cols].apply(pd.to_numeric, errors='coerce', axis=1)
+
+        cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
+        assert cache.is_dir()
+
+        file_path = str(cache) + "/training.csv"
+
+        dataframe.to_csv(file_path, sep='\t', index=False)
+
+        return dataframe
+
+
+
+
     def translate_vcf(self, vcf_file: str) -> pd.DataFrame:
         """
         Returns a dataframe that contains the following features from a vcf file
@@ -380,8 +434,9 @@ class DataHandler:
                     'G': {'start': 'A', 'A': 'C', 'C': 'T', 'T': 'start'},
                     'T': {'start': 'A', 'A': 'C', 'C': 'G', 'G': 'start'}}
 
-            scores = np.zeros(shape=(len(poss), 1))
-            phreds = np.zeros(shape=(len(poss), 1))
+            scores = np.empty(shape=(len(poss), 1))
+            phreds = np.empty(shape=(len(poss), 1))
+            succ = np.zeros(shape=(len(poss), 1))
 
             current_pos = 0
 
@@ -433,6 +488,7 @@ class DataHandler:
 
                         scores[current_pos] = string_list[-2]
                         phreds[current_pos] = string_list[-1]
+                        succ[current_pos] = 1
 
                         current_pos += 1
 
@@ -447,7 +503,7 @@ class DataHandler:
 
             pbar.update(1)
 
-            return [scores, phreds]
+            return [scores, phreds, succ]
 
         import concurrent.futures
         import multiprocessing
@@ -491,6 +547,7 @@ class DataHandler:
 
         scores = futures[0].result()[0].ravel()
         phreds = futures[0].result()[1].ravel()
+        succ = futures[0].result()[2].ravel()
 
         for idx, future in enumerate(futures[1:], 1):
             scores = np.concatenate([scores, future.result()[0].ravel()])
@@ -505,8 +562,8 @@ class DataHandler:
         print(scores.tolist().count(0))
         print(phreds.tolist().count(0))
 
-        dataframe['CS'] = scores
-        dataframe['CP'] = phreds
+        dataframe['CADD_PHRED'] = phreds
+        dataframe['CADD_SUCC'] = succ
 
         return dataframe
 
@@ -631,6 +688,10 @@ if __name__ == '__main__':
     x, y = dh.create_training_set()
     print(x)
     print(y)
+
+    test_set = dh.create_test_set_v2('case_processed_v2.vcf', 'control_v2.vcf')
+
+    print(test_set)
 
     """
     print(dataframe)

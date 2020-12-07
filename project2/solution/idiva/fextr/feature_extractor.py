@@ -8,12 +8,14 @@ from typing import List
 import numpy as np
 
 import pandas as pd
+import typing
 from sklearn.dummy import DummyClassifier
 from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import Perceptron, SGDClassifier, PassiveAggressiveClassifier
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.utils import shuffle
 
+from idiva import log
 from idiva.io import ReadVCF
 from idiva.utils import seek_then_rewind
 
@@ -26,7 +28,6 @@ class FeatureExtractor:
     """
 
     def __init__(self, ctrl_vcf: str, case_vcf: str):
-
         self.clf, self.id = self.feature_extraction_chunks(ctrl_vcf, case_vcf)
         self.save_classifier()
 
@@ -34,7 +35,7 @@ class FeatureExtractor:
         cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
         assert cache.is_dir()
 
-        filename = str(cache) + "/classifier.sav"
+        filename = str(cache) + "/classifier_prec.sav"
 
         pickle.dump(self.clf, open(filename, 'wb'))
 
@@ -85,7 +86,6 @@ class FeatureExtractor:
                 dataframe = align(ctrl=ctrl_reader, case=case_reader)
                 id = dataframe.index
 
-
         dataframe['ID'] = dataframe.ID_case.combine_first(dataframe.ID_ctrl)
 
         dataframe = dataframe[['CHROM', 'POS', 'ID', 'REF', 'ALT']]
@@ -101,7 +101,8 @@ class FeatureExtractor:
         Therefore the classifier iterates columnwise over the vcf files
         The files are divided into equally many chunks and therefore the individual chunksize can differ
         """
-        # clf = RandomForestClassifier(n_estimators=10000, warm_start=True)
+        log.info("Fit linear classifier and reduce number of variants")
+
         clf = MultinomialNB()
 
         cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
@@ -261,7 +262,7 @@ class FeatureExtractor:
         cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
         assert cache.is_dir()
 
-        filename = str(cache) + "/classifier.sav"
+        filename = str(cache) + "/classifier_prec.sav"
 
         if os.path.exists(filename):
             loaded_model = pickle.load(open(filename, 'rb'))
@@ -286,14 +287,15 @@ def align(case: ReadVCF, ctrl: ReadVCF):
             dfs[k] = dfs[k].reset_index().astype({'rowid': 'Int64'})
 
     dfs['case'] = dfs['case'].drop_duplicates(['CHROM', 'POS', 'REF', 'ALT'], keep='first')
-
     dfs['ctrl'] = dfs['ctrl'].drop_duplicates(['CHROM', 'POS', 'REF', 'ALT'], keep='first')
 
     df = join(case=dfs['case'], ctrl=dfs['ctrl'])
 
-    df['ID'] = df[['CHROM', 'POS', 'ALT']].apply(index_map, axis=1)
+    df['CHROM'] = pd.to_numeric(df[['CHROM']].apply(translate_chrom, axis=1))
 
-    df = df.set_index('ID')
+    df['CPA_ID'] = df[['CHROM', 'POS', 'ALT']].apply(index_map, axis=1)
+
+    df = df.set_index('CPA_ID')
 
     # remove indels
     df = df[df['REF'].apply(lambda x: str(x) in ['A', 'C', 'G', 'T'])]
@@ -339,6 +341,24 @@ def index_map(chromposalt) -> int:
         alt = 3
 
     return chrom * 10000000000 + pos * 10 + alt
+
+
+def translate_chrom(chrom: typing.Union[str, int]) -> int:
+    """
+    translate non integer chromosomes (X,Y & MT) to integers (23, 24 & 25)
+    """
+
+    if type(chrom) == pd.core.series.Series:
+        chrom = chrom[0]
+
+    if chrom == 'X':
+        return 23
+    elif chrom == 'Y':
+        return 24
+    elif chrom == 'MT':
+        return 25
+    else:
+        return int(chrom)
 
 
 if __name__ == '__main__':
