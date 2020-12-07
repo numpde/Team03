@@ -10,9 +10,12 @@ from dataclasses import dataclass
 
 
 @dataclass
-class TrainPhenomenetClinvardbSNPArgs:
+class TrainPhenomenetArgs:
     weighted_loss: bool
     feature_list: typing.Iterable[str]
+    database: str
+    epochs: int
+    batch_size: int
 
 
 def get_clf(which_clf: str):

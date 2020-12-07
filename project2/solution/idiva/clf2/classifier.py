@@ -1,8 +1,11 @@
 # LB 23-11-2020
 
 
+import typing
+
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.model_selection import GridSearchCV
@@ -10,16 +13,12 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
-
-from idiva.clf.phenomenet import Phenomenet
-from idiva.clf.utils import get_train_test, TrainPhenomenetClinvardbSNPArgs
-from idiva.db import db
-from idiva.db.dbSNP import get_dbSNP_df
-from idiva.dh.datahandler import DataHandler
-from idiva import log
-import typing
 from sklearn.utils import class_weight
-import tensorflow as tf
+
+from idiva import log
+from idiva.clf.phenomenet import Phenomenet
+from idiva.clf.utils import get_train_test, TrainPhenomenetArgs
+from idiva.dh.datahandler import DataHandler
 
 
 class Classifier:
@@ -36,7 +35,7 @@ class Classifier:
         self.dataHandler = DataHandler()
 
         # create data for training
-        self.x, self.labels = self.dataHandler.create_training_set(clinvar_train)
+        self.x, self.labels = self.dataHandler.create_training_set()
         # self.phenomenet = Phenomenet(self.x.shape[1])
 
     def create_model(self, n_steps: int = 5, epochs: int = 100):
@@ -75,52 +74,32 @@ class Classifier:
         pipeline = Pipeline(steps=steps)
         self.model = GridSearchCV(pipeline, param_grid, scoring='f1', verbose=2, n_jobs=-1)
 
-    def train_phenomenet(self, epochs=100, batch_size=2500) -> tf.keras.callbacks.History:
+    def train_phenomenet(self, args: TrainPhenomenetArgs) -> typing.Tuple[
+        tf.keras.callbacks.History, tf.keras.Sequential]:
         """
-        Trains the phenomenet on the clinvar dataset
-        HK, 2020 - 11 - 21
+        Trains the phenomenet with the given parameters.
+        HK, 2020-12-07
         """
-        clinvar_clf_data = self.dataHandler.get_clinvar_clf_data(self.clinvar_train)
-        # split into train and validation sets
-        train_data, train_labels, eval_data, eval_labels = get_train_test(
-            clinvar_clf_data[['CHROM', 'POS', 'VAR', 'label']],
-            pipeline=Pipeline(steps=[('selector', VarianceThreshold()), ('scaler', StandardScaler())]))
-
-        phenomenet = Phenomenet(train_data.shape[1])
-        phenomenet = phenomenet.get_phenomenet()
-        return phenomenet.fit(train_data, train_labels, validation_data=(
-            eval_data, eval_labels),
-                              batch_size=batch_size, verbose=2,
-                              epochs=epochs)
-
-    def train_phenomenet_clinvar_dbSNP(self, args: TrainPhenomenetClinvardbSNPArgs, epochs=100,
-                                       batch_size=2500) -> typing.Tuple[tf.keras.callbacks.History, tf.keras.Sequential]:
-        """
-        Trains the phenomenet on the clinvar and dbSNP data.
-
-        HK, 2020-12-05
-        """
-        log.info('Getting clinvar and dbSNP dataframe.')
-        clf_data = db.get_db_label_df(which_dbSNP=17, with_chrom_col=True).rename(columns={'class': 'label'})
-        clf_data = clf_data.dropna(subset=['ref', 'alt'])
-        clf_data = clf_data[clf_data.ref != 'N']
-        clf_data = clf_data[clf_data.alt != 'N']
-        clf_data['var'] = clf_data[['ref', 'alt']].apply(lambda x: self.dataHandler.mapping[x[0]][x[1]], axis=1)
+        log.info(f'Training phenomenet on {args.database} databse')
+        clf_data = self.dataHandler.get_phenomenet_training_data(args)
 
         if args.weighted_loss:
             weights = class_weight.compute_class_weight('balanced', np.unique(clf_data.label), clf_data.label)
             weights = {0: weights[0], 1: weights[1]}
         else:
             weights = None
+
+        if args.feature_list:
+            clf_data = clf_data[args.feature_list]
+
         weights: typing.Optional[typing.Iterable[float]]
         # split into train and validation sets
         train_data, train_labels, eval_data, eval_labels = get_train_test(
-            clf_data[args.feature_list],
-            pipeline=Pipeline(steps=[('selector', VarianceThreshold()), ('scaler', StandardScaler())]))
+            clf_data, pipeline=Pipeline(steps=[('selector', VarianceThreshold()), ('scaler', StandardScaler())]))
 
         phenomenet = Phenomenet(train_data.shape[1])
         phenomenet = phenomenet.get_phenomenet()
-        log.info(f'Training phenomenet for {epochs} epochs.')
+        log.info(f'Training phenomenet for {args.epochs} epochs.')
 
         cb = tf.keras.callbacks.EarlyStopping(
             monitor='val_precision', min_delta=0, patience=10, verbose=1, mode='auto',
@@ -128,8 +107,8 @@ class Classifier:
 
         return phenomenet.fit(train_data, train_labels, validation_data=(
             eval_data, eval_labels),
-                              batch_size=batch_size, verbose=2,
-                              epochs=epochs, class_weight=weights, callbacks=[cb]), phenomenet
+                              batch_size=args.batch_size, verbose=2,
+                              epochs=args.epochs, class_weight=weights, callbacks=[cb]), phenomenet
 
     def train(self, x_train: pd.DataFrame, labels: pd.DataFrame) -> None:
         """
@@ -169,6 +148,6 @@ if __name__ == '__main__':
     # # train model on training data
     # cv.train(cv.x, cv.labels)
     # print(cv.model.cv_results_)
-    history = cv.train_phenomenet_clinvar_dbSNP(epochs=3, batch_size=500)
+    history = cv.train_phenomenet_processed_data(epochs=3, batch_size=500)
     values = {k: v[-1] for k, v in history.history.items()}
     print(values)
