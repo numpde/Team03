@@ -7,15 +7,40 @@ from sklearn.pipeline import Pipeline
 from idiva import log
 import typing
 from dataclasses import dataclass
+from pathlib import Path
+import os
+import tensorflow as tf
 
 
 @dataclass
 class TrainPhenomenetArgs:
     weighted_loss: bool
-    feature_list: typing.Iterable[str]
+    feature_list: typing.Optional[typing.Iterable[str]]
     database: str
-    epochs: int
-    batch_size: int
+    epochs: int = 1000
+    batch_size: int = 500
+    early_stopping_patience: int = 100
+
+
+def get_trained_phenomenet():
+    """
+    Downloads trained phenomenet from polybox if not found in download folder
+    """
+    base = Path(__file__).parent.parent / 'download'
+
+    exp_str = 'exp_2020_12_07_14_53_54_611564'
+    model_path = base / exp_str
+    if not model_path.exists():
+        command = f'wget -O {base / exp_str}.tar.gz https://polybox.ethz.ch/index.php/s/bSwajA85feMAFiq/download'
+        log.info(f'Downloading phenomenet with command {command}')
+        os.system(command)
+        command = f'tar -zxvf {base / exp_str}.tar.gz -C {base}'
+        log.info(f'Extracting model with command {command}')
+        os.system(command)
+        log.info('removing compressed folder')
+        os.system(f'rm {base / exp_str}.tar.gz')
+    log.info('Loading trained phenomenet.')
+    return tf.keras.models.load_model(model_path)
 
 
 def get_clf(which_clf: str):

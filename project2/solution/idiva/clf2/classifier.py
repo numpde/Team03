@@ -6,6 +6,8 @@ import typing
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from kerastuner.tuners import RandomSearch
+import kerastuner
 from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.model_selection import GridSearchCV
@@ -17,7 +19,9 @@ from sklearn.utils import class_weight
 
 from idiva import log
 from idiva.clf.phenomenet import Phenomenet
-from idiva.clf.utils import get_train_test, TrainPhenomenetArgs
+from idiva.clf.phenomenet import HyperPhenomenet
+from idiva.clf.utils import TrainPhenomenetArgs
+from idiva.clf.utils import get_train_test
 from idiva.dh.datahandler import DataHandler
 
 
@@ -74,13 +78,10 @@ class Classifier:
         pipeline = Pipeline(steps=steps)
         self.model = GridSearchCV(pipeline, param_grid, scoring='f1', verbose=2, n_jobs=-1)
 
-    def train_phenomenet(self, args: TrainPhenomenetArgs) -> typing.Tuple[
-        tf.keras.callbacks.History, tf.keras.Sequential]:
+    def get_phenomenet_data(self, args: TrainPhenomenetArgs):
         """
-        Trains the phenomenet with the given parameters.
         HK, 2020-12-07
         """
-        log.info(f'Training phenomenet on {args.database} databse')
         clf_data = self.dataHandler.get_phenomenet_training_data(args)
 
         if args.weighted_loss:
@@ -97,50 +98,93 @@ class Classifier:
         train_data, train_labels, eval_data, eval_labels = get_train_test(
             clf_data, pipeline=Pipeline(steps=[('selector', VarianceThreshold()), ('scaler', StandardScaler())]))
 
+        return train_data, train_labels, eval_data, eval_labels, weights
+
+    def train_phenomenet(self, args: TrainPhenomenetArgs) -> typing.Tuple[
+        tf.keras.callbacks.History, tf.keras.Sequential]:
+        """
+        Trains the phenomenet with the given parameters.
+        HK, 2020-12-07
+        """
+        log.info(f'Training phenomenet on {args.database} database')
+        train_data, train_labels, eval_data, eval_labels, weights = self.get_phenomenet_data(args)
         phenomenet = Phenomenet(train_data.shape[1])
         phenomenet = phenomenet.get_phenomenet()
-        log.info(f'Training phenomenet for {args.epochs} epochs.')
+        log.info(f'Training phenomenet for up to {args.epochs} epochs.')
 
         cb = tf.keras.callbacks.EarlyStopping(
-            monitor='val_precision', min_delta=0, patience=10, verbose=1, mode='auto',
+            monitor='val_precision', min_delta=0, patience=args.early_stopping_patience, verbose=1, mode='max',
             baseline=None, restore_best_weights=True)
 
-        return phenomenet.fit(train_data, train_labels, validation_data=(
+        history = phenomenet.fit(train_data, train_labels, validation_data=(
             eval_data, eval_labels),
-                              batch_size=args.batch_size, verbose=2,
-                              epochs=args.epochs, class_weight=weights, callbacks=[cb]), phenomenet
+                                 batch_size=args.batch_size, verbose=2,
+                                 epochs=args.epochs, class_weight=weights, callbacks=[cb])
 
-    def train(self, x_train: pd.DataFrame, labels: pd.DataFrame) -> None:
+        return history, phenomenet
+
+    def keras_tuner_rs(self):
         """
-        Fits the model to the given data
+        Launches keras tuner random search.
+        HK, 2020-12-07
         """
+        args = TrainPhenomenetArgs(weighted_loss=True, database='clinvar_processed', feature_list=None)
+        train_data, train_labels, eval_data, eval_labels, weights = self.get_phenomenet_data(args)
 
-        self.model.fit(x_train.drop(['ID'], axis=1), labels.values.ravel())
+        cb = tf.keras.callbacks.EarlyStopping(
+            monitor='val_precision', min_delta=0, patience=args.early_stopping_patience, verbose=1, mode='max',
+            baseline=None, restore_best_weights=True)
 
-    def predict(self, vcf_file_test: str, vcf_file_test2: str = None) -> pd.DataFrame:
-        """
-        Returns predictions for the given vcf file
-        """
+        tuner = RandomSearch(
+            HyperPhenomenet(train_data.shape[1]),
+            objective=kerastuner.Objective("val_precision", direction="max"),
+            directory='test_dir_new',
+            max_trials=5)
 
-        if vcf_file_test2 is not None:
-            # fuse two files into one dataframe
-            x_test = self.dataHandler.create_test_set(vcf_file_test, vcf_file_test2)
+        tuner.search_space_summary()
 
-        else:
-            # create test features
-            x_test = self.dataHandler.create_test_set(vcf_file_test)
+        tuner.search(x=train_data,
+                     y=train_labels,
+                     epochs=3,
+                     validation_data=(eval_data, eval_labels), class_weight=weights,
+                     batch_size=args.batch_size, callbacks=[cb], verbose=2)
 
-        # make predictions
-        y_pred = self.model.predict(x_test)
+        tuner.results_summary()
 
-        # create dataframe
-        df = pd.DataFrame(y_pred)
 
-        return df
+def train(self, x_train: pd.DataFrame, labels: pd.DataFrame) -> None:
+    """
+    Fits the model to the given data
+    """
+
+    self.model.fit(x_train.drop(['ID'], axis=1), labels.values.ravel())
+
+
+def predict(self, vcf_file_test: str, vcf_file_test2: str = None) -> pd.DataFrame:
+    """
+    Returns predictions for the given vcf file
+    """
+
+    if vcf_file_test2 is not None:
+        # fuse two files into one dataframe
+        x_test = self.dataHandler.create_test_set(vcf_file_test, vcf_file_test2)
+
+    else:
+        # create test features
+        x_test = self.dataHandler.create_test_set(vcf_file_test)
+
+    # make predictions
+    y_pred = self.model.predict(x_test)
+
+    # create dataframe
+    df = pd.DataFrame(y_pred)
+
+    return df
 
 
 if __name__ == '__main__':
     cv = Classifier()
+    cv.keras_tuner_rs()
     # # Create model to train
     # cv.create_model(n_steps=1)
     # cv.x = cv.x[:10]
@@ -148,6 +192,3 @@ if __name__ == '__main__':
     # # train model on training data
     # cv.train(cv.x, cv.labels)
     # print(cv.model.cv_results_)
-    history = cv.train_phenomenet_processed_data(epochs=3, batch_size=500)
-    values = {k: v[-1] for k, v in history.history.items()}
-    print(values)

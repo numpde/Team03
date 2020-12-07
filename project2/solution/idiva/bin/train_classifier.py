@@ -8,6 +8,13 @@ import pandas as pd
 from idiva import log
 from idiva.clf.utils import TrainPhenomenetArgs
 from idiva.clf2.classifier import Classifier
+from idiva.clf.phenomenet import Phenomenet_builder
+from tensorflow import keras
+from tensorflow.keras import layers
+
+
+from kerastuner.tuners import RandomSearch
+from kerastuner.engine.hypermodel import HyperModel
 
 
 class Experiment:
@@ -24,6 +31,7 @@ class Experiment:
         return 'exp_' + dateTimeObj.strftime("%Y_%m_%d_%H_%M_%S_%f")
 
     def save_experiment(self, values: dict):
+        log.info(f'Writing to experiment dataframe: {values}')
         values['experiment_uid'] = self.experiment_uid
         experiments_dataframe = self.experiments_dataframe.append(values, ignore_index=True)
         experiments_dataframe.to_csv('experiments_dataframe.csv', index=False)
@@ -33,16 +41,14 @@ params_clinvar_processd = {
     'weighted_loss': True,
     'feature_list': None,
     'database': 'clinvar_processed',
-    'epochs': 1000,
-    'batch_size': 2500
+
 }
 
 params_clinvar_sbSNP = {
     'weighted_loss': True,
-    'feature_list': ['CHROM', 'POS', 'VAR', 'label'],
+    'feature_list': ['chrom', 'pos', 'var', 'label'],
     'database': 'clinvar_dbSNP',
-    'epochs': 1000,
-    'batch_size': 2500
+
 }
 
 
@@ -55,6 +61,8 @@ params_clinvar_sbSNP = {
 # cv.train(cv.x, cv.labels)
 # print(cv.model.cv_results_)
 # exp.save_experiment(cv.model.cv_results_)
+
+
 
 
 def train_phenomenet(args: TrainPhenomenetArgs):
@@ -70,16 +78,22 @@ def train_phenomenet(args: TrainPhenomenetArgs):
     end_epoch = len(history.history['loss'])
     values = {k: v[-1] for k, v in history.history.items()}
     values['model'] = 'phenomenet'
-    values['dataset'] = 'raw_db'
     values['epochs'] = end_epoch
     values = {**values, **args.__dict__}
     exp.save_experiment(values)
     log.info(f'saving model to {checkpoint_path}_{end_epoch}')
     model.save(checkpoint_path)
 
+def load_model():
+    import tensorflow as tf
+    model = tf.keras.models.load_model('/home/hendrik/src/compbio/project2/solution/idiva/clf/checkpoints/exp_2020_12_07_14_53_54_611564')
+    sadfs =0
+
 
 if __name__ == '__main__':
     # params = params_clinvar_processd
-    for params in [params_clinvar_processd, params_clinvar_sbSNP]:
-        args = TrainPhenomenetArgs(**params)
-        train_phenomenet(args=args)
+    # for params in [params_clinvar_sbSNP, params_clinvar_processd]:
+    #     args = TrainPhenomenetArgs(**params)
+    #     train_phenomenet(args=args)
+
+    load_model()
