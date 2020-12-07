@@ -21,6 +21,7 @@ from idiva.clf.phenomenet import get_tuner
 from idiva.clf.utils import TrainPhenomenetArgs
 from idiva.clf.utils import get_train_test
 from idiva.dh.datahandler import DataHandler
+from sklearn.model_selection import ParameterGrid
 
 
 class Classifier:
@@ -121,25 +122,26 @@ class Classifier:
 
         return history, phenomenet
 
-    def keras_tuner_rs(self, which_tuner: str):
+    def keras_tuner_rs(self, which_tuner: str, feature_list: typing.Optional[typing.Iterable[str]], database,
+                       exp_name: str):
         """
         Launches keras tuner random search.
         HK, 2020-12-07
         """
-        args = TrainPhenomenetArgs(weighted_loss=True, database='clinvar_processed', feature_list=None)
+        args = TrainPhenomenetArgs(weighted_loss=True, database=database, feature_list=feature_list)
         train_data, train_labels, eval_data, eval_labels, weights = self.get_phenomenet_data(args)
 
         cb = tf.keras.callbacks.EarlyStopping(
             monitor='val_precision', min_delta=0, patience=args.early_stopping_patience, verbose=1, mode='max',
             baseline=None, restore_best_weights=True)
 
-        tuner = get_tuner(which_tuner, train_data.shape[1])
+        tuner = get_tuner(which_tuner, train_data.shape[1], exp_name)
 
         tuner.search_space_summary()
 
         tuner.search(x=train_data,
                      y=train_labels,
-                     epochs=100,
+                     epochs=1,
                      validation_data=(eval_data, eval_labels), class_weight=weights,
                      batch_size=args.batch_size, callbacks=[cb], verbose=2)
 
@@ -176,14 +178,34 @@ def predict(self, vcf_file_test: str, vcf_file_test2: str = None) -> pd.DataFram
     return df
 
 
-if __name__ == '__main__':
+def phenomenet_tuner_gird_search():
+    search_space = {'params_clinvar_processd': {
+        'feature_list': [None],
+        'database': ['clinvar_processed'],
+        'tuners': ['random_search', 'hyperband']
+    },
+
+        'params_clinvar_sbSNP': {
+            'weighted_loss': [True],
+            'feature_list': [['chrom', 'pos', 'var', 'label']],
+            'database': ['clinvar_dbSNP'],
+            'tuners': ['random_search', 'hyperband']
+        }
+    }
+
     cv = Classifier()
-    for tuner in ['random_search', 'hyperband']:
-        cv.keras_tuner_rs(tuner)
-    # # Create model to train
-    # cv.create_model(n_steps=1)
-    # cv.x = cv.x[:10]
-    # cv.labels = cv.labels[:10]
-    # # train model on training data
-    # cv.train(cv.x, cv.labels)
-    # print(cv.model.cv_results_)
+    for param_grid in ['params_clinvar_processd', 'params_clinvar_sbSNP']:
+        for params in ParameterGrid(search_space[param_grid]):
+            cv.keras_tuner_rs(which_tuner=params['tuners'], feature_list=params['feature_list'],
+                              database=params['database'], exp_name='_'.join([params['tuners'], params['database']]))
+
+
+if __name__ == '__main__':
+    phenomenet_tuner_gird_search()
+# # Create model to train
+# cv.create_model(n_steps=1)
+# cv.x = cv.x[:10]
+# cv.labels = cv.labels[:10]
+# # train model on training data
+# cv.train(cv.x, cv.labels)
+# print(cv.model.cv_results_)

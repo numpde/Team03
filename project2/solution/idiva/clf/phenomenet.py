@@ -70,19 +70,20 @@ class HyperPhenomenet(HyperModel):
         return model
 
 
-def get_tuner(which_tuner, input_shape):
+def get_tuner(which_tuner, input_shape, exp_name: str):
     tuners = {
         'hyperband': Hyperband(
             HyperPhenomenet(input_shape),
             objective=kerastuner.Objective("val_precision", direction="max"),
-            directory='hyperband',
-            project_name='hyperband'
+            directory='hyperband_' + exp_name,
+            project_name=exp_name,
+            max_epochs=100
         ),
         'random_search': RandomSearch(
             HyperPhenomenet(input_shape),
             objective=kerastuner.Objective("val_precision", direction="max"),
-            directory='keras_tuner',
-            project_name='hyperband',
+            directory='keras_tuner_' + exp_name,
+            project_name=exp_name,
             max_trials=100)
     }
     return tuners[which_tuner]

@@ -8,13 +8,6 @@ import pandas as pd
 from idiva import log
 from idiva.clf.utils import TrainPhenomenetArgs
 from idiva.clf2.classifier import Classifier
-from idiva.clf.phenomenet import Phenomenet_builder
-from tensorflow import keras
-from tensorflow.keras import layers
-
-
-from kerastuner.tuners import RandomSearch
-from kerastuner.engine.hypermodel import HyperModel
 
 
 class Experiment:
@@ -48,7 +41,6 @@ params_clinvar_sbSNP = {
     'weighted_loss': True,
     'feature_list': ['chrom', 'pos', 'var', 'label'],
     'database': 'clinvar_dbSNP',
-
 }
 
 
