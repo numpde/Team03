@@ -6,8 +6,7 @@ import typing
 import pandas as pd
 
 
-def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF,
-                  case_df: typing.Optional[pd.DataFrame] = None) -> object:
+def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> object:
     """
     Classifies the case-control df by querying the clinvar and dbSNP data.
     """
@@ -16,12 +15,10 @@ def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF,
 
     log.info("Running the database classifier.")
 
-    if case_df is None:
-        log.info('Creating case df')
-        case_control = c5_df(case)
-    else:
-        case_control = case_df
+    log.info('Retrieving case df.')
+    case_control = c5_df(case)
 
+    from idiva.clf.df import apply_dtype
     db_PosRefAlt = db.get_db_label_df(which_dbSNP=int(case_control.iloc[0]['CHROM']))
 
     merge_on_PosRefAlt = case_control.merge(db_PosRefAlt, left_on=['POS', 'REF', 'ALT'], right_on=['pos', 'ref', 'alt'],
