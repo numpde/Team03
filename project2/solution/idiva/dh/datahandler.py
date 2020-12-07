@@ -312,8 +312,8 @@ class DataHandler:
 
         args = shlex.split(cmd)
 
-        # process = Popen(args)
-        # process.wait()
+        process = Popen(args)
+        process.wait()
 
         sift_file = sift_folder + "/" + file_name + "_sift_SIFTannotations.xls"
 
@@ -603,8 +603,6 @@ class DataHandler:
 
 if __name__ == '__main__':
     dh = DataHandler()
-
-    dh.preprocess_clinvar()
 
     dataframe = dh.get_clinvar_clf_processed_data()
 
