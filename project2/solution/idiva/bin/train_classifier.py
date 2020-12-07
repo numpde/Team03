@@ -84,16 +84,11 @@ def train_phenomenet(args: TrainPhenomenetArgs):
     log.info(f'saving model to {checkpoint_path}_{end_epoch}')
     model.save(checkpoint_path)
 
-def load_model():
-    import tensorflow as tf
-    model = tf.keras.models.load_model('/home/hendrik/src/compbio/project2/solution/idiva/clf/checkpoints/exp_2020_12_07_14_53_54_611564')
-    sadfs =0
 
 
 if __name__ == '__main__':
-    # params = params_clinvar_processd
-    # for params in [params_clinvar_sbSNP, params_clinvar_processd]:
-    #     args = TrainPhenomenetArgs(**params)
-    #     train_phenomenet(args=args)
+    params = params_clinvar_processd
+    for params in [params_clinvar_sbSNP, params_clinvar_processd]:
+        args = TrainPhenomenetArgs(**params)
+        train_phenomenet(args=args)
 
-    load_model()
