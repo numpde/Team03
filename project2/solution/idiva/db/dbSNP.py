@@ -130,9 +130,9 @@ def get_dbSNP_df(which_dbSNP: int = 17) -> pd.DataFrame:
     from idiva.db.dbSNP_urls import dbSNP_URLs
     dbSNP_URL = dbSNP_URLs[which_dbSNP]
 
-    log.info("Downloading dbSNP excerpt.")
+    log.info(f"Downloading dbSNP excerpt {which_dbSNP}.")
     with download(dbSNP_URL).now.open(mode='rb') as fd:
-        log.info("Reading dbSNP excerpt.")
+        log.info(f"Reading dbSNP excerpt {which_dbSNP}.")
         with gzip.open(fd, mode='r') as fd:
             df = pd.read_csv(fd)
 
