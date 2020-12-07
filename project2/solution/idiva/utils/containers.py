@@ -22,13 +22,13 @@ def unlist1(L):
     """
     L = list(L)
     if not (len(L) == 1):
-        raise ValueError(F"Expected an interable of length 1, got {len(L)}.")
+        raise ValueError(F"Expected an iterable of length 1, not {len(L)}.")
     return L[0]
 
 
 class minidict:
     """
-    A slim version of a read-only dictionary.
+    A slim read-only dictionary.
     """
 
     def __init__(self, data: dict):
