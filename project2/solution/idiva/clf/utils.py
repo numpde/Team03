@@ -28,7 +28,7 @@ class TrainPhenomenetArgs:
 def get_trained_phenomenet(which: str = 'exp_2020_12_07_14_53_54_611564'):
     """
     Downloads trained phenomenet from polybox if not found in download folder.
-    Which is the uid of the trained phenomenet.
+    Which: the uid of the trained phenomenet.
     """
     base = Path(__file__).parent.parent / 'download'
 
