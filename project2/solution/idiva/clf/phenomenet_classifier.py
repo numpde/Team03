@@ -3,10 +3,11 @@
 import idiva.io
 from idiva import log
 from idiva.clf.utils import get_trained_phenomenet
+from idiva.dh.datahandler import DataHandler
 from idiva.dh import datahandler
 
 
-def phenomenet_classifier(*, case: idiva.io.ReadVCF) -> object:
+def phenomenet_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> object:
     """
     Classifies the case-control df with a pretrained classifier.
     """
@@ -17,6 +18,9 @@ def phenomenet_classifier(*, case: idiva.io.ReadVCF) -> object:
     model = get_trained_phenomenet()
 
     case_control = c5_df(case)
+
+    # dh = DataHandler()
+    # clf_data = dh.create_test_set_v2(case_vcf_file=case, ctrl_vcf_file=ctrl)
 
     case_control['var'] = case_control[['REF', 'ALT']].apply(lambda x: datahandler.MAPPING[x[0]][x[1]], axis=1)
     clf_data = case_control[['CHROM', 'POS', 'var']]
