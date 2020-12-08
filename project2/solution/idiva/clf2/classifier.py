@@ -17,7 +17,7 @@ from sklearn.utils import class_weight
 
 from idiva import log
 from idiva.clf.phenomenet import Phenomenet, BestPhenomenet, get_model
-from idiva.clf.model_tuning.tuner import get_tuner
+
 from idiva.clf.utils import TrainPhenomenetArgs
 from idiva.clf.utils import get_train_test
 from idiva.dh.datahandler import DataHandler
@@ -135,6 +135,8 @@ class Classifier:
         Launches keras tuner random search or hyperband optimization.
         HK, 2020-12-07
         """
+        from idiva.clf.model_tuning.tuner import get_tuner
+
         args = TrainPhenomenetArgs(weighted_loss=True, database=database, feature_list=feature_list,
                                    early_stopping_patience=20)
         train_data, train_labels, eval_data, eval_labels, weights = self.get_phenomenet_data(args)
