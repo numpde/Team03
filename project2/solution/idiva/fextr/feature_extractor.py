@@ -28,7 +28,11 @@ class FeatureExtractor:
     to be able to select the most important SNP's (GWAS with linear model)
     """
 
-    def __init__(self, ctrl_vcf: str, case_vcf: str):
+    def __init__(self, *, ctrl_vcf, case_vcf):
+        """
+        The arguments should be of type ReadVCF,
+        and name-specified. (RA, 2020-12-08)
+        """
         self.clf, self.id = self.feature_extraction_chunks(ctrl_vcf, case_vcf)
         self.save_classifier()
 
@@ -100,7 +104,7 @@ class FeatureExtractor:
 
         return dataframe.loc[extracted]
 
-    def feature_extraction_chunks(self, ctrl_vcf_file: str, case_vcf_file: str):
+    def feature_extraction_chunks(self, ctrl_vcf_file, case_vcf_file):
         """
         Returns a fitted Perceptron classifier for the given vcf files
         The classifier is trained in chunks where the chunks consist of a range of patient
@@ -117,20 +121,15 @@ class FeatureExtractor:
         # create unique index
         id = None
 
-        with open(str(cache) + "/" + ctrl_vcf_file) as ctrl_vcf:
-            ctrl_reader = ReadVCF(ctrl_vcf)
-            with open(str(cache) + "/" + case_vcf_file) as case_vcf:
-                case_reader = ReadVCF(case_vcf)
+        with ReadVCF.open(ctrl_vcf_file) as ctrl_reader:
+            with ReadVCF.open(case_vcf_file) as case_reader:
                 dataframe = align(ctrl=ctrl_reader, case=case_reader)
                 id = dataframe.index
 
-        with open(str(cache) + "/" + ctrl_vcf_file) as ctrl_vcf:
-            with open(str(cache) + "/" + case_vcf_file) as case_vcf:
-                reader_ctrl = ReadVCF(ctrl_vcf)
-                reader_case = ReadVCF(case_vcf)
+        with ReadVCF.open(ctrl_vcf_file) as reader_ctrl:
+            with ReadVCF.open(case_vcf_file) as reader_case:
 
                 header_ctrl = reader_ctrl.header
-
                 header_case = reader_case.header
 
                 exclude = [2, 3, 5, 6, 7, 8]

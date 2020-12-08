@@ -156,18 +156,18 @@ def train(self, x_train: pd.DataFrame, labels: pd.DataFrame) -> None:
     self.model.fit(x_train.drop(['ID'], axis=1), labels.values.ravel())
 
 
-def predict(self, vcf_file_test: str, vcf_file_test2: str = None) -> pd.DataFrame:
+def predict(self, vcf_test1, vcf_test2=None) -> pd.DataFrame:
     """
     Returns predictions for the given vcf file
     """
 
-    if vcf_file_test2 is not None:
+    if vcf_test2 is not None:
         # fuse two files into one dataframe
-        x_test = self.dataHandler.create_test_set(vcf_file_test, vcf_file_test2)
+        x_test = self.dataHandler.create_test_set(vcf_test1, vcf_test2)
 
     else:
         # create test features
-        x_test = self.dataHandler.create_test_set(vcf_file_test)
+        x_test = self.dataHandler.create_test_set(vcf_test1)
 
     # make predictions
     y_pred = self.model.predict(x_test)

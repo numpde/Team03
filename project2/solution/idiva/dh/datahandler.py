@@ -142,7 +142,7 @@ class DataHandler:
 
         return dataframe
 
-    def get_clinvar_clf_extended(self, clinvar_file: str = 'vcf_37'):
+    def get_clinvar_clf_extended(self, which: str = 'vcf_37'):
         from idiva.io import cache_df
 
         def maker_clinvar() -> pd.DataFrame:
@@ -150,10 +150,10 @@ class DataHandler:
             from idiva.io import ReadVCF
             from idiva.db.clinvar import clinvar_to_df
 
-            with clinvar_open(which=clinvar_file) as fd:
+            with clinvar_open(which=which) as fd:
                 return clinvar_to_df(ReadVCF(fd))
 
-        df_clinvar = cache_df(name=("clinvar_" + clinvar_file), key=[clinvar_file], df_maker=maker_clinvar)
+        df_clinvar = cache_df(name=("clinvar_" + which), key=[which], df_maker=maker_clinvar)
         df_clinvar_reduced = df_clinvar[df_clinvar['CLNSIG'].isin({'Pathogenic', 'Benign'})]
 
         df_clinvar_reduced = df_clinvar_reduced.rename(columns={'chrom': 'CHROM', 'pos': 'POS',
@@ -190,12 +190,12 @@ class DataHandler:
 
         return x_train, y_train
 
-    def create_test_set(self, vcf_file: str, vcf_file2: str = None) -> pd.DataFrame:
+    def create_test_set(self, vcf1, vcf2=None) -> pd.DataFrame:
 
-        frame = self.translate_vcf(vcf_file)
+        frame = self.translate_vcf(vcf1)
 
-        if vcf_file2 is not None:
-            baseframe2 = self.translate_vcf(vcf_file2)
+        if vcf2 is not None:
+            baseframe2 = self.translate_vcf(vcf2)
 
             # merge both frames into one
             frame = pd.concat([frame, baseframe2])
@@ -260,7 +260,7 @@ class DataHandler:
 
         return dataframe
 
-    def translate_vcf(self, vcf_file: str) -> pd.DataFrame:
+    def translate_vcf(self, vcf) -> pd.DataFrame:
         """
         Returns a dataframe that contains the following features from a vcf file
         CHROM, POS, ID, VAR
@@ -269,8 +269,7 @@ class DataHandler:
         cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
         assert cache.is_dir()
 
-        with open(str(cache) + "/" + vcf_file) as vcf:
-            reader = ReadVCF(vcf)
+        with ReadVCF.open(vcf) as reader:
 
             with seek_then_rewind(reader.fd, seek=reader.dataline_start_pos) as fd:
 
