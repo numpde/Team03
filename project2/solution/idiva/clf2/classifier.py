@@ -16,8 +16,8 @@ from sklearn.svm import SVC
 from sklearn.utils import class_weight
 
 from idiva import log
-from idiva.clf.phenomenet import Phenomenet, BestPhenomenet
-from idiva.clf.phenomenet import get_tuner
+from idiva.clf.phenomenet import Phenomenet, BestPhenomenet, get_model
+from idiva.clf.model_tuning.tuner import get_tuner
 from idiva.clf.utils import TrainPhenomenetArgs
 from idiva.clf.utils import get_train_test
 from idiva.dh.datahandler import DataHandler
@@ -100,21 +100,22 @@ class Classifier:
 
         return train_data, train_labels, eval_data, eval_labels, weights
 
-    def train_phenomenet(self, args: TrainPhenomenetArgs) -> typing.Tuple[
-        tf.keras.callbacks.History, tf.keras.Sequential]:
+    def train_phenomenet(self, args: TrainPhenomenetArgs, phenomenet: typing.Optional[tf.keras.Sequential] = None) -> \
+            typing.Tuple[
+                tf.keras.callbacks.History, tf.keras.Sequential]:
         """
         Trains the phenomenet with the given parameters.
         HK, 2020-12-07
         """
-        phenomenets = {
-            'best': BestPhenomenet,
-            'basic': Phenomenet
-        }
 
         log.info(f'Training phenomenet with parameters: {args.__dict__}')
         train_data, train_labels, eval_data, eval_labels, weights = self.get_phenomenet_data(args)
-        phenomenet = phenomenets[args.which_phenomenet](train_data.shape[1])
-        phenomenet = phenomenet.get_phenomenet()
+        if args.which_phenomenet == 'basic':
+            phenomenet = Phenomenet(train_data.shape[1])
+            phenomenet = phenomenet.get_phenomenet()
+        elif args.which_phenomenet == 'tuned':
+            phenomenet = get_model(which=args.database)
+
         log.info(f'Training phenomenet for up to {args.epochs} epochs.')
 
         cb = tf.keras.callbacks.EarlyStopping(
@@ -171,7 +172,7 @@ class Classifier:
 
         if vcf_test2 is not None:
             # fuse two files into one dataframe
-            x_test = self.dataHandler.create_test_set(vcf_test1, vcf_test2)
+            x_test = self.dataHandler.create_test_set_v2(case_vcf=vcf_test1, ctrl_vcf=vcf_test2)
 
         else:
             # create test features

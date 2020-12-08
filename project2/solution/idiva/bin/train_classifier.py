@@ -8,14 +8,16 @@ import pandas as pd
 from idiva import log
 from idiva.clf.utils import TrainPhenomenetArgs
 from idiva.clf2.classifier import Classifier
+from sklearn.model_selection import ParameterGrid
 
 
 class Experiment:
     def __init__(self):
-        if not os.path.exists('experiments_dataframe.csv'):
+        self.experiment_df = 'experiments_dataframe_new.csv'
+        if not os.path.exists(self.experiment_df):
             self.experiments_dataframe = pd.DataFrame()
         else:
-            self.experiments_dataframe = pd.read_csv('experiments_dataframe.csv')
+            self.experiments_dataframe = pd.read_csv(self.experiment_df)
 
         self.experiment_uid = self._create_experiment_uid()
 
@@ -27,34 +29,24 @@ class Experiment:
         log.info(f'Writing to experiment dataframe: {values}')
         values['experiment_uid'] = self.experiment_uid
         experiments_dataframe = self.experiments_dataframe.append(values, ignore_index=True)
-        experiments_dataframe.to_csv('experiments_dataframe.csv', index=False)
+        experiments_dataframe.to_csv(self.experiment_df, index=False)
 
 
-params_clinvar_processd = {
-    'weighted_loss': True,
-    'feature_list': None,
-    'database': 'clinvar_processed',
+search_space = {
 
+    'params_clinvar_processd': {
+        'feature_list': [None],
+        'database': ['clinvar_processed'],
+        'which_phenomenet': ['tuned']
+
+    },
+
+    'params_clinvar_sbSNP': {
+        'feature_list': [['chrom', 'pos', 'var', 'label']],
+        'database': ['clinvar_dbSNP'],
+        'which_phenomenet': ['tuned']
+    }
 }
-
-params_clinvar_sbSNP = {
-    'weighted_loss': True,
-    'feature_list': ['chrom', 'pos', 'var', 'label'],
-    'database': 'clinvar_dbSNP',
-}
-
-
-# def cv():
-# # Create model to train
-# cv.create_model()
-# cv.x = cv.x
-# cv.labels = cv.labels
-# # train model on training data
-# cv.train(cv.x, cv.labels)
-# print(cv.model.cv_results_)
-# exp.save_experiment(cv.model.cv_results_)
-
-
 
 
 def train_phenomenet(args: TrainPhenomenetArgs):
@@ -77,10 +69,9 @@ def train_phenomenet(args: TrainPhenomenetArgs):
     model.save(checkpoint_path)
 
 
-
 if __name__ == '__main__':
-    params = params_clinvar_processd
-    for params in [params_clinvar_sbSNP, params_clinvar_processd]:
-        args = TrainPhenomenetArgs(**params)
-        train_phenomenet(args=args)
-
+    for param_grid in ['params_clinvar_processd', 'params_clinvar_sbSNP']:
+        # for param_grid in ['params_clinvar_sbSNP']:
+        for params in ParameterGrid(search_space[param_grid]):
+            args = TrainPhenomenetArgs(**params)
+            train_phenomenet(args=args)
