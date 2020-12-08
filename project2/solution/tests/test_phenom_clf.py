@@ -4,7 +4,9 @@
 from unittest import TestCase
 
 from idiva.clf.phenomenet_classifier import phenomenet_classifier
+from idiva.clf.phenomenet_clf_basic import phenomenet_classifier_basic
 from idiva.io.vcf import ReadVCF
+from idiva import log
 
 URLS = {
     'ctrl': "https://public.bmi.inf.ethz.ch/eth_intern/teaching/cbm_2020/cbm_2020_project2/control_v2.vcf.gz",
@@ -12,8 +14,15 @@ URLS = {
 }
 
 
-class TestDbClf(TestCase):
-    def test_db_clf(self):
+class TestPhenomClf(TestCase):
+    def test_phenom_clf(self):
         with ReadVCF.open(URLS['case']) as case:
-            result = phenomenet_classifier(case=case)
+            result = phenomenet_classifier(case=case, ctrl=None)
         self.assertTrue(len(result.df))
+        log.info('passed!')
+
+    def test_phenom_basic(self):
+        with ReadVCF.open(URLS['case']) as case:
+            result = phenomenet_classifier_basic(case=case, ctrl=None)
+        self.assertTrue(len(result.df))
+        log.info('passed!')

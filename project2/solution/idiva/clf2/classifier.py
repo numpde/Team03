@@ -16,12 +16,13 @@ from sklearn.svm import SVC
 from sklearn.utils import class_weight
 
 from idiva import log
-from idiva.clf.phenomenet import Phenomenet
+from idiva.clf.phenomenet import Phenomenet, BestPhenomenet
 from idiva.clf.phenomenet import get_tuner
 from idiva.clf.utils import TrainPhenomenetArgs
 from idiva.clf.utils import get_train_test
 from idiva.dh.datahandler import DataHandler
 from sklearn.model_selection import ParameterGrid
+from idiva.clf.utils import get_trained_phenomenet
 
 
 class Classifier:
@@ -105,9 +106,14 @@ class Classifier:
         Trains the phenomenet with the given parameters.
         HK, 2020-12-07
         """
-        log.info(f'Training phenomenet on {args.database} database')
+        phenomenets = {
+            'best': BestPhenomenet,
+            'basic': Phenomenet
+        }
+
+        log.info(f'Training phenomenet with parameters: {args.__dict__}')
         train_data, train_labels, eval_data, eval_labels, weights = self.get_phenomenet_data(args)
-        phenomenet = Phenomenet(train_data.shape[1])
+        phenomenet = phenomenets[args.which_phenomenet](train_data.shape[1])
         phenomenet = phenomenet.get_phenomenet()
         log.info(f'Training phenomenet for up to {args.epochs} epochs.')
 
@@ -125,10 +131,11 @@ class Classifier:
     def keras_tuner_rs(self, which_tuner: str, feature_list: typing.Optional[typing.Iterable[str]], database,
                        exp_name: str):
         """
-        Launches keras tuner random search.
+        Launches keras tuner random search or hyperband optimization.
         HK, 2020-12-07
         """
-        args = TrainPhenomenetArgs(weighted_loss=True, database=database, feature_list=feature_list)
+        args = TrainPhenomenetArgs(weighted_loss=True, database=database, feature_list=feature_list,
+                                   early_stopping_patience=20)
         train_data, train_labels, eval_data, eval_labels, weights = self.get_phenomenet_data(args)
 
         cb = tf.keras.callbacks.EarlyStopping(
@@ -141,55 +148,56 @@ class Classifier:
 
         tuner.search(x=train_data,
                      y=train_labels,
-                     epochs=1,
+                     epochs=100,
                      validation_data=(eval_data, eval_labels), class_weight=weights,
                      batch_size=args.batch_size, callbacks=[cb], verbose=2)
 
         tuner.results_summary()
+        best_model = tuner.get_best_models()[0]
+        log.info('saving best tuner model.')
+        best_model.save(f'best_tuner_model_{exp_name}')
 
+    def train(self, x_train: pd.DataFrame, labels: pd.DataFrame) -> None:
+        """
+        Fits the model to the given data
+        """
 
-def train(self, x_train: pd.DataFrame, labels: pd.DataFrame) -> None:
-    """
-    Fits the model to the given data
-    """
+        self.model.fit(x_train.drop(['ID'], axis=1), labels.values.ravel())
 
-    self.model.fit(x_train.drop(['ID'], axis=1), labels.values.ravel())
+    def predict(self, vcf_test1, vcf_test2=None) -> pd.DataFrame:
+        """
+        Returns predictions for the given vcf file
+        """
 
+        if vcf_test2 is not None:
+            # fuse two files into one dataframe
+            x_test = self.dataHandler.create_test_set(vcf_test1, vcf_test2)
 
-def predict(self, vcf_test1, vcf_test2=None) -> pd.DataFrame:
-    """
-    Returns predictions for the given vcf file
-    """
+        else:
+            # create test features
+            x_test = self.dataHandler.create_test_set(vcf_test1)
 
-    if vcf_test2 is not None:
-        # fuse two files into one dataframe
-        x_test = self.dataHandler.create_test_set(vcf_test1, vcf_test2)
+        # make predictions
+        y_pred = self.model.predict(x_test)
 
-    else:
-        # create test features
-        x_test = self.dataHandler.create_test_set(vcf_test1)
+        # create dataframe
+        df = pd.DataFrame(y_pred)
 
-    # make predictions
-    y_pred = self.model.predict(x_test)
-
-    # create dataframe
-    df = pd.DataFrame(y_pred)
-
-    return df
+        return df
 
 
 def phenomenet_tuner_gird_search():
     search_space = {'params_clinvar_processd': {
         'feature_list': [None],
         'database': ['clinvar_processed'],
-        'tuners': ['random_search', 'hyperband']
+        'tuners': ['hyperband']
     },
 
         'params_clinvar_sbSNP': {
             'weighted_loss': [True],
             'feature_list': [['chrom', 'pos', 'var', 'label']],
             'database': ['clinvar_dbSNP'],
-            'tuners': ['random_search', 'hyperband']
+            'tuners': ['hyperband']
         }
     }
 

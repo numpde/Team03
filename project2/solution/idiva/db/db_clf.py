@@ -29,17 +29,18 @@ def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> object:
         f"Found {len(merge_on_PosRefAlt) - merge_on_PosRefAlt.loc[merge_on_PosRefAlt['class'] == 2, 'class'].count()} "
         f"labels in databases.")
 
-    result = merge_on_PosRefAlt[['CHROM', 'POS', 'ID', 'REF', 'ALT', 'class']]
+    result = merge_on_PosRefAlt[['CHROM', 'POS', 'ID', 'REF', 'ALT', 'class']].rename({'class': 'db_class'})
 
     class response:
         id_cols = ['CHROM', 'POS', 'ID', 'REF', 'ALT']
 
         info = {
-            'class': {'Number': '.',
-                      'Type': 'Integer',
-                      'Description': '"Number indicating to which class the variant belongs. '
-                                     '0 - Benign, 1 - Pathogenic, 2 - Unknown"'
-                      },
+            'db_class': {'Number': '.',
+                         'Type': 'Integer',
+                         'Description': '"Number indicating to which class the variant belongs. '
+                                        '0 - Benign, 1 - Pathogenic, 2 - Unknown". The class is retrieved from the '
+                                        'clinvar and the dbSNP databases.'
+                         },
         }
 
         df = result

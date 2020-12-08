@@ -1,37 +1,46 @@
-from typing import Optional
-
-import numpy as np
-from sklearn.dummy import DummyClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline
-from idiva import log
+import os
 import typing
 from dataclasses import dataclass
 from pathlib import Path
-import os
+from typing import Optional
+
+import numpy as np
+import pandas as pd
 import tensorflow as tf
+from sklearn.dummy import DummyClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+
+from idiva import log
 
 
 @dataclass
 class TrainPhenomenetArgs:
-    weighted_loss: bool
     feature_list: typing.Optional[typing.Iterable[str]]
     database: str
+    which_phenomenet: str = 'basic'
     epochs: int = 1000
     batch_size: int = 500
     early_stopping_patience: int = 100
+    weighted_loss: bool = True
 
 
-def get_trained_phenomenet():
+def get_trained_phenomenet(which: str = 'exp_2020_12_07_14_53_54_611564'):
     """
-    Downloads trained phenomenet from polybox if not found in download folder
+    Downloads trained phenomenet from polybox if not found in download folder.
+    Which is the uid of the trained phenomenet.
     """
     base = Path(__file__).parent.parent / 'download'
 
-    exp_str = 'exp_2020_12_07_14_53_54_611564'
+    URLS = {
+        'exp_2020_12_08_11_05_12_615223': 'https://polybox.ethz.ch/index.php/s/YxWDBaxle44f1da/download',
+        'exp_2020_12_07_14_53_54_611564': 'https://polybox.ethz.ch/index.php/s/bSwajA85feMAFiq/download'
+    }
+
+    exp_str = which
     model_path = base / exp_str
     if not model_path.exists():
-        command = f'wget -O {base / exp_str}.tar.gz https://polybox.ethz.ch/index.php/s/bSwajA85feMAFiq/download'
+        command = f'wget -O {base / exp_str}.tar.gz {URLS[which]}'
         log.info(f'Downloading phenomenet with command {command}')
         os.system(command)
         command = f'tar -zxvf {base / exp_str}.tar.gz -C {base}'
@@ -86,11 +95,12 @@ class NucEncoder:
         return int(''.join(output))
 
 
-def get_train_test(data, pipeline: Pipeline = None):
+def get_train_test(data: pd.DataFrame, pipeline: Pipeline = None):
     """
     HK, 2020-11-12
     """
     log.info('Splitting and preprocessing data.')
+    data = data.reindex(sorted(data.columns), axis=1)
     df_train, df_eval = train_test_split(data, test_size=0.2, shuffle=True)
 
     train_data = df_train.loc[:, df_train.columns != 'label'].to_numpy()

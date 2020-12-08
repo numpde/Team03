@@ -79,8 +79,10 @@ def process_vcf(*, case: ReadVCF, ctrl: ReadVCF, out: Path):
     from idiva.stat.vcf_to_fisher import vcf_to_fisher
     from idiva.db.sc2disease import allgwas
     from idiva.db.db_clf import db_classifier
+    from idiva.clf.phenomenet_classifier import phenomenet_classifier
+    from idiva.clf.phenomenet_clf_basic import phenomenet_classifier_basic
 
-    classifiers = [vcf_to_fisher, allgwas, db_classifier]
+    classifiers = [vcf_to_fisher, allgwas, db_classifier, phenomenet_classifier_basic]
 
     for classifier in classifiers:
         with case.rewind_when_done:
