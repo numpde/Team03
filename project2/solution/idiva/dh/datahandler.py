@@ -1,5 +1,5 @@
 # LB 23-11-2020
-
+import os
 import typing
 from pathlib import Path
 import shlex
@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from idiva.fextr import FeatureExtractor
+from idiva.fextr import FeatureExtractor, align
 from idiva.io import ReadVCF
 from idiva.utils import seek_then_rewind
 from idiva import log
@@ -204,58 +204,61 @@ class DataHandler:
         return frame
 
     def create_test_set_v2(self, ctrl_vcf_file: str, case_vcf_file: str) -> pd.DataFrame:
-
-        # fextr = FeatureExtractor(ctrl_vcf_file, case_vcf_file)
-        # fextr.get_reduced_dataframe()
-
-        dataframe_base = FeatureExtractor.get_reduced_dataframe_from_saved_classifier()
-
-        print(dataframe_base)
-
-        dataframe_sift = self.add_sift_score(dataframe_base, 'our')
-
-        dataframe_sift['CHROM'] = pd.to_numeric(dataframe_sift[['CHROM']].apply(self.translate_chrom, axis=1))
-
-        print(dataframe_sift.head(50))
-
-
-        dataframe_cadd = dataframe_base
-
-        print(dataframe_cadd)
-
-        dataframe_cadd = dataframe_cadd[['CHROM', 'POS', 'ID', 'REF', 'ALT']]
-
-        dataframe_cadd = self.add_cadd_score(dataframe_cadd)
-
-        print(dataframe_cadd)
-
-        dataframe = dataframe_cadd
-        dataframe[['SIFT_SCORE', 'SIFT_SUCC']] = dataframe_sift[['SIFT_SCORE', 'SIFT_SUCC']]
-
-        dataframe['SIFT_SUCC'] = dataframe['SIFT_SUCC'].fillna(value=0)
-        dataframe['SIFT_SCORE'] = dataframe['SIFT_SCORE'].fillna(value=0.05)
-        dataframe['CADD_SUCC'] = dataframe['CADD_SUCC'].fillna(value=0)
-        dataframe['CADD_PHRED'] = dataframe['CADD_PHRED'].fillna(value=30)
-
-        dataframe = self.encode_ref_alt(dataframe)
-
-        dataframe = dataframe[['CHROM', 'POS', 'VAR', 'CADD_PHRED', 'CADD_SUCC', 'SIFT_SCORE', 'SIFT_SUCC']]
-
-        cols = ['CHROM', 'POS', 'VAR', 'CADD_PHRED', 'CADD_SUCC', 'SIFT_SCORE', 'SIFT_SUCC']
-
-        dataframe[cols] = dataframe[cols].apply(pd.to_numeric, errors='coerce', axis=1)
-
+        """
+        creates test set by first reducing the number of samples and then adding sift and cadd scores
+        """
         cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
         assert cache.is_dir()
 
-        file_path = str(cache) + "/training.csv"
+        file_name = 'test.csv'
 
-        dataframe.to_csv(file_path, sep='\t', index=False)
+        file_path = os.path.join(cache, file_name)
+
+        file_name = str(cache) + '/' + file_name
+
+        dataframe_base = None
+
+        # if file does not exists
+        if not os.path.isfile(file_path):
+            log.info("Annotate test set ")
+
+            fextr = FeatureExtractor(ctrl_vcf_file, case_vcf_file)
+            dataframe_base = fextr.get_reduced_dataframe()
+
+            dataframe_sift = self.add_sift_score(dataframe_base, 'our')
+
+            dataframe_sift['CHROM'] = pd.to_numeric(dataframe_sift[['CHROM']].apply(self.translate_chrom, axis=1))
+
+            dataframe_cadd = dataframe_base
+
+            dataframe_cadd = dataframe_cadd[['CHROM', 'POS', 'ID', 'REF', 'ALT']]
+
+            dataframe_cadd = self.add_cadd_score(dataframe_cadd)
+
+            dataframe = dataframe_cadd
+            dataframe[['SIFT_SCORE', 'SIFT_SUCC']] = dataframe_sift[['SIFT_SCORE', 'SIFT_SUCC']]
+
+            dataframe['SIFT_SUCC'] = dataframe['SIFT_SUCC'].fillna(value=0)
+            dataframe['SIFT_SCORE'] = dataframe['SIFT_SCORE'].fillna(value=0.05)
+            dataframe['CADD_SUCC'] = dataframe['CADD_SUCC'].fillna(value=0)
+            dataframe['CADD_PHRED'] = dataframe['CADD_PHRED'].fillna(value=30)
+
+            dataframe = self.encode_ref_alt(dataframe)
+
+            dataframe = dataframe[['CHROM', 'POS', 'VAR', 'CADD_PHRED', 'CADD_SUCC', 'SIFT_SCORE', 'SIFT_SUCC']]
+
+            cols = ['CHROM', 'POS', 'VAR', 'CADD_PHRED', 'CADD_SUCC', 'SIFT_SCORE', 'SIFT_SUCC']
+
+            dataframe[cols] = dataframe[cols].apply(pd.to_numeric, errors='coerce', axis=1)
+
+            dataframe.to_csv(file_name, sep='\t')
+
+        # load stored test set
+        else:
+            log.info("load stored test set")
+            dataframe = pd.read_csv(file_name, sep='\t')
 
         return dataframe
-
-
-
 
     def translate_vcf(self, vcf_file: str) -> pd.DataFrame:
         """
@@ -353,7 +356,7 @@ class DataHandler:
         The dataframe needs at least following columns: CHROM, POS, REF, ALT
         """
         log.info("creating sift scores for " + type)
-
+        # https://github.com/pauline-ng/SIFT4G_Annotator/raw/master/SIFT4G_Annotator.jar
         # make dataframe compatible for sift annotator
         if 'ID' not in dataframe:
             dataframe['ID'] = '.'
@@ -422,7 +425,7 @@ class DataHandler:
 
     def add_cadd_score(self, dataframe: pd.DataFrame) -> pd.DataFrame:
         """
-        Returns: CADD score and the phred score for a given dataframe containing CHROM, POS, REF, ALT
+        Returns: phred score and query status for a given dataframe containing CHROM, POS, REF, ALT
         """
 
         def fetch(chrom: int, poss: list, refs: list, alts: list, pbar: tqdm):
@@ -463,7 +466,6 @@ class DataHandler:
 
                     # interpret line as list
                     string_list = line.decode("utf-8").strip().split("\t")
-
                     # set new reference
                     new_ref = string_list[2]
 
@@ -478,12 +480,11 @@ class DataHandler:
                         current_alt = next[string_list[2]][current_alt]
 
                     # if the current line contains information about a asked position then store it
-                    if int(string_list[1]) == poss[current_pos]:
+                    if int(string_list[1]) == poss[current_pos] and current_alt == alts[current_pos]:
                         """
                         # for debugging:
                         print("score", string_list[-2], "phred", string_list[-1], "pos", string_list[1], "ref", new_ref,
-                              "alt",
-                              current_alt)
+                              "alt", current_alt)
                         """
 
                         scores[current_pos] = string_list[-2]
@@ -512,8 +513,8 @@ class DataHandler:
         chroms = [self.translate_chrom_back(chrom) for chrom in chroms]
 
         poss = dataframe['POS'].tolist()
-        alts = dataframe['REF'].tolist()
-        refs = dataframe['ALT'].tolist()
+        refs = dataframe['REF'].tolist()
+        alts = dataframe['ALT'].tolist()
 
         # start index of first bucket
         start_pos = 0
@@ -552,15 +553,7 @@ class DataHandler:
         for idx, future in enumerate(futures[1:], 1):
             scores = np.concatenate([scores, future.result()[0].ravel()])
             phreds = np.concatenate([phreds, future.result()[1].ravel()])
-
-        print(scores)
-        print(phreds)
-
-        print(len(scores))
-        print(len(phreds))
-
-        print(scores.tolist().count(0))
-        print(phreds.tolist().count(0))
+            succ = np.concatenate([succ, future.result()[2].ravel()])
 
         dataframe['CADD_PHRED'] = phreds
         dataframe['CADD_SUCC'] = succ
@@ -680,14 +673,6 @@ class DataHandler:
 
 if __name__ == '__main__':
     dh = DataHandler()
-
-    dataframe = dh.get_clinvar_clf_processed_data()
-
-    print(dataframe)
-
-    x, y = dh.create_training_set()
-    print(x)
-    print(y)
 
     test_set = dh.create_test_set_v2('case_processed_v2.vcf', 'control_v2.vcf')
 

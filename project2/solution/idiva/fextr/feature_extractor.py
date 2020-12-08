@@ -24,7 +24,8 @@ from tqdm import tqdm
 
 class FeatureExtractor:
     """
-    Given two vcf file this object trains a Random Forest classifier to be able to select the most important SNP's
+    Given two vcf file this object trains a Perceptron classifier
+    to be able to select the most important SNP's (GWAS with linear model)
     """
 
     def __init__(self, ctrl_vcf: str, case_vcf: str):
@@ -35,7 +36,7 @@ class FeatureExtractor:
         cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
         assert cache.is_dir()
 
-        filename = str(cache) + "/classifier_prec.sav"
+        filename = str(cache) + "/classifier.sav"
 
         pickle.dump(self.clf, open(filename, 'wb'))
 
@@ -48,6 +49,9 @@ class FeatureExtractor:
         return self.id[selector.get_support()]
 
     def get_reduced_dataframe(self) -> pd.DataFrame:
+        """
+        Returns reduced dataframe
+        """
         cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
         assert cache.is_dir()
 
@@ -69,7 +73,9 @@ class FeatureExtractor:
 
     @staticmethod
     def get_reduced_dataframe_from_saved_classifier() -> pd.DataFrame:
-
+        """
+        Returns reduced dataframe given that a classifier is stored as classifier.sav
+        """
         clf = FeatureExtractor.get_saved_classifier()
 
         selector = SelectFromModel(clf, prefit=True)
@@ -96,14 +102,14 @@ class FeatureExtractor:
 
     def feature_extraction_chunks(self, ctrl_vcf_file: str, case_vcf_file: str):
         """
-        Returns a fitted RandomForestClassifier for the given vcf files
+        Returns a fitted Perceptron classifier for the given vcf files
         The classifier is trained in chunks where the chunks consist of a range of patient
         Therefore the classifier iterates columnwise over the vcf files
         The files are divided into equally many chunks and therefore the individual chunksize can differ
         """
         log.info("Fit linear classifier and reduce number of variants")
 
-        clf = MultinomialNB()
+        clf = Perceptron()
 
         cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
         assert cache.is_dir()
@@ -117,8 +123,6 @@ class FeatureExtractor:
                 case_reader = ReadVCF(case_vcf)
                 dataframe = align(ctrl=ctrl_reader, case=case_reader)
                 id = dataframe.index
-
-        print(id)
 
         with open(str(cache) + "/" + ctrl_vcf_file) as ctrl_vcf:
             with open(str(cache) + "/" + case_vcf_file) as case_vcf:
@@ -262,7 +266,7 @@ class FeatureExtractor:
         cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
         assert cache.is_dir()
 
-        filename = str(cache) + "/classifier_prec.sav"
+        filename = str(cache) + "/classifier.sav"
 
         if os.path.exists(filename):
             loaded_model = pickle.load(open(filename, 'rb'))
@@ -274,7 +278,7 @@ class FeatureExtractor:
 
 def align(case: ReadVCF, ctrl: ReadVCF):
     """
-    aligning case and control vcf file by joining on chrom, pos and alt
+    aligning case and control vcf file by joining on chrom, pos, ref and alt
     """
     from idiva.utils import seek_then_rewind
 
@@ -375,5 +379,47 @@ if __name__ == '__main__':
     print(sum(test.get_support()))
 
     print(FeatureExtractor.get_reduced_dataframe_from_saved_classifier())
+    """
+
+    import requests
+
+    cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
+    assert cache.is_dir()
+
+    file_path = os.path.join(cache, 'SIFT4G_Annotator2.jar')
+
+    file_name = str(cache) + '/SIFT4G_Annotator2.jar'
+
+    print(os.path.isfile(file_path))
+
+    if not os.path.isfile(file_path):
+        log.info("Downloading sift annotator (1.3MB)")
+        results = requests.get('https://github.com/pauline-ng/SIFT4G_Annotator/raw/master/SIFT4G_Annotator.jar')
+        with open(file_name, 'wb') as f:
+            f.write(results.content)
+
+    print(os.path.getsize(file_path))
+
+    dir_path = os.path.join(cache, 'GRCh37.74_new')
+
+    dir_name_gz = str(cache) + '/GRCh37.74.zip'
+
+    print(os.path.isdir(dir_path))
+
+    if not os.path.isdir(dir_path):
+        log.info("Downloading sift database (4.3 GB)")
+        results = requests.get('https://sift.bii.a-star.edu.sg/sift4g/public//Homo_sapiens/GRCh37.74.zip')
+        with open(dir_name_gz, 'wb') as f:
+            f.write(results.content)
+
+    import zipfile
+
+    log.info("Unzip sift database (5.4 GB)")
+
+    file = zipfile.ZipFile(dir_name_gz)
+    file.extractall(path=dir_path)
+
+    print(os.path.getsize(dir_path))
 
     # print(fx.get_extracted_variants())
+    """
