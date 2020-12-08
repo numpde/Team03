@@ -232,8 +232,6 @@ class DataHandler:
             fextr = FeatureExtractor(case_vcf=case_vcf, ctrl_vcf=ctrl_vcf)
             dataframe_base = fextr.get_reduced_dataframe(case_vcf=case_vcf, ctrl_vcf=ctrl_vcf)
 
-            dataframe_base = dataframe_base.head(50)
-
             dataframe_sift = self.add_sift_score(dataframe_base, 'our')
 
             dataframe_sift['CHROM'] = pd.to_numeric(dataframe_sift[['CHROM']].apply(self.translate_chrom, axis=1))
