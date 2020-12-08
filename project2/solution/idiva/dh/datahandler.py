@@ -1,5 +1,5 @@
 # LB 23-11-2020
-
+import os
 import typing
 from pathlib import Path
 import shlex
@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from idiva.fextr import FeatureExtractor
+from idiva.fextr import FeatureExtractor, align
 from idiva.io import ReadVCF
 from idiva.utils import seek_then_rewind
 from idiva import log
@@ -204,44 +204,59 @@ class DataHandler:
         return frame
 
     def create_test_set_v2(self, ctrl_vcf_file: str, case_vcf_file: str) -> pd.DataFrame:
-
-        # fextr = FeatureExtractor(ctrl_vcf_file, case_vcf_file)
-        # fextr.get_reduced_dataframe()
-
-        dataframe_base = FeatureExtractor.get_reduced_dataframe_from_saved_classifier()
-
-        dataframe_sift = self.add_sift_score(dataframe_base, 'our')
-
-        dataframe_sift['CHROM'] = pd.to_numeric(dataframe_sift[['CHROM']].apply(self.translate_chrom, axis=1))
-
-        dataframe_cadd = dataframe_base
-
-        dataframe_cadd = dataframe_cadd[['CHROM', 'POS', 'ID', 'REF', 'ALT']]
-
-        dataframe_cadd = self.add_cadd_score(dataframe_cadd)
-
-        dataframe = dataframe_cadd
-        dataframe[['SIFT_SCORE', 'SIFT_SUCC']] = dataframe_sift[['SIFT_SCORE', 'SIFT_SUCC']]
-
-        dataframe['SIFT_SUCC'] = dataframe['SIFT_SUCC'].fillna(value=0)
-        dataframe['SIFT_SCORE'] = dataframe['SIFT_SCORE'].fillna(value=0.05)
-        dataframe['CADD_SUCC'] = dataframe['CADD_SUCC'].fillna(value=0)
-        dataframe['CADD_PHRED'] = dataframe['CADD_PHRED'].fillna(value=30)
-
-        dataframe = self.encode_ref_alt(dataframe)
-
-        dataframe = dataframe[['CHROM', 'POS', 'VAR', 'CADD_PHRED', 'CADD_SUCC', 'SIFT_SCORE', 'SIFT_SUCC']]
-
-        cols = ['CHROM', 'POS', 'VAR', 'CADD_PHRED', 'CADD_SUCC', 'SIFT_SCORE', 'SIFT_SUCC']
-
-        dataframe[cols] = dataframe[cols].apply(pd.to_numeric, errors='coerce', axis=1)
-
+        """
+        creates test set by first reducing the number of samples and then adding sift and cadd scores
+        """
         cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
         assert cache.is_dir()
 
-        file_path = str(cache) + "/test.csv"
+        file_name = 'test.csv'
 
-        dataframe.to_csv(file_path, sep='\t')
+        file_path = os.path.join(cache, file_name)
+
+        file_name = str(cache) + '/' + file_name
+
+        dataframe_base = None
+
+        # if file does not exists
+        if not os.path.isfile(file_path):
+            log.info("Annotate test set ")
+
+            fextr = FeatureExtractor(ctrl_vcf_file, case_vcf_file)
+            dataframe_base = fextr.get_reduced_dataframe()
+
+            dataframe_sift = self.add_sift_score(dataframe_base, 'our')
+
+            dataframe_sift['CHROM'] = pd.to_numeric(dataframe_sift[['CHROM']].apply(self.translate_chrom, axis=1))
+
+            dataframe_cadd = dataframe_base
+
+            dataframe_cadd = dataframe_cadd[['CHROM', 'POS', 'ID', 'REF', 'ALT']]
+
+            dataframe_cadd = self.add_cadd_score(dataframe_cadd)
+
+            dataframe = dataframe_cadd
+            dataframe[['SIFT_SCORE', 'SIFT_SUCC']] = dataframe_sift[['SIFT_SCORE', 'SIFT_SUCC']]
+
+            dataframe['SIFT_SUCC'] = dataframe['SIFT_SUCC'].fillna(value=0)
+            dataframe['SIFT_SCORE'] = dataframe['SIFT_SCORE'].fillna(value=0.05)
+            dataframe['CADD_SUCC'] = dataframe['CADD_SUCC'].fillna(value=0)
+            dataframe['CADD_PHRED'] = dataframe['CADD_PHRED'].fillna(value=30)
+
+            dataframe = self.encode_ref_alt(dataframe)
+
+            dataframe = dataframe[['CHROM', 'POS', 'VAR', 'CADD_PHRED', 'CADD_SUCC', 'SIFT_SCORE', 'SIFT_SUCC']]
+
+            cols = ['CHROM', 'POS', 'VAR', 'CADD_PHRED', 'CADD_SUCC', 'SIFT_SCORE', 'SIFT_SUCC']
+
+            dataframe[cols] = dataframe[cols].apply(pd.to_numeric, errors='coerce', axis=1)
+
+            dataframe.to_csv(file_name, sep='\t')
+
+        # load stored test set
+        else:
+            log.info("load stored test set")
+            dataframe = pd.read_csv(file_name, sep='\t')
 
         return dataframe
 
