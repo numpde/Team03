@@ -52,7 +52,7 @@ class FeatureExtractor:
 
         return self.id[selector.get_support()]
 
-    def get_reduced_dataframe(self) -> pd.DataFrame:
+    def get_reduced_dataframe(self, vcf_ctrl, vcf_case) -> pd.DataFrame:
         """
         Returns reduced dataframe
         """
@@ -61,12 +61,19 @@ class FeatureExtractor:
 
         from idiva.fextr import align
 
+        with ReadVCF.open(vcf_ctrl) as ctrl_reader:
+            with ReadVCF.open(vcf_case) as case_reader:
+                dataframe = align(ctrl=ctrl_reader, case=case_reader)
+                id = dataframe.index
+        """
+        from idiva.fextr import align
+
         with open(str(cache) + "/control_v2.vcf") as ctrl_vcf:
             ctrl_reader = ReadVCF(ctrl_vcf)
             with open(str(cache) + "/case_processed_v2.vcf") as case_vcf:
                 case_reader = ReadVCF(case_vcf)
                 dataframe = align(ctrl=ctrl_reader, case=case_reader)
-
+        """
         dataframe['ID'] = dataframe.ID_case.combine_first(dataframe.ID_ctrl)
 
         dataframe = dataframe[['CHROM', 'POS', 'ID', 'REF', 'ALT']]
@@ -76,7 +83,7 @@ class FeatureExtractor:
         return dataframe.loc[extracted]
 
     @staticmethod
-    def get_reduced_dataframe_from_saved_classifier() -> pd.DataFrame:
+    def get_reduced_dataframe_from_saved_classifier(vcf_ctrl, vcf_case) -> pd.DataFrame:
         """
         Returns reduced dataframe given that a classifier is stored as classifier.sav
         """
@@ -89,12 +96,19 @@ class FeatureExtractor:
 
         from idiva.fextr import align
 
+        with ReadVCF.open(vcf_ctrl) as ctrl_reader:
+            with ReadVCF.open(vcf_case) as case_reader:
+                dataframe = align(ctrl=ctrl_reader, case=case_reader)
+                id = dataframe.index
+
+        """
         with open(str(cache) + "/control_v2.vcf") as ctrl_vcf:
             ctrl_reader = ReadVCF(ctrl_vcf)
             with open(str(cache) + "/case_processed_v2.vcf") as case_vcf:
                 case_reader = ReadVCF(case_vcf)
                 dataframe = align(ctrl=ctrl_reader, case=case_reader)
                 id = dataframe.index
+        """
 
         dataframe['ID'] = dataframe.ID_case.combine_first(dataframe.ID_ctrl)
 
@@ -377,7 +391,7 @@ if __name__ == '__main__':
     print(test.get_support())
     print(sum(test.get_support()))
 
-    print(FeatureExtractor.get_reduced_dataframe_from_saved_classifier())
+    # print(FeatureExtractor.get_reduced_dataframe_from_saved_classifier())
     """
 
     import requests
