@@ -182,7 +182,7 @@ class Classifier:
 
         # make predictions
         x_test = x_test[['CHROM', 'POS', 'CADD_SUCC', 'CADD_PHRED', 'SIFT_SCORE', 'SIFT_SUCC', 'VAR']]
-
+        log.info('Predicting class labels.')
         y_pred = self.model.predict(x_test.reindex(sorted(x_test.columns), axis=1))
 
         # create dataframe
