@@ -169,7 +169,7 @@ class ReadVCF:
                     self.meta[k] = v
                 else:
                     assignments = re.findall(r'([^,]+)[=]("[^"]+"|[^"][^,]*)', more)
-                    assert (more == ",".join([F"{a}={b}" for (a, b) in assignments]))
+                    assert (more == ",".join([F"{a}={b}" for (a, b) in assignments])), F"Failed in {assignments}"
 
                     more = dict(assignments)
 
