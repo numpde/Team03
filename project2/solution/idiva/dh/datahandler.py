@@ -359,11 +359,48 @@ class DataHandler:
 
         return dataframe
 
+    def setup_sift(self):
+
+        import requests
+
+        cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
+        assert cache.is_dir()
+
+        file_path = os.path.join(cache, 'SIFT4G_Annotator.jar')
+
+        file_name = str(cache) + '/SIFT4G_Annotator.jar'
+
+        if not os.path.isfile(file_path):
+            log.info("Downloading sift annotator (1.3MB)")
+            results = requests.get('https://github.com/pauline-ng/SIFT4G_Annotator/raw/master/SIFT4G_Annotator.jar')
+            with open(file_name, 'wb') as f:
+                f.write(results.content)
+        else:
+            log.info("sift annotator found")
+
+        dir_path = os.path.join(cache, 'GRCh37.74')
+
+        dir_name_gz = str(cache) + '/GRCh37.74.zip'
+
+        if not os.path.isdir(dir_path):
+            if not os.path.exists(dir_name_gz):
+                log.info('Downloading GRCh37.34 database.')
+                wget_command = 'wget -O ' + dir_name_gz + ' https://sift.bii.a-star.edu.sg/sift4g/public/Homo_sapiens/GRCh37.74.zip'
+                os.system(wget_command)
+            else:
+                log.info('Unpacking GRCh37 database.')
+                gunzip_command = 'gunzip ' + dir_name_gz
+                os.system(gunzip_command)
+        else:
+            log.info('Unpacked GRCh37 database found.')
+
     def add_sift_score(self, dataframe: pd.DataFrame, type: str) -> pd.DataFrame:
         """
         Appends sift scores and success to dataframe
         The dataframe needs at least following columns: CHROM, POS, REF, ALT
         """
+        self.setup_sift()
+
         log.info("creating sift scores for " + type)
         # https://github.com/pauline-ng/SIFT4G_Annotator/raw/master/SIFT4G_Annotator.jar
         # make dataframe compatible for sift annotator
@@ -677,7 +714,7 @@ class DataHandler:
 if __name__ == '__main__':
     dh = DataHandler()
 
-    # print(dh.preprocess_clinvar())
+    print(dh.preprocess_clinvar())
 
     cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
     assert cache.is_dir()
