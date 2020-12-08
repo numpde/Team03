@@ -389,7 +389,7 @@ class DataHandler:
                 os.system(wget_command)
             else:
                 log.info('Unpacking GRCh37 database.')
-                gunzip_command = 'gunzip ' + dir_name_gz
+                gunzip_command = 'unzip ' + dir_name_gz
                 os.system(gunzip_command)
         else:
             log.info('Unpacked GRCh37 database found.')
