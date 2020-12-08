@@ -136,9 +136,16 @@ class DataHandler:
         cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
         assert cache.is_dir()
 
-        file_path = str(cache) + "/training.csv"
+        file_path = os.path.join(cache, 'training.csv')
 
-        dataframe = pd.read_csv(file_path, sep='\t', comment='#')
+        file_name = str(cache) + '/training.csv'
+
+        print(os.path.isfile(file_path))
+
+        if not os.path.isfile(file_path):
+            self.preprocess_clinvar()
+
+        dataframe = pd.read_csv(file_name, sep='\t', comment='#')
 
         return dataframe
 
@@ -203,7 +210,7 @@ class DataHandler:
 
         return frame
 
-    def create_test_set_v2(self, ctrl_vcf_file: str, case_vcf_file: str) -> pd.DataFrame:
+    def create_test_set_v2(self, vcf_ctrl, vcf_case) -> pd.DataFrame:
         """
         creates test set by first reducing the number of samples and then adding sift and cadd scores
         """
@@ -222,7 +229,7 @@ class DataHandler:
         if not os.path.isfile(file_path):
             log.info("Annotate test set ")
 
-            fextr = FeatureExtractor(ctrl_vcf_file, case_vcf_file)
+            fextr = FeatureExtractor(ctrl_vcf=vcf_ctrl, case_vcf=vcf_case)
             dataframe_base = fextr.get_reduced_dataframe()
 
             dataframe_sift = self.add_sift_score(dataframe_base, 'our')
@@ -673,9 +680,15 @@ class DataHandler:
 if __name__ == '__main__':
     dh = DataHandler()
 
-    test_set = dh.create_test_set_v2('case_processed_v2.vcf', 'control_v2.vcf')
+    # print(dh.preprocess_clinvar())
 
-    print(test_set)
+    cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
+    assert cache.is_dir()
+
+    with ReadVCF.open(str(cache) + '/control_v2.vcf') as ctrl_vcf:
+        with ReadVCF.open(str(cache) + '/case_processed_v2.vcf') as case_vcf:
+            test_set = dh.create_test_set_v2(ctrl_vcf, case_vcf)
+
 
     """
     print(dataframe)
