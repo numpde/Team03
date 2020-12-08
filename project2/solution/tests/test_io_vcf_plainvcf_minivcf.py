@@ -49,13 +49,13 @@ class TestPlainVCF(TestCase):
 
     def test_multi_open1(self):
         from idiva.io.vcf import ReadVCF
-        with ReadVCF.open(vcf_file) as vcf:
-            assert isinstance(vcf, ReadVCF)
+        with ReadVCF.open(vcf_file) as vcf_top:
+            assert isinstance(vcf_top, ReadVCF)
 
-            with ReadVCF.open(vcf) as vcf:
+            with ReadVCF.open(vcf_top) as vcf:
                 a = list(map(str, vcf))
 
-            with ReadVCF.open(vcf) as vcf:
+            with ReadVCF.open(vcf_top) as vcf:
                 b = list(map(str, vcf))
 
         self.assertListEqual(a, b)
