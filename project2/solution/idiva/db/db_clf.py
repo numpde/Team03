@@ -29,7 +29,7 @@ def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> object:
         f"Found {len(merge_on_PosRefAlt) - merge_on_PosRefAlt.loc[merge_on_PosRefAlt['class'] == 2, 'class'].count()} "
         f"labels in databases.")
 
-    result = merge_on_PosRefAlt[['CHROM', 'POS', 'ID', 'REF', 'ALT', 'class']].rename({'class': 'db_class'})
+    result = merge_on_PosRefAlt[['CHROM', 'POS', 'ID', 'REF', 'ALT', 'class']].rename({'class': 'db_class'}, axis=1)
 
     class response:
         id_cols = ['CHROM', 'POS', 'ID', 'REF', 'ALT']
