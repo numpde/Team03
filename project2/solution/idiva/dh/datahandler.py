@@ -210,7 +210,7 @@ class DataHandler:
 
         return frame
 
-    def create_test_set_v2(self, vcf_ctrl, vcf_case) -> pd.DataFrame:
+    def create_test_set_v2(self, *, case_vcf, ctrl_vcf) -> pd.DataFrame:
         """
         creates test set by first reducing the number of samples and then adding sift and cadd scores
         """
@@ -227,10 +227,12 @@ class DataHandler:
 
         # if file does not exists
         if not os.path.isfile(file_path):
-            log.info("Annotate test set ")
+            log.info("Annotate test set (~1h)")
 
-            fextr = FeatureExtractor(ctrl_vcf=vcf_ctrl, case_vcf=vcf_case)
-            dataframe_base = fextr.get_reduced_dataframe()
+            fextr = FeatureExtractor(case_vcf=case_vcf, ctrl_vcf=ctrl_vcf)
+            dataframe_base = fextr.get_reduced_dataframe(case_vcf=case_vcf, ctrl_vcf=ctrl_vcf)
+
+            dataframe_base = dataframe_base.head(50)
 
             dataframe_sift = self.add_sift_score(dataframe_base, 'our')
 
@@ -257,6 +259,9 @@ class DataHandler:
             cols = ['CHROM', 'POS', 'VAR', 'CADD_PHRED', 'CADD_SUCC', 'SIFT_SCORE', 'SIFT_SUCC']
 
             dataframe[cols] = dataframe[cols].apply(pd.to_numeric, errors='coerce', axis=1)
+
+            log.info("Test set is stored as /input/download_cache/test.csv. "
+                     "If you want to create a new test set for another vcf dataset you have to delete the previous one ")
 
             dataframe.to_csv(file_name, sep='\t')
 
@@ -616,12 +621,6 @@ class DataHandler:
 
         log.info("preprocessing clinvar file")
 
-        # TODO:
-        #  How to download clinvar file, unzip it and store it as clinvar.vcf in download_cache???
-
-        # TODO:
-        #  How to download GRCH37.74 unzip it and store it in download_cache???
-
         dataframe_base = self.get_clinvar_clf_extended()
         dataframe_base = dataframe_base.reset_index(drop=True)
 
@@ -685,9 +684,10 @@ if __name__ == '__main__':
     cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
     assert cache.is_dir()
 
-    with ReadVCF.open(str(cache) + '/control_v2.vcf') as ctrl_vcf:
-        with ReadVCF.open(str(cache) + '/case_processed_v2.vcf') as case_vcf:
-            test_set = dh.create_test_set_v2(ctrl_vcf, case_vcf)
+
+    with ReadVCF.open(cache / 'control_v2.vcf') as ctrl_vcf:
+        with ReadVCF.open(cache / 'case_processed_v2.vcf') as case_vcf:
+            test_set = dh.create_test_set_v2(case_vcf=case_vcf, ctrl_vcf=ctrl_vcf,)
 
 
     """

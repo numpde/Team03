@@ -11,8 +11,7 @@ import pandas as pd
 import typing
 from sklearn.dummy import DummyClassifier
 from sklearn.feature_selection import SelectFromModel
-from sklearn.linear_model import Perceptron, SGDClassifier, PassiveAggressiveClassifier
-from sklearn.naive_bayes import MultinomialNB
+from sklearn.linear_model import Perceptron
 from sklearn.utils import shuffle
 
 from idiva import log
@@ -28,12 +27,12 @@ class FeatureExtractor:
     to be able to select the most important SNP's (GWAS with linear model)
     """
 
-    def __init__(self, *, ctrl_vcf, case_vcf):
+    def __init__(self, *, case_vcf, ctrl_vcf):
         """
         The arguments should be of type ReadVCF,
         and name-specified. (RA, 2020-12-08)
         """
-        self.clf, self.id = self.feature_extraction_chunks(ctrl_vcf, case_vcf)
+        self.clf, self.id = self.feature_extraction_chunks(ctrl_vcf=ctrl_vcf, case_vcf=case_vcf)
         self.save_classifier()
 
     def save_classifier(self):
@@ -52,7 +51,7 @@ class FeatureExtractor:
 
         return self.id[selector.get_support()]
 
-    def get_reduced_dataframe(self, vcf_ctrl, vcf_case) -> pd.DataFrame:
+    def get_reduced_dataframe(self, *, case_vcf, ctrl_vcf) -> pd.DataFrame:
         """
         Returns reduced dataframe
         """
@@ -61,19 +60,13 @@ class FeatureExtractor:
 
         from idiva.fextr import align
 
-        with ReadVCF.open(vcf_ctrl) as ctrl_reader:
-            with ReadVCF.open(vcf_case) as case_reader:
+        with ctrl_vcf.rewind_when_done:
+            ctrl_reader = ctrl_vcf
+            with case_vcf.rewind_when_done:
+                case_reader = case_vcf
                 dataframe = align(ctrl=ctrl_reader, case=case_reader)
-                id = dataframe.index
-        """
-        from idiva.fextr import align
+                id = dataframe.index 
 
-        with open(str(cache) + "/control_v2.vcf") as ctrl_vcf:
-            ctrl_reader = ReadVCF(ctrl_vcf)
-            with open(str(cache) + "/case_processed_v2.vcf") as case_vcf:
-                case_reader = ReadVCF(case_vcf)
-                dataframe = align(ctrl=ctrl_reader, case=case_reader)
-        """
         dataframe['ID'] = dataframe.ID_case.combine_first(dataframe.ID_ctrl)
 
         dataframe = dataframe[['CHROM', 'POS', 'ID', 'REF', 'ALT']]
@@ -83,7 +76,7 @@ class FeatureExtractor:
         return dataframe.loc[extracted]
 
     @staticmethod
-    def get_reduced_dataframe_from_saved_classifier(vcf_ctrl, vcf_case) -> pd.DataFrame:
+    def get_reduced_dataframe_from_saved_classifier( *, case_vcf, ctrl_vcf) -> pd.DataFrame:
         """
         Returns reduced dataframe given that a classifier is stored as classifier.sav
         """
@@ -96,19 +89,12 @@ class FeatureExtractor:
 
         from idiva.fextr import align
 
-        with ReadVCF.open(vcf_ctrl) as ctrl_reader:
-            with ReadVCF.open(vcf_case) as case_reader:
+        with ctrl_vcf.rewind_when_done:
+            ctrl_reader = ctrl_vcf
+            with case_vcf.rewind_when_done:
+                case_reader = case_vcf
                 dataframe = align(ctrl=ctrl_reader, case=case_reader)
                 id = dataframe.index
-
-        """
-        with open(str(cache) + "/control_v2.vcf") as ctrl_vcf:
-            ctrl_reader = ReadVCF(ctrl_vcf)
-            with open(str(cache) + "/case_processed_v2.vcf") as case_vcf:
-                case_reader = ReadVCF(case_vcf)
-                dataframe = align(ctrl=ctrl_reader, case=case_reader)
-                id = dataframe.index
-        """
 
         dataframe['ID'] = dataframe.ID_case.combine_first(dataframe.ID_ctrl)
 
@@ -118,14 +104,14 @@ class FeatureExtractor:
 
         return dataframe.loc[extracted]
 
-    def feature_extraction_chunks(self, ctrl_vcf_file, case_vcf_file):
+    def feature_extraction_chunks(self, *, case_vcf, ctrl_vcf):
         """
         Returns a fitted Perceptron classifier for the given vcf files
         The classifier is trained in chunks where the chunks consist of a range of patient
         Therefore the classifier iterates columnwise over the vcf files
         The files are divided into equally many chunks and therefore the individual chunksize can differ
         """
-        log.info("Fit linear classifier and reduce number of variants")
+        log.info("Fit linear classifier and reduce number of variants (~0.5h)")
 
         clf = Perceptron()
 
@@ -135,16 +121,20 @@ class FeatureExtractor:
         # create unique index
         id = None
 
-        with ReadVCF.open(ctrl_vcf_file) as ctrl_reader:
-            with ReadVCF.open(case_vcf_file) as case_reader:
+        with ctrl_vcf.rewind_when_done:
+            ctrl_reader = ctrl_vcf
+            with case_vcf.rewind_when_done:
+                case_reader = case_vcf
                 dataframe = align(ctrl=ctrl_reader, case=case_reader)
                 id = dataframe.index
 
-        with ReadVCF.open(ctrl_vcf_file) as reader_ctrl:
-            with ReadVCF.open(case_vcf_file) as reader_case:
+        with ctrl_vcf.rewind_when_done:
+            ctrl_reader = ctrl_vcf
+            with case_vcf.rewind_when_done:
+                case_reader = case_vcf
 
-                header_ctrl = reader_ctrl.header
-                header_case = reader_case.header
+                header_ctrl = ctrl_reader.header
+                header_case = case_reader.header
 
                 exclude = [2, 3, 5, 6, 7, 8]
 
@@ -168,20 +158,20 @@ class FeatureExtractor:
                 batches_case.append(len_case)
 
                 for idx in tqdm(range(number_of_batches), total=number_of_batches, postfix='feature selection'):
-                    clf = self.feature_extraction_batch(reader_ctrl, reader_case, names_ctrl, names_case,
+                    clf = self.feature_extraction_batch(ctrl_reader, case_reader, names_ctrl, names_case,
                                                         batches_ctrl, batches_case, idx, clf, id)
 
         return clf, id
 
-    def feature_extraction_batch(self, reader_ctrl: ReadVCF, reader_case: ReadVCF, names_ctrl: List[str],
+    def feature_extraction_batch(self, ctrl_reader: ReadVCF, case_reader: ReadVCF, names_ctrl: List[str],
                                  names_case: List[str], batches_ctrl: List[int], batches_case: List[int], idx: int,
                                  clf, id: List[int]):
         """
         Returns a trained classifier on one batch
         loads from both files some patients (one batch) for training
         """
-        with seek_then_rewind(reader_ctrl.fd, seek=reader_ctrl.dataline_start_pos) as fd_ctrl:
-            with seek_then_rewind(reader_case.fd, seek=reader_case.dataline_start_pos) as fd_case:
+        with seek_then_rewind(ctrl_reader.fd, seek=ctrl_reader.dataline_start_pos) as fd_ctrl:
+            with seek_then_rewind(case_reader.fd, seek=case_reader.dataline_start_pos) as fd_case:
 
                 batch_names_ctrl = names_ctrl[:3]
                 batch_names_case = names_case[:3]
@@ -246,11 +236,6 @@ class FeatureExtractor:
 
                 dataframe, labels = shuffle(dataframe, labels, random_state=0)
 
-                """
-                # for Random Forest Classifier
-                clf.n_estimators += 10000
-                clf.fit(dataframe, labels)
-                """
                 clf.partial_fit(dataframe, labels, classes=[0, 1])
 
         return clf
@@ -382,26 +367,14 @@ if __name__ == '__main__':
     # fx = FeatureExtractor("control_v2.vcf", "case_processed_v2.vcf")
     # print("finished")
 
-    clf = FeatureExtractor.get_saved_classifier()
-    print(clf)
-    print(type(clf))
-
-    test = SelectFromModel(clf, prefit=True)
-    print(test)
-    print(test.get_support())
-    print(sum(test.get_support()))
-
-    # print(FeatureExtractor.get_reduced_dataframe_from_saved_classifier())
-    """
-
     import requests
 
     cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
     assert cache.is_dir()
 
-    file_path = os.path.join(cache, 'SIFT4G_Annotator2.jar')
+    file_path = os.path.join(cache, 'SIFT4G_Annotator.jar')
 
-    file_name = str(cache) + '/SIFT4G_Annotator2.jar'
+    file_name = str(cache) + '/SIFT4G_Annotator.jar'
 
     print(os.path.isfile(file_path))
 
@@ -412,6 +385,8 @@ if __name__ == '__main__':
             f.write(results.content)
 
     print(os.path.getsize(file_path))
+
+    """
 
     dir_path = os.path.join(cache, 'GRCh37.74_new')
 
@@ -435,4 +410,27 @@ if __name__ == '__main__':
     print(os.path.getsize(dir_path))
 
     # print(fx.get_extracted_variants())
+
+
+    cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
+    assert cache.is_dir()
+
+    file_names = {
+        'all_vcf': 'GRCh37_latest_dbSNP_all.vcf',
+        'all_gzip': 'GRCh37_latest_dbSNP_all.vcf.gz'
+    }
+    dbSNP_path = dbSNP_path or dl_path / file_names['all_vcf']
+
+    if not os.path.isdir(dir_path):
+        if not os.path.exists(dir_name_gz):
+            log.info('Downloading GRCh37.34 database.')
+            wget_command = f'wget -P {dl_path} ftp://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/' \
+                           f'GRCh37_latest/refseq_identifiers/GRCh37_latest_dbSNP_all.vcf.gz'
+            os.system(wget_command)
+        else:
+            log.info('Unpacking GRCh37 database.')
+            gunzip_command = 'gunzip GRCh37_latest_dbSNP_all.vcf.gz'
+            os.system(gunzip_command)
+    else:
+        log.info('Unpacked GRCh37 database found.')
     """
