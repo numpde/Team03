@@ -266,7 +266,7 @@ class DataHandler:
         # load stored test set
         else:
             log.info("load stored test set")
-            dataframe = pd.read_csv(file_name, sep='\t')
+            dataframe = pd.read_csv(file_name, sep='\t', index_col='CPA_ID')
 
         return dataframe
 
@@ -686,6 +686,7 @@ if __name__ == '__main__':
     with ReadVCF.open(cache / 'control_v2.vcf') as ctrl_vcf:
         with ReadVCF.open(cache / 'case_processed_v2.vcf') as case_vcf:
             test_set = dh.create_test_set_v2(case_vcf=case_vcf, ctrl_vcf=ctrl_vcf,)
+            print(test_set)
 
 
     """
