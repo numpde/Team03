@@ -116,6 +116,7 @@ dependencies:
   - werkzeug=1.0.1=py_0
   - wheel=0.35.1=py_0
   - wrapt=1.12.1=py38h7b6447c_1
+  - xlrd=1.2.0=py_0
   - xz=5.2.5=h7b6447c_0
   - yaml=0.2.5=h7b6447c_0
   - zipp=3.4.0=pyhd3eb1b0_0
