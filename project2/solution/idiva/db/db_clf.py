@@ -38,8 +38,8 @@ def db_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> object:
             'db_class': {'Number': '.',
                          'Type': 'Integer',
                          'Description': '"Number indicating to which class the variant belongs. '
-                                        '0 - Benign, 1 - Pathogenic, 2 - Unknown". The class is retrieved from the '
-                                        'clinvar and the dbSNP databases.'
+                                        '0 - Benign, 1 - Pathogenic, 2 - Unknown. The class is retrieved from the '
+                                        'clinvar and the dbSNP databases."'
                          },
         }
 
