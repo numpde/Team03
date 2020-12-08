@@ -34,6 +34,44 @@ class TestPlainVCF(TestCase):
             with ReadVCF.open(vcf) as vcf:
                 list(vcf)
 
+    def test_rewinds(self):
+        from idiva.io.vcf import ReadVCF
+        with ReadVCF.open(vcf_file) as vcf:
+            assert isinstance(vcf, ReadVCF)
+
+            with vcf.rewind_when_done:
+                a = list(map(str, vcf))
+
+            with vcf.rewind_when_done:
+                b = list(map(str, vcf))
+
+            self.assertListEqual(a, b)
+
+    def test_multi_open1(self):
+        from idiva.io.vcf import ReadVCF
+        with ReadVCF.open(vcf_file) as vcf:
+            assert isinstance(vcf, ReadVCF)
+
+            with ReadVCF.open(vcf) as vcf:
+                a = list(map(str, vcf))
+
+            with ReadVCF.open(vcf) as vcf:
+                b = list(map(str, vcf))
+
+        self.assertListEqual(a, b)
+
+    def test_multi_open2(self):
+        from idiva.io.vcf import ReadVCF
+        with ReadVCF.open(vcf_file) as vcf:
+            assert isinstance(vcf, ReadVCF)
+
+            a = list(map(str, vcf))
+
+            with ReadVCF.open(vcf) as vcf:
+                b = list(map(str, vcf))
+
+        self.assertListEqual(a, b)
+
     def test_meta_accuracy(self):
         from idiva.io.vcf import ReadVCF
         with open(vcf_file, mode='r') as fd:
