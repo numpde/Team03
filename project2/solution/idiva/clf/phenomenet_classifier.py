@@ -8,7 +8,7 @@ from idiva.dh import datahandler
 
 def phenomenet_classifier(*, case: idiva.io.ReadVCF) -> object:
     """
-    Classifies the case-control df by querying the clinvar and dbSNP data.
+    Classifies the case-control df with a pretrained classifier.
     """
     from idiva.clf.df import c5_df
 
