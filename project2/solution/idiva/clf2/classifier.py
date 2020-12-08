@@ -181,7 +181,9 @@ class Classifier:
             x_test = self.dataHandler.create_test_set(vcf_test1)
 
         # make predictions
-        y_pred = self.model.predict(x_test)
+        x_test = x_test[['CHROM', 'POS', 'CADD_SUCC', 'CADD_PHRED', 'SIFT_SCORE', 'SIFT_SUCC', 'VAR']]
+
+        y_pred = self.model.predict(x_test.reindex(sorted(x_test.columns), axis=1))
 
         # create dataframe
         df = pd.DataFrame(y_pred)

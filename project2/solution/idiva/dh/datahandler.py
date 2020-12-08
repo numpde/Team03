@@ -682,11 +682,9 @@ if __name__ == '__main__':
     cache = (Path(__file__).parent.parent.parent.parent / "input/download_cache").resolve()
     assert cache.is_dir()
 
-
     with ReadVCF.open(cache / 'control_v2.vcf') as ctrl_vcf:
         with ReadVCF.open(cache / 'case_processed_v2.vcf') as case_vcf:
-            test_set = dh.create_test_set_v2(case_vcf=case_vcf, ctrl_vcf=ctrl_vcf,)
-
+            test_set = dh.create_test_set_v2(case_vcf=case_vcf, ctrl_vcf=ctrl_vcf, )
 
     """
     print(dataframe)
