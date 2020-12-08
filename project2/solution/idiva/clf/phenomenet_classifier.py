@@ -5,6 +5,7 @@ from idiva import log
 from idiva.clf.utils import get_trained_phenomenet
 from idiva.dh.datahandler import DataHandler
 from idiva.dh import datahandler
+from idiva.clf2.classifier import Classifier
 
 
 def phenomenet_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> object:
@@ -14,26 +15,12 @@ def phenomenet_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> 
     from idiva.clf.df import c5_df
 
     log.info("Running the phenomenet classifier.")
-
-    model = get_trained_phenomenet()
+    clf = Classifier()
+    clf.model = get_trained_phenomenet()
 
     case_control = c5_df(case)
-
-    # dh = DataHandler()
-    # clf_data = dh.create_test_set_v2(case_vcf_file=case, ctrl_vcf_file=ctrl)
-
-    case_control['var'] = case_control[['REF', 'ALT']].apply(lambda x: datahandler.MAPPING[x[0]][x[1]], axis=1)
-    clf_data = case_control[['CHROM', 'POS', 'var']]
-    # ----------------------------------------------------------------------------
-    # todo get CADD scores
-    for col in ['CADD_PHRED', 'CADD_SUCC', 'SIFT_SCORE', 'SIFT_SUCC']:
-        clf_data[col] = 1
-    # ----------------------------------------------------------------------------
-
-    # columns need to be in the same order than they were for the training of the classifier:
-    clf_data = clf_data.reindex(sorted(clf_data.columns), axis=1)
-    predictions = model.predict(clf_data.to_numpy().astype('float32'))
-    case_control['class'] = predictions
+    results = clf.predict(case_control)
+    case_control['class'] = results.values
 
     class response:
         id_cols = ['CHROM', 'POS', 'ID', 'REF', 'ALT']
