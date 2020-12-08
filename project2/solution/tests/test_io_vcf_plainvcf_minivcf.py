@@ -18,10 +18,21 @@ class TestPlainVCF(TestCase):
         with self.assertRaises(ImportError):
             from idiva.io import PlainVCF
 
-    def test_sanity(self):
+    def test_sanity0(self):
         from idiva.io.vcf import ReadVCF
         with open(vcf_file, mode='r') as fd:
-            ReadVCF(fd)
+            list(ReadVCF(fd))
+
+    def test_sanity1(self):
+        from idiva.io.vcf import ReadVCF
+        with ReadVCF.open(vcf_file) as vcf:
+            list(vcf)
+
+    def test_sanity2(self):
+        from idiva.io.vcf import ReadVCF
+        with ReadVCF.open(vcf_file) as vcf:
+            with ReadVCF.open(vcf) as vcf:
+                list(vcf)
 
     def test_meta_accuracy(self):
         from idiva.io.vcf import ReadVCF
@@ -56,7 +67,7 @@ class TestPlainVCF(TestCase):
 
     def test_datalines_accuracy(self):
         from idiva.io.vcf import ReadVCF
-        with open(vcf_file, mode='r') as fd:
+        with ReadVCF.open(vcf_file) as vcf:
             reference = [
                 "20	14370	rs6054257	G	A	29	PASS	NS=3;DP=14;AF=0.5;DB;H2	GT:GQ:DP:HQ	0|0:48:1:51,51	1|0:48:8:51,51	1/1:43:5:.,.",
                 "20	17330	None	T	A	3	q10	NS=3;DP=11;AF=0.017	GT:GQ:DP:HQ	0|0:49:3:58,50	0|1:3:5:65,3	0/0:41:3",
@@ -64,13 +75,13 @@ class TestPlainVCF(TestCase):
                 "20	1230237	None	T	None	47	PASS	NS=3;DP=13;AA=T	GT:GQ:DP:HQ	0|0:54:7:56,60	0|0:48:4:51,51	0/0:61:2",
                 "20	1234567	microsat1	GTCT	G,GTACT	50	PASS	NS=3;DP=9;AA=G	GT:GQ:DP	0/1:35:4	0/2:17:2	1/1:40:3",
             ]
-            candidate = list(map(str, ReadVCF(fd)))
+            candidate = list(map(str, vcf))
             self.assertListEqual(reference, candidate)
 
     def test_dataline_types(self):
         from idiva.io.vcf import ReadVCF, RawDataline
-        with open(vcf_file, mode='r') as fd:
-            candidate = first(ReadVCF(fd))
+        with ReadVCF.open(vcf_file) as vcf:
+            candidate = first(vcf)
             self.assertIsInstance(candidate, RawDataline)
 
             self.assertIsInstance(candidate.pos, int)

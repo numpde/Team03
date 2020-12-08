@@ -124,15 +124,18 @@ class ReadVCF:
 
     @classmethod
     @contextlib.contextmanager
-    def open(cls, file):
-        from idiva.io import open_maybe_gz
-        if isinstance(file, cls):
-            # This shouldn't normally happen
-            log.warning(F"`file` is already a {cls.__name__}.")
-            yield file
+    def open(ReadVCF, file, rewind=True):
+        assert rewind
+        if isinstance(file, ReadVCF):
+            log.warning(F"Attempt to reopen VCF {file.fd}.")
+            with file.rewind_when_done:
+                yield file
         else:
+            from idiva.io import open_maybe_gz
             with open_maybe_gz(file) as fd:
-                yield cls(fd)
+                vcf = ReadVCF(fd)
+                with vcf.rewind_when_done:
+                    yield vcf
 
     @property
     def md5(self) -> str:
