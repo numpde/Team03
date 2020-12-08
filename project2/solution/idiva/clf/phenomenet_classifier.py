@@ -25,8 +25,9 @@ def phenomenet_classifier(*, case: idiva.io.ReadVCF) -> object:
     for col in ['CADD_PHRED', 'CADD_SUCC', 'SIFT_SCORE', 'SIFT_SUCC']:
         clf_data[col] = 1
     # ----------------------------------------------------------------------------
-    # todo columns need to be in the right order
 
+    # columns need to be in the same order than they were for the training of the classifier:
+    clf_data = clf_data.reindex(sorted(clf_data.columns), axis=1)
     predictions = model.predict(clf_data.to_numpy().astype('float32'))
     case_control['class'] = predictions
 
