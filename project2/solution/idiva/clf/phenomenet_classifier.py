@@ -18,8 +18,9 @@ def phenomenet_classifier(*, case: idiva.io.ReadVCF, ctrl: idiva.io.ReadVCF) -> 
     clf = Classifier()
     clf.model = get_trained_phenomenet()
 
+    results = clf.predict(case, ctrl)
     case_control = c5_df(case)
-    results = clf.predict(case_control)
+
     case_control['class'] = results.values
 
     class response:

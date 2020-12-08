@@ -16,8 +16,8 @@ URLS = {
 
 class TestPhenomClf(TestCase):
     def test_phenom_clf(self):
-        with ReadVCF.open(URLS['case']) as case:
-            result = phenomenet_classifier(case=case, ctrl=None)
+        with ReadVCF.open(URLS['case']) as case, ReadVCF.open(URLS['ctrl']) as ctrl:
+            result = phenomenet_classifier(case=case, ctrl=ctrl)
         self.assertTrue(len(result.df))
         log.info('passed!')
 
